@@ -54,6 +54,13 @@ func reset_turn() -> void:
 	has_acted = false
 
 
+func take_damage(amount: int) -> void:
+	hp = max(0, hp - amount)
+	queue_redraw()
+	if hp == 0:
+		visible = false
+
+
 func _draw() -> void:
 	draw_circle(Vector2.ZERO, RADIUS, data.color)
 	# Symbole de la classe
