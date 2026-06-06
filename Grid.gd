@@ -33,3 +33,12 @@ func _draw() -> void:
 	for row in ROWS + 1:
 		var y := row * CELL_SIZE
 		draw_line(Vector2(0, y), Vector2(grid_width, y), COLOR_LINE, 1.0)
+
+
+# Renvoie le centre d'une case (en coordonnées locales à la grille).
+# Sert à positionner les unités sur la grille.
+func cell_to_local(cell: Vector2i) -> Vector2:
+	return Vector2(
+		cell.x * CELL_SIZE + CELL_SIZE / 2.0,
+		cell.y * CELL_SIZE + CELL_SIZE / 2.0
+	)
