@@ -10,9 +10,11 @@ const COLOR_CELL := Color(0.13, 0.13, 0.18)
 const COLOR_LINE := Color(0.30, 0.30, 0.40)
 const COLOR_MOVE := Color(0.30, 0.55, 0.95, 0.35)    # cases de déplacement
 const COLOR_TARGET := Color(0.90, 0.25, 0.25, 0.40)  # cibles attaquables
+const COLOR_HEAL := Color(0.30, 0.85, 0.40, 0.40)    # alliés soignables
 
 var move_cells: Array = []
 var target_cells: Array = []
+var heal_cells: Array = []
 
 
 func _draw() -> void:
@@ -25,6 +27,8 @@ func _draw() -> void:
 		draw_rect(_cell_rect(cell), COLOR_MOVE)
 	for cell in target_cells:
 		draw_rect(_cell_rect(cell), COLOR_TARGET)
+	for cell in heal_cells:
+		draw_rect(_cell_rect(cell), COLOR_HEAL)
 	for col in COLUMNS + 1:
 		draw_line(Vector2(col * CELL_SIZE, 0), Vector2(col * CELL_SIZE, h), COLOR_LINE, 1.0)
 	for row in ROWS + 1:

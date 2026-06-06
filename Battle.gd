@@ -5,12 +5,11 @@ extends Node2D
 @onready var grid: Node2D = $Grid
 @onready var turn_manager: Node = $TurnManager
 
+const UNIT_SCENE := preload("res://Unit.tscn")
+
 var active_unit: Node = null
 var phase := "idle"  # "move" puis "attack" pendant le tour du joueur
 var _finished := false
-
-
-const UNIT_SCENE := preload("res://Unit.tscn")
 
 
 func _ready() -> void:
@@ -47,13 +46,19 @@ func _on_turn_started(unit: Node) -> void:
 func _show_moves(unit: Node) -> void:
 	grid.move_cells = grid.get_reachable_cells(unit.grid_position, unit.data.move_range, _occupied(unit))
 	grid.target_cells = []
+	grid.heal_cells = []
 	grid.queue_redraw()
 
 
-func _enter_attack_phase() -> void:
+func _enter_action_phase() -> void:
 	phase = "attack"
 	grid.move_cells = []
-	grid.target_cells = _targets_in_range(active_unit)
+	if _is_healer(active_unit):
+		grid.heal_cells = _action_targets(active_unit)
+		grid.target_cells = []
+	else:
+		grid.target_cells = _action_targets(active_unit)
+		grid.heal_cells = []
 	grid.queue_redraw()
 
 
@@ -65,7 +70,7 @@ func _ai_take_turn(unit: Node) -> void:
 		await get_tree().create_timer(0.35).timeout
 	if plan.target != null and plan.target.is_alive() \
 			and grid.manhattan(unit.grid_position, plan.target.grid_position) <= int(unit.data.attack_range):
-		_attack(unit, plan.target)
+		_perform_action(unit, plan.target)
 	await get_tree().create_timer(0.2).timeout
 	_end_turn()
 
@@ -77,7 +82,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_handle_click(grid.local_to_cell(grid.to_local(get_global_mouse_position())))
 	elif event.is_action_pressed("ui_accept"):
 		if phase == "move":
-			_enter_attack_phase()  # passer le déplacement
+			_enter_action_phase()  # passer le déplacement
 		else:
 			_end_turn()
 
@@ -85,25 +90,30 @@ func _unhandled_input(event: InputEvent) -> void:
 func _handle_click(cell: Vector2i) -> void:
 	if phase == "move" and cell in grid.move_cells:
 		active_unit.move_to(cell)
-		_enter_attack_phase()
-	elif phase == "attack" and cell in grid.target_cells:
+		_enter_action_phase()
+	elif phase == "attack" and (cell in grid.target_cells or cell in grid.heal_cells):
 		var target := _unit_at(cell)
 		if target:
-			_attack(active_unit, target)
+			_perform_action(active_unit, target)
 			_end_turn()
 
 
-func _attack(attacker: Node, target: Node) -> void:
-	var dmg: int = attacker.data.attack
-	if randf() < attacker.data.crit_chance:
-		dmg *= 2
-	target.take_damage(dmg)
-	attacker.has_acted = true
+# Soin si soigneur, sinon attaque (avec coup critique éventuel).
+func _perform_action(unit: Node, target: Node) -> void:
+	if _is_healer(unit):
+		target.heal(int(unit.data.heal))
+	else:
+		var dmg: int = unit.data.attack
+		if randf() < unit.data.crit_chance:
+			dmg *= 2
+		target.take_damage(dmg)
+	unit.has_acted = true
 
 
 func _end_turn() -> void:
 	grid.move_cells = []
 	grid.target_cells = []
+	grid.heal_cells = []
 	grid.queue_redraw()
 	phase = "idle"
 	if _check_end():
@@ -129,11 +139,22 @@ func _check_end() -> bool:
 
 # --- Utilitaires ---
 
-func _targets_in_range(unit: Node) -> Array:
+func _is_healer(unit: Node) -> bool:
+	return unit.data.behavior == "heal"
+
+
+# Cases des cibles valides : alliés blessés (soigneur) ou ennemis (autres).
+func _action_targets(unit: Node) -> Array:
 	var cells: Array = []
 	for u in get_tree().get_nodes_in_group("units"):
-		if u.is_alive() and u.team != unit.team \
-				and grid.manhattan(unit.grid_position, u.grid_position) <= unit.data.attack_range:
+		if not u.is_alive():
+			continue
+		if grid.manhattan(unit.grid_position, u.grid_position) > int(unit.data.attack_range):
+			continue
+		if _is_healer(unit):
+			if u.team == unit.team and u != unit and u.hp < int(u.data.max_hp):
+				cells.append(u.grid_position)
+		elif u.team != unit.team:
 			cells.append(u.grid_position)
 	return cells
 

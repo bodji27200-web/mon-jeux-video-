@@ -61,6 +61,11 @@ func take_damage(amount: int) -> void:
 		visible = false
 
 
+func heal(amount: int) -> void:
+	hp = min(int(data.max_hp), hp + amount)
+	queue_redraw()
+
+
 func _draw() -> void:
 	draw_circle(Vector2.ZERO, RADIUS, data.color)
 	# Symbole de la classe
