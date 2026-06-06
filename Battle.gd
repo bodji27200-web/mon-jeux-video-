@@ -37,9 +37,16 @@ func _enter_attack_phase() -> void:
 	grid.queue_redraw()
 
 
-func _ai_take_turn(_unit: Node) -> void:
-	# Étape 4 : l'IA passe encore son tour (vraie IA à l'étape 5).
-	await get_tree().create_timer(0.4).timeout
+func _ai_take_turn(unit: Node) -> void:
+	await get_tree().create_timer(0.35).timeout
+	var plan := TacticalAI.decide(unit, grid, get_tree().get_nodes_in_group("units"))
+	if plan.move != unit.grid_position:
+		unit.move_to(plan.move)
+		await get_tree().create_timer(0.35).timeout
+	if plan.target != null and plan.target.is_alive() \
+			and grid.manhattan(unit.grid_position, plan.target.grid_position) <= int(unit.data.attack_range):
+		_attack(unit, plan.target)
+	await get_tree().create_timer(0.2).timeout
 	_end_turn()
 
 
