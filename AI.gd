@@ -46,18 +46,24 @@ static func decide(unit: Node, grid: Node, units: Array) -> Dictionary:
 	var rng := int(unit.data.attack_range)
 	var kite := is_healer or unit.data.behavior == "kite"
 
+	# Selon la difficulté, l'IA commet parfois une erreur (case au hasard).
+	var mistake := randf() < float(GameData.DIFFICULTIES[GameData.difficulty].ai_mistake_chance)
+
 	var best: Vector2i = unit.grid_position
-	var best_score := -INF
-	for cell in candidates:
-		var in_range := grid.manhattan(cell, target.grid_position) <= rng
-		var score := 1000.0 if in_range else 0.0
-		if kite:
-			score += _nearest(cell, enemies, grid) * 3.0      # rester à distance
-		else:
-			score -= grid.manhattan(cell, target.grid_position)  # se rapprocher
-		if score > best_score:
-			best_score = score
-			best = cell
+	if mistake:
+		best = candidates[randi() % candidates.size()]
+	else:
+		var best_score := -INF
+		for cell in candidates:
+			var in_range := grid.manhattan(cell, target.grid_position) <= rng
+			var score := 1000.0 if in_range else 0.0
+			if kite:
+				score += _nearest(cell, enemies, grid) * 3.0      # rester à distance
+			else:
+				score -= grid.manhattan(cell, target.grid_position)  # se rapprocher
+			if score > best_score:
+				best_score = score
+				best = cell
 
 	var tgt: Node = target if grid.manhattan(best, target.grid_position) <= rng else null
 	return {"move": best, "target": tgt}

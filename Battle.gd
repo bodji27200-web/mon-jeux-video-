@@ -114,6 +114,7 @@ func _perform_action(unit: Node, target: Node) -> void:
 		if randf() < unit.data.crit_chance:
 			dmg *= 2.0
 		dmg *= unit.damage_dealt_mult() * target.damage_taken_mult()
+		dmg *= _difficulty_damage_mult(unit)
 		target.take_damage(int(round(dmg)))
 		# Certaines classes infligent un debuff au contact.
 		if unit.data.has("on_hit") and target.is_alive():
@@ -152,6 +153,12 @@ func _check_end() -> bool:
 
 func _is_healer(unit: Node) -> bool:
 	return unit.data.behavior == "heal"
+
+
+# Multiplicateur de dégâts selon la difficulté et le camp de l'attaquant.
+func _difficulty_damage_mult(unit: Node) -> float:
+	var d: Dictionary = GameData.DIFFICULTIES[GameData.difficulty]
+	return float(d.player_damage_mult if unit.is_player() else d.ai_damage_mult)
 
 
 # Cases des cibles valides : alliés blessés (soigneur) ou ennemis (autres).
