@@ -113,6 +113,14 @@ Ordre de priorité (✅ = fait) :
 - `AI.gd` (`TacticalAI`) : décisions de l'IA
 - `TeamSelect.gd/.tscn` : écran de préparation (scène de démarrage)
 
+### Tester le jeu (validation par Claude, sans interface)
+Godot n'est pas préinstallé, mais peut être téléchargé (v4.3, linux x86_64) pour
+valider le code en mode headless — utile pour attraper les erreurs avant le test
+humain :
+- Erreurs de compilation : `godot --headless --editor --path . --quit`
+- Erreurs d'exécution : lancer une scène, ex. `godot --headless --path . res://Main.tscn`
+Ça ne remplace PAS le test visuel / jouabilité, qui reste fait par l'utilisateur.
+
 ### Reste à faire (idées futures, NE PAS coder sans demande)
 Compléter les 20 classes, compétences actives dédiées, animations, vrais sprites,
 équilibrage fin. Toujours data-driven, une étape à la fois, avec validation.
