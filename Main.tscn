@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3 uid="uid://b1rpgtactiquemain"]
+
+[ext_resource type="Script" path="res://Grid.gd" id="1_grid"]
+
+[node name="Main" type="Node2D"]
+
+[node name="Grid" type="Node2D" parent="."]
+position = Vector2(32, 32)
+script = ExtResource("1_grid")

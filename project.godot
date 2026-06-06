@@ -1,0 +1,19 @@
+; Configuration du projet Godot
+; RPG Tactique Dark Fantasy
+
+config_version=5
+
+[application]
+
+config/name="RPG Tactique Dark Fantasy"
+run/main_scene="res://Main.tscn"
+config/features=PackedStringArray("4.3")
+
+[display]
+
+window/size/viewport_width=832
+window/size/viewport_height=704
+
+[rendering]
+
+environment/defaults/default_clear_color=Color(0.07, 0.07, 0.1, 1)
