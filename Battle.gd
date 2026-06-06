@@ -10,9 +10,29 @@ var phase := "idle"  # "move" puis "attack" pendant le tour du joueur
 var _finished := false
 
 
+const UNIT_SCENE := preload("res://Unit.tscn")
+
+
 func _ready() -> void:
+	_spawn_units()
 	turn_manager.turn_started.connect(_on_turn_started)
 	turn_manager.start()
+
+
+# Crée les unités à partir des équipes choisies (GameData).
+func _spawn_units() -> void:
+	_spawn_team(GameData.player_team, GameData.Team.PLAYER, 1)
+	_spawn_team(GameData.ai_team, GameData.Team.AI, grid.COLUMNS - 2)
+
+
+func _spawn_team(classes: Array, team: int, col: int) -> void:
+	var start_row := int((grid.ROWS - classes.size()) / 2.0)
+	for i in classes.size():
+		var u := UNIT_SCENE.instantiate()
+		u.class_id = classes[i]
+		u.team = team
+		u.grid_position = Vector2i(col, start_row + i)
+		grid.add_child(u)
 
 
 func _on_turn_started(unit: Node) -> void:

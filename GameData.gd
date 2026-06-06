@@ -18,6 +18,14 @@ const CLASSES := {
 	},
 }
 
+# Difficultés (les effets sont appliqués à l'étape 9 dans l'IA et les dégâts).
+const DIFFICULTIES := {
+	"facile":    {"name": "Facile",    "ai_mistake_chance": 0.35, "ai_damage_mult": 0.85, "player_damage_mult": 1.15},
+	"normal":    {"name": "Normal",    "ai_mistake_chance": 0.10, "ai_damage_mult": 1.00, "player_damage_mult": 1.00},
+	"difficile": {"name": "Difficile", "ai_mistake_chance": 0.0,  "ai_damage_mult": 1.10, "player_damage_mult": 1.00},
+	"hardcore":  {"name": "Hardcore",  "ai_mistake_chance": 0.0,  "ai_damage_mult": 1.25, "player_damage_mult": 0.90},
+}
+
 # Sélections courantes (définies à l'écran de préparation, étape 6).
 var difficulty := "normal"
 var player_team: Array = ["tank"]
