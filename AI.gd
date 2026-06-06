@@ -21,7 +21,7 @@ static func decide(unit: Node, grid: Node, units: Array) -> Dictionary:
 		else:
 			enemies.append(u)
 
-	var is_healer := unit.data.behavior == "heal"
+	var is_healer: bool = unit.data.behavior == "heal"
 
 	# Cibles potentielles : alliés blessés (soigneur) ou ennemis.
 	var pool: Array = []
@@ -45,7 +45,7 @@ static func decide(unit: Node, grid: Node, units: Array) -> Dictionary:
 
 	var target: Node = _pick_ally(pool) if is_healer else _pick_enemy(unit, pool)
 	var rng := int(unit.data.attack_range)
-	var kite := is_healer or unit.data.behavior == "kite"
+	var kite: bool = is_healer or unit.data.behavior == "kite"
 
 	# Erreur volontaire selon la difficulté.
 	var mistake := randf() < float(GameData.DIFFICULTIES[GameData.difficulty].ai_mistake_chance)
@@ -102,7 +102,7 @@ static func _pick_ally(allies: Array) -> Node:
 
 
 static func _cell_score(unit: Node, cell: Vector2i, target: Node, enemies: Array, allies: Array, grid: Node, kite: bool, rng: int) -> float:
-	var in_range := grid.manhattan(cell, target.grid_position) <= rng
+	var in_range: bool = grid.manhattan(cell, target.grid_position) <= rng
 	var score := 1000.0 if in_range else 0.0
 	var near := _nearest(cell, enemies, grid)
 	if kite:
