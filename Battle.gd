@@ -36,6 +36,13 @@ func _spawn_team(classes: Array, team: int, col: int) -> void:
 
 func _on_turn_started(unit: Node) -> void:
 	active_unit = unit
+	# Effets de début de tour (poison, régénération...).
+	unit.tick_buffs()
+	if not unit.is_alive():
+		await get_tree().process_frame
+		if not _check_end():
+			turn_manager.next_turn()
+		return
 	if unit.is_player():
 		phase = "move"
 		_show_moves(unit)
@@ -103,10 +110,14 @@ func _perform_action(unit: Node, target: Node) -> void:
 	if _is_healer(unit):
 		target.heal(int(unit.data.heal))
 	else:
-		var dmg: int = unit.data.attack
+		var dmg: float = unit.data.attack
 		if randf() < unit.data.crit_chance:
-			dmg *= 2
-		target.take_damage(dmg)
+			dmg *= 2.0
+		dmg *= unit.damage_dealt_mult() * target.damage_taken_mult()
+		target.take_damage(int(round(dmg)))
+		# Certaines classes infligent un debuff au contact.
+		if unit.data.has("on_hit") and target.is_alive():
+			target.add_buff(unit.data.on_hit)
 	unit.has_acted = true
 
 
