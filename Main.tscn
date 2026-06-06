@@ -1,0 +1,25 @@
+[gd_scene load_steps=4 format=3 uid="uid://b1rpgtactiquemain"]
+
+[ext_resource type="Script" path="res://Battle.gd" id="0_battle"]
+[ext_resource type="Script" path="res://Grid.gd" id="1_grid"]
+[ext_resource type="Script" path="res://TurnManager.gd" id="3_turn"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("0_battle")
+
+[node name="Grid" type="Node2D" parent="."]
+position = Vector2(32, 32)
+script = ExtResource("1_grid")
+
+[node name="TurnManager" type="Node" parent="."]
+script = ExtResource("3_turn")
+turn_label = NodePath("../UI/TurnLabel")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="TurnLabel" type="Label" parent="UI"]
+offset_left = 16.0
+offset_top = 8.0
+offset_right = 600.0
+offset_bottom = 40.0
+text = "Tour de :"
