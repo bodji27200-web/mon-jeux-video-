@@ -89,20 +89,33 @@ Mage = rouge + bâton · Soigneur = blanc + croix.
 
 ## État actuel & ordre de développement
 
-**Objectif immédiat : un prototype JOUABLE le plus vite possible.**
-Premier combat fonctionnel : **1 Tank (joueur) vs 1 Archer (IA)**.
+**Prototype jouable livré (étapes 1 → 10 faites).** Combat joueur vs IA
+fonctionnel sur grille 12×10, avec écran de préparation.
 
-Ordre de priorité :
-1. Grille fonctionnelle
-2. Système de tours
-3. Déplacement (Tank joueur)
-4. Attaque (Archer IA)
-5. IA de base
-6. Sélection d'équipe avant combat
-7. Ajout progressif des classes
-8. Buffs/debuffs
-9. Difficultés
-10. Amélioration continue de l'IA
+Ordre de priorité (✅ = fait) :
+1. ✅ Grille fonctionnelle
+2. ✅ Système de tours
+3. ✅ Déplacement (clic)
+4. ✅ Attaque (corps à corps / distance, coups critiques)
+5. ✅ IA de base
+6. ✅ Sélection d'équipe + difficulté avant combat
+7. ✅ Classes data-driven (Tank, Archer, Assassin, Mage, Soigneur, Paladin, Berserker)
+8. ✅ Buffs/debuffs génériques (poison, brûlure, régén, bouclier, force)
+9. ✅ Difficultés (Facile/Normal/Difficile/Hardcore)
+10. ✅ IA avancée (ciblage prioritaire, kite, protection des alliés)
+
+### Fichiers clés
+- `GameData.gd` (autoload) : dictionnaires CLASSES, DIFFICULTIES, BUFFS + sélections
+- `Grid.gd` : grille + utilitaires (coordonnées, BFS de déplacement)
+- `Unit.gd` / `Unit.tscn` : unité data-driven (stats, PV, buffs)
+- `TurnManager.gd` : ordre des tours
+- `Battle.gd` (racine de `Main.tscn`) : orchestration, entrées joueur, victoire
+- `AI.gd` (`TacticalAI`) : décisions de l'IA
+- `TeamSelect.gd/.tscn` : écran de préparation (scène de démarrage)
+
+### Reste à faire (idées futures, NE PAS coder sans demande)
+Compléter les 20 classes, compétences actives dédiées, animations, vrais sprites,
+équilibrage fin. Toujours data-driven, une étape à la fois, avec validation.
 
 > Priorités globales (ne jamais sacrifier une priorité haute pour une basse) :
 > 1. Gameplay tactique · 2. IA crédible · 3. Architecture robuste ·
