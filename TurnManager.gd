@@ -1,38 +1,42 @@
 extends Node
 
-# Gère le système de tours : qui joue, et le passage au tour suivant.
-# Étape 2 : on alterne simplement entre les unités avec la touche Espace.
+# Système de tours : ordre de jeu et passage d'une unité à la suivante.
+
+signal turn_started(unit)
 
 @export var turn_label: Label
 
 var units: Array = []
-var current_index := 0
+var current_index := -1
 
 
-func _ready() -> void:
-	# Récupère toutes les unités présentes sur la grille.
+func start() -> void:
 	units = get_tree().get_nodes_in_group("units")
 	if units.is_empty():
 		return
-	_update_turn()
+	_begin(0)
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	# Espace (ou Entrée) = passer au tour suivant.
-	if event.is_action_pressed("ui_accept"):
-		next_turn()
+func current_unit() -> Node:
+	return units[current_index] if current_index >= 0 else null
 
 
 func next_turn() -> void:
-	if units.is_empty():
-		return
-	current_index = (current_index + 1) % units.size()
-	_update_turn()
+	var n := units.size()
+	for i in range(1, n + 1):
+		var cand := (current_index + i) % n
+		if units[cand].is_alive():
+			_begin(cand)
+			return
 
 
-func _update_turn() -> void:
-	# Met en surbrillance l'unité active et met à jour le texte.
-	for i in units.size():
-		units[i].set_active(i == current_index)
+func _begin(index: int) -> void:
+	current_index = index
+	var unit: Node = units[index]
+	for u in units:
+		u.set_active(u == unit)
+	unit.reset_turn()
 	if turn_label:
-		turn_label.text = "Tour de : %s" % units[current_index].unit_name
+		var camp := "Joueur" if unit.is_player() else "IA"
+		turn_label.text = "Tour de : %s (%s)" % [unit.data.name, camp]
+	turn_started.emit(unit)

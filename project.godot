@@ -17,3 +17,7 @@ window/size/viewport_height=704
 [rendering]
 
 environment/defaults/default_clear_color=Color(0.07, 0.07, 0.1, 1)
+
+[autoload]
+
+GameData="*res://GameData.gd"

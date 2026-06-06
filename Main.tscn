@@ -1,10 +1,12 @@
-[gd_scene load_steps=4 format=3 uid="uid://b1rpgtactiquemain"]
+[gd_scene load_steps=5 format=3 uid="uid://b1rpgtactiquemain"]
 
+[ext_resource type="Script" path="res://Battle.gd" id="0_battle"]
 [ext_resource type="Script" path="res://Grid.gd" id="1_grid"]
 [ext_resource type="Script" path="res://Unit.gd" id="2_unit"]
 [ext_resource type="Script" path="res://TurnManager.gd" id="3_turn"]
 
 [node name="Main" type="Node2D"]
+script = ExtResource("0_battle")
 
 [node name="Grid" type="Node2D" parent="."]
 position = Vector2(32, 32)
@@ -12,14 +14,14 @@ script = ExtResource("1_grid")
 
 [node name="Tank" type="Node2D" parent="Grid"]
 script = ExtResource("2_unit")
-unit_name = "Tank"
-color = Color(0.3, 0.5, 1, 1)
+class_id = "tank"
+team = 0
 grid_position = Vector2i(2, 5)
 
 [node name="Archer" type="Node2D" parent="Grid"]
 script = ExtResource("2_unit")
-unit_name = "Archer"
-color = Color(0.3, 0.85, 0.4, 1)
+class_id = "archer"
+team = 1
 grid_position = Vector2i(9, 4)
 
 [node name="TurnManager" type="Node" parent="."]
@@ -31,6 +33,6 @@ turn_label = NodePath("../UI/TurnLabel")
 [node name="TurnLabel" type="Label" parent="UI"]
 offset_left = 16.0
 offset_top = 8.0
-offset_right = 400.0
+offset_right = 600.0
 offset_bottom = 40.0
 text = "Tour de :"
