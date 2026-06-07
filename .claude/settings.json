@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": ["Bash(git *)"]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" || exit 0; git pull --rebase --no-edit >/dev/null 2>&1 || true; exit 0",
+            "statusMessage": "Synchronisation depuis GitHub..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" || exit 0; git add -A; if git diff --cached --quiet; then exit 0; fi; git commit -m \"auto: synchronisation des modifications\" >/dev/null 2>&1; if git pull --rebase --no-edit >/dev/null 2>&1 && git push >/dev/null 2>&1; then echo '{\"systemMessage\":\"Modifications synchronisees sur GitHub\"}'; else echo '{\"systemMessage\":\"Synchro GitHub echouee (conflit ou reseau) - a verifier\"}'; fi; exit 0",
+            "statusMessage": "Envoi des modifications sur GitHub..."
+          }
+        ]
+      }
+    ]
+  }
+}
