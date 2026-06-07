@@ -39,7 +39,7 @@ static func decide(unit: Node, grid: Node, units: Array) -> Dictionary:
 	for u in units:
 		if u != unit and u.is_alive():
 			occupied[u.grid_position] = true
-	var candidates: Array = grid.get_reachable_cells(unit.grid_position, unit.data.move_range, occupied)
+	var candidates: Array = grid.get_reachable_cells(unit.grid_position, unit.move_range(), occupied)
 	candidates.append(unit.grid_position)
 
 	# Rien à faire : se replier loin des ennemis.

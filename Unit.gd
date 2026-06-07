@@ -46,6 +46,15 @@ func action_range() -> int:
 	return int(data.attack_range)
 
 
+# Déplacement effectif : portée de base réduite par les debuffs (gel...), min 1.
+func move_range() -> int:
+	var m := int(data.move_range)
+	for b in buffs:
+		if b.has("move_penalty"):
+			m -= int(b.move_penalty)
+	return max(1, m)
+
+
 func move_to(cell: Vector2i) -> void:
 	grid_position = cell
 	_refresh_position()
@@ -162,5 +171,7 @@ func _draw() -> void:
 			c = Color(0.30, 0.50, 1.00)
 		elif b.has("dmg_dealt_mult"):
 			c = Color(0.95, 0.60, 0.20)
+		elif b.has("move_penalty"):
+			c = Color(0.55, 0.85, 1.00)
 		draw_circle(Vector2(bx + 4.0, RADIUS + 12.0), 4.0, c)
 		bx += 11.0

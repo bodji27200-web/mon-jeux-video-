@@ -76,6 +76,26 @@ const CLASSES := {
 			{"name": "Agressivité", "description": "Se déplace loin pour atteindre ses cibles.", "effect": "Grande portée de déplacement (passif)."},
 		],
 	},
+	"mage_glace": {
+		"name": "Mage de glace", "color": Color(0.55, 0.80, 1.00), "symbol": "G",
+		"description": "Contrôle. Ralentit ses cibles à distance pour les empêcher de fuir ou d'approcher.",
+		"max_hp": 21, "move_range": 3, "attack": 9, "attack_range": 3,
+		"crit_chance": 0.10, "behavior": "kite", "on_hit": "gel", "role": "ranged",
+		"skills": [
+			{"name": "Éclat de givre", "description": "Attaque de glace à distance.", "effect": "Inflige des dégâts à distance.", "damage": 9, "range": 3},
+			{"name": "Gel", "description": "Chaque tir ralentit la cible.", "effect": "Applique Gel : -2 déplacement pendant 2 tours.", "range": 3},
+		],
+	},
+	"lancier": {
+		"name": "Lancier", "color": Color(0.60, 0.65, 0.70), "symbol": "L",
+		"description": "Combattant d'allonge. Frappe à 2 cases : tient la ligne sans se coller à l'ennemi.",
+		"max_hp": 32, "move_range": 3, "attack": 11, "attack_range": 2,
+		"crit_chance": 0.10, "behavior": "melee", "role": "melee",
+		"skills": [
+			{"name": "Coup de lance", "description": "Attaque d'allonge.", "effect": "Frappe une cible jusqu'à 2 cases.", "damage": 11, "range": 2},
+			{"name": "Allonge", "description": "Frappe sans contact direct (passif).", "effect": "Peut attaquer à 2 cases de distance."},
+		],
+	},
 }
 
 # Difficultés (les effets sont appliqués à l'étape 9 dans l'IA et les dégâts).
@@ -94,6 +114,7 @@ const BUFFS := {
 	"regen":    {"name": "Régénération", "duration": 3, "heal_per_turn": 5},
 	"bouclier": {"name": "Bouclier",     "duration": 2, "dmg_taken_mult": 0.5},
 	"force":    {"name": "Force",        "duration": 2, "dmg_dealt_mult": 1.5},
+	"gel":      {"name": "Gel",          "duration": 2, "move_penalty": 2},
 }
 
 # Sélections courantes (définies à l'écran de préparation, étape 6).

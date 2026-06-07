@@ -59,7 +59,7 @@ func _on_turn_started(unit: Node) -> void:
 
 
 func _show_moves(unit: Node) -> void:
-	grid.move_cells = grid.get_reachable_cells(unit.grid_position, unit.data.move_range, _occupied(unit))
+	grid.move_cells = grid.get_reachable_cells(unit.grid_position, unit.move_range(), _occupied(unit))
 	grid.target_cells = []
 	grid.heal_cells = []
 	grid.queue_redraw()

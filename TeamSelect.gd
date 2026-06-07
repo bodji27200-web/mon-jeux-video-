@@ -34,7 +34,9 @@ func _ready() -> void:
 		_diff_buttons[d] = b
 
 	root.add_child(_section("Choisis ton équipe (max %d) :" % MAX_TEAM))
-	var class_box := HBoxContainer.new()
+	# Grille pour éviter que la rangée de classes déborde de la fenêtre.
+	var class_box := GridContainer.new()
+	class_box.columns = 5
 	root.add_child(class_box)
 	for cid in GameData.CLASSES:
 		var b := Button.new()
