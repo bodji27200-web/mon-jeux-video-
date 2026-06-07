@@ -14,7 +14,7 @@ var data: Dictionary = {}
 var hp := 0
 var has_moved := false
 var has_acted := false
-var skill_cd := 0  # tours restants avant de pouvoir réutiliser la compétence
+var skill_cds: Array = []  # cooldown restant par compétence (aligné sur get_actives())
 var buffs: Array = []
 var is_summon := false   # true = invoqué par un nécromancien
 var summoner: Node = null
@@ -25,6 +25,8 @@ func _ready() -> void:
 	add_to_group("units")
 	data = GameData.CLASSES[class_id]
 	hp = data.max_hp
+	skill_cds.resize(get_actives().size())
+	skill_cds.fill(0)
 	_refresh_position()
 
 
@@ -75,27 +77,60 @@ func set_active(active: bool) -> void:
 func reset_turn() -> void:
 	has_moved = false
 	has_acted = false
-	if skill_cd > 0:  # la compétence recharge au fil des tours de l'unité
-		skill_cd -= 1
+	# Chaque compétence recharge indépendamment au fil des tours de l'unité.
+	for i in skill_cds.size():
+		if skill_cds[i] > 0:
+			skill_cds[i] -= 1
 
 
-# --- Compétence active (optionnelle, définie dans GameData via "active") ---
+# --- Compétences actives (jusqu'à 3 par classe, via "actives") ---
+# Compatibilité : si une classe utilise encore l'ancien champ "active" (dict
+# unique), il est renvoyé comme une liste d'un élément.
+
+func get_actives() -> Array:
+	if data.has("actives"):
+		return data.actives
+	if data.has("active"):
+		return [data.active]
+	return []
+
+
+func skill_count() -> int:
+	return get_actives().size()
+
 
 func has_active() -> bool:
-	return data.has("active")
+	return skill_count() > 0
 
 
-func skill_ready() -> bool:
-	if not has_active() or skill_cd > 0:
+# Une compétence précise (par index) est-elle utilisable ce tour-ci ?
+func skill_ready(index := 0) -> bool:
+	var acts: Array = get_actives()
+	if index < 0 or index >= acts.size():
 		return false
-	var sk: Dictionary = data.active
+	if index < skill_cds.size() and skill_cds[index] > 0:
+		return false
+	var sk: Dictionary = acts[index]
 	if sk.has("max_summons"):
 		return _count_summons() < int(sk.max_summons)
 	return true
 
 
-func start_skill_cooldown() -> void:
-	skill_cd = int(data.active.cooldown)
+# Au moins une compétence est-elle prête ? (pour l'affichage / l'IA)
+func any_skill_ready() -> bool:
+	for i in get_actives().size():
+		if skill_ready(i):
+			return true
+	return false
+
+
+func start_skill_cooldown(index := 0) -> void:
+	var acts: Array = get_actives()
+	if index < 0 or index >= acts.size():
+		return
+	if skill_cds.size() < acts.size():
+		skill_cds.resize(acts.size())
+	skill_cds[index] = int(acts[index].cooldown)
 
 
 func _count_summons() -> int:
@@ -157,13 +192,14 @@ func add_buff(id: String) -> void:
 	queue_redraw()
 
 
-# Retire les effets négatifs (poison, brûlure, gel, racines, affaiblissement).
+# Retire les effets négatifs (DoT, gel, racines, affaiblissement, vulnérabilité).
 func purge_debuffs() -> void:
 	var kept: Array = []
 	for b in buffs:
 		if b.has("dmg_per_turn") or b.has("move_penalty") \
 				or b.get("immobilized", false) \
-				or (b.has("dmg_dealt_mult") and float(b.dmg_dealt_mult) < 1.0):
+				or (b.has("dmg_dealt_mult") and float(b.dmg_dealt_mult) < 1.0) \
+				or (b.has("dmg_taken_mult") and float(b.dmg_taken_mult) > 1.0):
 			continue
 		kept.append(b)
 	buffs = kept
@@ -222,7 +258,7 @@ func _draw() -> void:
 		elif b.has("heal_per_turn"):
 			c = Color(0.20, 0.85, 0.30)
 		elif b.has("dmg_taken_mult"):
-			c = Color(0.30, 0.50, 1.00)
+			c = Color(0.30, 0.50, 1.00) if float(b.dmg_taken_mult) < 1.0 else Color(0.80, 0.15, 0.15)
 		elif b.has("dmg_dealt_mult"):
 			c = Color(0.95, 0.60, 0.20) if float(b.dmg_dealt_mult) >= 1.0 else Color(0.70, 0.20, 0.70)
 		elif b.has("move_penalty"):

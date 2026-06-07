@@ -137,6 +137,35 @@ Ordre de priorité (✅ = fait) :
 24. ✅ **Invocateur** (nouvelle classe) : invoque Golem de pierre (tank lent) +
     Loup spectral (rapide, fonce sur les fragiles). Mêmes règles permanentes.
 25. ✅ Alchimiste légèrement renforcé (atk 8→9, Cocktail acide CD 4→3)
+26. ✅ **3 compétences actives par classe** (carrés 1-2-3 tous fonctionnels) :
+    moteur multi-compétences avec **cooldown indépendant par compétence**
+    (`Unit.skill_cds[]`, `get_actives()`, `skill_ready(index)`). La barre souris
+    sélectionne le carré 0/1/2 ; chaque carré = une compétence (reclic = annule).
+27. ✅ **5 nouveaux types de compétences génériques** (data-driven, joueur + IA) :
+    `heavy_strike` (gros coup ×mult, gardé pour achever/cibles prioritaires),
+    `cleave` (mêlée de zone, ≥2 cibles), `self_buff` (buff personnel),
+    `buff_ally` (buff nommé sur allié, `can_self`), `apply_debuff` (attaque +
+    debuff nommé).
+28. ✅ **Nouveaux buffs** : `rage` (+50% dégâts / +25% subis), `garde` (-60%
+    dégâts subis), `vulnerabilite` (+35% dégâts subis, purifiable).
+29. ✅ Toutes les classes existantes ont reçu une compétence 2 et 3 renforçant
+    leur identité (Tank : Garde + Brise-armure ; Berserker : Tourbillon +
+    Décapitation + Rage ; Druide : boîte à outils contrôle/soutien/nature ;
+    Chasseur : Tir de précision + Piège à mâchoires ; etc.).
+30. ✅ **IA contextuelle multi-compétences** : évalue chaque compétence prête et
+    prend la première pertinente (actives rangées par priorité ; `_plan_skill`
+    renvoie null si inutile → jamais de cast à vide).
+31. ✅ Ré-équilibrage roster complet (aucun outlier > 65 % en 1v1)
+
+### Compétences : plusieurs par classe
+- Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`
+  (dict unique) reste supporté via `Unit.get_actives()`.
+- Cooldown indépendant par compétence : `Unit.skill_cds[]` (aligné sur
+  `get_actives()`), `skill_ready(index)`, `start_skill_cooldown(index)`.
+- Ordre des `actives` = priorité IA (la première pertinente est jouée). Mettre
+  la compétence « signature » / la plus situationnelle en premier.
+- Ajouter une compétence : une entrée dans `actives` + (si type inédit) un `case`
+  dans `Battle._use_skill`, `AI._plan_skill` ET `SimTest._use_skill`.
 
 ### Mécaniques data-driven additionnelles
 - `on_hit` (classe) : applique un buff/debuff à chaque attaque (poison, gel,

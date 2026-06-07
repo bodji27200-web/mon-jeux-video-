@@ -66,20 +66,29 @@ static func decide(unit: Node, grid: Node, units: Array) -> Dictionary:
 				best_score = s
 				best = cell
 
-	# Compétence active : décider si (et où) l'utiliser ce tour-ci.
+	# Compétences actives : on prend la PREMIÈRE compétence prête qui vaut le coup
+	# (les actives sont rangées par priorité dans GameData). L'IA ne lance jamais
+	# une compétence à vide : chaque _plan_skill renvoie null si ce n'est pas utile.
 	var skill_cell = null
-	if not mistake and unit.skill_ready():
-		var sk: Dictionary = unit.data.active
-		if sk.type == "teleport_strike":
-			# La téléportation remplace le déplacement normal.
-			skill_cell = _plan_skill(unit, enemies, allies, grid, unit.grid_position)
-			if skill_cell != null:
-				best = unit.grid_position
-		else:
-			skill_cell = _plan_skill(unit, enemies, allies, grid, best)
+	var skill_index := -1
+	if not mistake:
+		var acts: Array = unit.get_actives()
+		for i in acts.size():
+			if not unit.skill_ready(i):
+				continue
+			var sk: Dictionary = acts[i]
+			# La téléportation remplace le déplacement : on l'évalue depuis la position actuelle.
+			var from_cell: Vector2i = unit.grid_position if sk.type == "teleport_strike" else best
+			var cell = _plan_skill(sk, unit, enemies, allies, grid, from_cell)
+			if cell != null:
+				skill_cell = cell
+				skill_index = i
+				if sk.type == "teleport_strike":
+					best = unit.grid_position
+				break
 
 	var tgt: Node = target if (target == unit or grid.manhattan(best, target.grid_position) <= rng) else null
-	return {"move": best, "target": tgt, "skill_cell": skill_cell}
+	return {"move": best, "target": tgt, "skill_cell": skill_cell, "skill_index": skill_index}
 
 
 # Dégâts estimés (pour repérer les cibles que l'on peut achever).
@@ -305,9 +314,8 @@ static func draft_pick(available: Array, ai_team: Array, player_team: Array, dif
 # --- Décision d'usage des compétences actives ---
 # Renvoie la case à cibler si la compétence vaut le coup depuis `from`, sinon null.
 
-static func _plan_skill(unit: Node, enemies: Array, allies: Array, grid: Node, from: Vector2i):
-	var sk: Dictionary = unit.data.active
-	var rng: int = int(sk.range)
+static func _plan_skill(sk: Dictionary, unit: Node, enemies: Array, allies: Array, grid: Node, from: Vector2i):
+	var rng: int = int(sk.get("range", 1))
 	match sk.type:
 		"shield_ally":
 			# Protéger l'allié le plus menacé à portée (et pas déjà protégé).
@@ -399,11 +407,11 @@ static func _plan_skill(unit: Node, enemies: Array, allies: Array, grid: Node, f
 					best_e = e
 			return best_e.grid_position if best_e != null else null
 		"war_heal":
-			# Soigner l'allié (ou soi-même) le plus blessé à portée.
+			# Soigner l'allié (ou soi-même) vraiment en danger (pas de gaspillage).
 			var pool: Array = allies.duplicate()
 			pool.append(unit)
 			var best_a: Node = null
-			var best_ratio := 0.75
+			var best_ratio := 0.5
 			for a in pool:
 				var d: int = 0 if a == unit else grid.manhattan(from, a.grid_position)
 				if d > rng:
@@ -452,9 +460,10 @@ static func _plan_skill(unit: Node, enemies: Array, allies: Array, grid: Node, f
 					best_e = e
 			return best_e.grid_position if best_e != null else null
 		"piercing_shot":
-			# Direction avec le plus d'ennemis alignés (au moins 1).
+			# Direction avec le plus d'ennemis alignés : utile à partir de 2 cibles
+			# (sur une seule cible, autant faire une attaque normale).
 			var best_dir := Vector2i.ZERO
-			var best_cnt := 0
+			var best_cnt := 1
 			for dir in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 				var cnt := 0
 				for i in range(1, rng + 1):
@@ -467,12 +476,100 @@ static func _plan_skill(unit: Node, enemies: Array, allies: Array, grid: Node, f
 				if cnt > best_cnt:
 					best_cnt = cnt
 					best_dir = dir
-			if best_cnt > 0 and best_dir != Vector2i.ZERO:
+			if best_dir != Vector2i.ZERO:
 				return from + best_dir
 			return null
 		"invoke":
 			# Invoquer si une case adjacente est libre (vérifié dans _use_skill).
 			return from
+		"heavy_strike":
+			# Gros coup gardé pour achever une cible ou frapper une cible prioritaire
+			# (soigneur/tireur) — sinon on économise le cooldown.
+			var best_e: Node = null
+			var best_score := -INF
+			for e in enemies:
+				if grid.manhattan(from, e.grid_position) > rng:
+					continue
+				var score := -float(e.hp)
+				if e.data.behavior == "heal":
+					score += 50.0
+				elif e.data.behavior == "kite":
+					score += 25.0
+				if score > best_score:
+					best_score = score
+					best_e = e
+			if best_e == null:
+				return null
+			var killable: bool = float(best_e.hp) <= _est_damage(unit) * float(sk.get("dmg_mult", 1.8))
+			if killable or best_e.data.behavior in ["heal", "kite"]:
+				return best_e.grid_position
+			return null
+		"cleave":
+			# Fauche : seulement si au moins 2 ennemis seraient touchés.
+			var radius: int = int(sk.get("radius", 1))
+			var best_cell = null
+			var best_cnt := 1
+			for e in enemies:
+				if grid.manhattan(from, e.grid_position) > rng:
+					continue
+				var cnt := 0
+				for o in enemies:
+					if grid.manhattan(o.grid_position, e.grid_position) <= radius:
+						cnt += 1
+				if cnt > best_cnt:
+					best_cnt = cnt
+					best_cell = e.grid_position
+			return best_cell
+		"self_buff":
+			# Buff personnel : offensif si on va frapper, défensif si menacé/blessé.
+			if _has_buff(unit, str(sk.buff)):
+				return null
+			var binfo: Dictionary = GameData.BUFFS.get(str(sk.buff), {})
+			var offensive: bool = binfo.has("dmg_dealt_mult") and float(binfo.dmg_dealt_mult) > 1.0
+			var defensive: bool = (binfo.has("dmg_taken_mult") and float(binfo.dmg_taken_mult) < 1.0) or binfo.has("heal_per_turn")
+			if offensive:
+				for e in enemies:
+					if grid.manhattan(from, e.grid_position) <= unit.action_range():
+						return from
+				return null
+			if defensive:
+				var ratio := float(unit.hp) / float(unit.data.max_hp)
+				if ratio < 0.6 or _threat(from, enemies, grid) >= 2:
+					return from
+				return null
+			return from
+		"buff_ally":
+			# Renforcer le meilleur allié à portée qui n'a pas déjà ce buff.
+			var binfo2: Dictionary = GameData.BUFFS.get(str(sk.buff), {})
+			var offensive2: bool = binfo2.has("dmg_dealt_mult") and float(binfo2.dmg_dealt_mult) > 1.0
+			var pool: Array = allies.duplicate()
+			if sk.get("can_self", false):
+				pool.append(unit)
+			var best_a: Node = null
+			var best_v := -INF
+			for a in pool:
+				var d: int = 0 if a == unit else grid.manhattan(from, a.grid_position)
+				if d > rng or _has_buff(a, str(sk.buff)):
+					continue
+				var v: float = float(a.data.attack) if offensive2 else (1.0 - float(a.hp) / float(a.data.max_hp))
+				if v > best_v:
+					best_v = v
+					best_a = a
+			return best_a.grid_position if best_a != null else null
+		"apply_debuff":
+			# Handicaper l'ennemi le plus dangereux à portée non encore affecté.
+			var best_d: Node = null
+			var best_sc := -INF
+			for e in enemies:
+				if grid.manhattan(from, e.grid_position) > rng or _has_buff(e, str(sk.buff)):
+					continue
+				var score := float(e.data.attack) * 1.5 - float(e.hp) * 0.05
+				if e.data.behavior == "heal":
+					score += 40.0
+				if score > best_sc:
+					best_sc = score
+					best_d = e
+			return best_d.grid_position if best_d != null else null
 	return null
 
 

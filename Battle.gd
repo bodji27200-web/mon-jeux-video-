@@ -10,22 +10,24 @@ extends Node2D
 
 const UNIT_SCENE := preload("res://Unit.tscn")
 
-# Barre de compétences : 3 carrés en bas à droite. Le carré 0 = compétence
-# active de la classe ; les carrés 1 et 2 sont des emplacements vides réservés
-# pour de futures compétences. Icône courte par type de compétence.
+# Barre de compétences : 3 carrés en bas à droite, un par compétence active de
+# la classe (jusqu'à 3). Les carrés sans compétence restent vides/désactivés.
+# Icône courte par type de compétence.
 const SKILL_SLOTS := 3
 const SKILL_ICONS := {
 	"invoke": "Inv", "roots": "Rac", "war_heal": "Soin", "double_dot": "DoT",
 	"drain_strike": "Drain", "mark_shot": "Marq", "empower_ally": "Force",
 	"shield_ally": "Bouc", "purify": "Pur", "frost_nova": "Gel",
 	"teleport_strike": "Saut", "piercing_shot": "Perce", "traps": "Piège",
-	"summon_pick": "Inv2",
+	"heavy_strike": "Charge", "cleave": "Fauche", "self_buff": "Buff",
+	"apply_debuff": "Malus", "buff_ally": "Aura",
 }
 
 var active_unit: Node = null
 var phase := "idle"  # "move", "attack" puis éventuellement "skill" (joueur)
 var _finished := false
 var skill_slots: Array = []  # boutons de la barre de compétences
+var selected_skill := -1  # index de la compétence sélectionnée (phase "skill")
 
 
 func _ready() -> void:
@@ -108,6 +110,7 @@ func _show_moves(unit: Node) -> void:
 
 func _enter_action_phase() -> void:
 	phase = "attack"
+	selected_skill = -1
 	grid.move_cells = []
 	grid.skill_cells = []
 	if _is_healer(active_unit):
@@ -120,9 +123,9 @@ func _enter_action_phase() -> void:
 	grid.queue_redraw()
 
 
-# Met à jour la barre de 3 carrés selon l'unité active et la phase.
-# Carré 0 = compétence de la classe (cliquable si prête en phase d'action) ;
-# carrés 1 et 2 = emplacements vides (réservés pour de futures compétences).
+# Met à jour la barre de 3 carrés selon l'unité active et la phase. Chaque carré
+# correspond à une compétence active de la classe (jusqu'à 3) ; les carrés sans
+# compétence restent vides et désactivés.
 func _refresh_skill_bar() -> void:
 	var show_bar: bool = active_unit != null and active_unit.is_player() \
 			and phase in ["move", "attack", "skill"]
@@ -131,26 +134,23 @@ func _refresh_skill_bar() -> void:
 	if not show_bar:
 		skill_hint.visible = false
 		return
-	var s0: Button = skill_slots[0]
-	if active_unit.has_active():
-		var sk: Dictionary = active_unit.data.active
-		s0.text = str(SKILL_ICONS.get(sk.type, "Comp"))
-		s0.tooltip_text = str(sk.name) + "\n" + str(sk.get("desc", ""))
-		var usable: bool = phase in ["attack", "skill"] and active_unit.skill_ready()
-		s0.disabled = not usable
-		s0.modulate = Color(1.0, 1.0, 0.4) if phase == "skill" else Color(1, 1, 1)
-	else:
-		s0.text = "—"
-		s0.disabled = true
-		s0.modulate = Color(1, 1, 1)
-	# Emplacements vides (futures compétences).
-	for i in range(1, SKILL_SLOTS):
-		skill_slots[i].text = ""
-		skill_slots[i].disabled = true
-		skill_slots[i].modulate = Color(0.45, 0.45, 0.5)
+	var acts: Array = active_unit.get_actives()
+	for i in SKILL_SLOTS:
+		var b: Button = skill_slots[i]
+		if i < acts.size():
+			var sk: Dictionary = acts[i]
+			b.text = str(SKILL_ICONS.get(sk.type, "Comp"))
+			b.tooltip_text = str(sk.name) + "\n" + str(sk.get("desc", ""))
+			var usable: bool = phase in ["attack", "skill"] and active_unit.skill_ready(i)
+			b.disabled = not usable
+			b.modulate = Color(1.0, 1.0, 0.4) if (phase == "skill" and selected_skill == i) else Color(1, 1, 1)
+		else:
+			b.text = ""
+			b.disabled = true
+			b.modulate = Color(0.45, 0.45, 0.5)
 	# Indication textuelle quand une compétence est sélectionnée.
-	if phase == "skill" and active_unit.has_active():
-		skill_hint.text = "Compétence : %s — clique une cible (ou reclique le carré pour annuler)" % str(active_unit.data.active.name)
+	if phase == "skill" and selected_skill >= 0 and selected_skill < acts.size():
+		skill_hint.text = "Compétence : %s — clique une cible (ou reclique le carré pour annuler)" % str(acts[selected_skill].name)
 		skill_hint.visible = true
 	else:
 		skill_hint.visible = false
@@ -162,9 +162,10 @@ func _ai_take_turn(unit: Node) -> void:
 	if plan.move != unit.grid_position:
 		unit.move_to(plan.move)
 		await get_tree().create_timer(0.35).timeout
-	# L'IA utilise sa compétence si elle l'a jugée utile, sinon attaque normale.
-	if plan.get("skill_cell") != null and unit.skill_ready():
-		_use_skill(unit, plan.skill_cell)
+	# L'IA utilise la compétence qu'elle a jugée utile, sinon attaque normale.
+	var si: int = int(plan.get("skill_index", -1))
+	if plan.get("skill_cell") != null and si >= 0 and unit.skill_ready(si):
+		_use_skill(unit, plan.skill_cell, si)
 	elif plan.target != null and plan.target.is_alive() \
 			and grid.manhattan(unit.grid_position, plan.target.grid_position) <= unit.action_range():
 		_perform_action(unit, plan.target)
@@ -172,24 +173,29 @@ func _ai_take_turn(unit: Node) -> void:
 	_end_turn()
 
 
-# Clic sur un carré de compétence : le carré 0 (dé)sélectionne la compétence.
+# Clic sur un carré : sélectionne la compétence correspondante (si elle existe).
 # Recliquer le carré déjà sélectionné annule (retour à l'attaque normale).
 func _on_skill_slot(index: int) -> void:
-	if index != 0:  # carrés 1 et 2 vides pour l'instant
-		return
 	if active_unit == null or not active_unit.is_player():
 		return
+	if index >= active_unit.get_actives().size():
+		return  # carré vide
 	if phase == "attack":
+		selected_skill = index
 		_enter_skill_phase()
 	elif phase == "skill":
-		_enter_action_phase()  # annuler -> retour à l'attaque
+		if selected_skill == index:
+			_enter_action_phase()  # reclic -> annule
+		else:
+			selected_skill = index  # changer de compétence sélectionnée
+			_enter_skill_phase()
 
 
 func _enter_skill_phase() -> void:
 	phase = "skill"
 	grid.target_cells = []
 	grid.heal_cells = []
-	grid.skill_cells = _skill_targets(active_unit)
+	grid.skill_cells = _skill_targets(active_unit, selected_skill)
 	_refresh_skill_bar()
 	grid.queue_redraw()
 
@@ -216,7 +222,7 @@ func _handle_click(cell: Vector2i) -> void:
 			_perform_action(active_unit, target)
 			_end_turn()
 	elif phase == "skill" and cell in grid.skill_cells:
-		_use_skill(active_unit, cell)
+		_use_skill(active_unit, cell, selected_skill)
 		_end_turn()
 
 
@@ -230,8 +236,9 @@ func _perform_action(unit: Node, target: Node) -> void:
 
 
 # Attaque de base : dégâts, critique, terrain, marque, drain, debuff.
-func _attack(unit: Node, target: Node) -> void:
-	var dmg: float = unit.data.attack
+# `mult` permet aux compétences de frapper plus fort (Charge, Fauche...).
+func _attack(unit: Node, target: Node, mult := 1.0) -> void:
+	var dmg: float = float(unit.data.attack) * mult
 	var is_crit: bool = randf() < unit.data.crit_chance
 	if is_crit:
 		dmg *= 2.0
@@ -292,12 +299,16 @@ func _check_end() -> bool:
 
 # --- Compétences actives ---
 
-# Cases ciblables par la compétence de l'unité (alliés, ennemis ou ligne).
-func _skill_targets(unit: Node) -> Array:
+# Cases ciblables par la compétence d'index donné (alliés, ennemis, soi, ligne).
+func _skill_targets(unit: Node, index: int) -> Array:
 	var cells: Array = []
-	if not unit.skill_ready():
+	if not unit.skill_ready(index):
 		return cells
-	var sk: Dictionary = unit.data.active
+	var sk: Dictionary = unit.get_actives()[index]
+	# Compétence sur soi-même (buff personnel) : une seule case, la sienne.
+	if sk.get("target", "") == "self":
+		cells.append(unit.grid_position)
+		return cells
 	# Tir perforant : cases dans les 4 directions jusqu'à portée max
 	if sk.get("target", "") == "line":
 		for dir in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
@@ -329,9 +340,9 @@ func _skill_targets(unit: Node) -> Array:
 	return cells
 
 
-# Applique l'effet de la compétence selon son type (data-driven, extensible).
-func _use_skill(caster: Node, cell: Vector2i) -> void:
-	var sk: Dictionary = caster.data.active
+# Applique l'effet de la compétence d'index donné (data-driven, extensible).
+func _use_skill(caster: Node, cell: Vector2i, index: int) -> void:
+	var sk: Dictionary = caster.get_actives()[index]
 	var success := true
 	match sk.type:
 		"shield_ally":
@@ -369,6 +380,33 @@ func _use_skill(caster: Node, cell: Vector2i) -> void:
 				_attack(caster, enemy)
 				# Drain supplémentaire : soigne 60% de l'attaque de base en PV
 				caster.heal(int(round(float(caster.data.attack) * 0.60)))
+		"heavy_strike":
+			# Gros coup unique : attaque multipliée sur une cible.
+			var enemy := _unit_at(cell)
+			if enemy:
+				_attack(caster, enemy, float(sk.get("dmg_mult", 1.8)))
+		"cleave":
+			# Frappe la cible et tous les ennemis adjacents (mêlée de zone).
+			var radius: int = int(sk.get("radius", 1))
+			for u in get_tree().get_nodes_in_group("units"):
+				if u.is_alive() and u.team != caster.team \
+						and grid.manhattan(u.grid_position, cell) <= radius:
+					_attack(caster, u, float(sk.get("dmg_mult", 1.0)))
+		"self_buff":
+			# Buff personnel (rage, garde, régén...).
+			caster.add_buff(str(sk.buff))
+		"buff_ally":
+			# Applique un buff nommé à un allié (ou soi si can_self).
+			var ally := _unit_at(cell)
+			if ally:
+				ally.add_buff(str(sk.buff))
+		"apply_debuff":
+			# Tir handicapant : attaque + applique un debuff nommé.
+			var enemy := _unit_at(cell)
+			if enemy:
+				_attack(caster, enemy, float(sk.get("dmg_mult", 1.0)))
+				if enemy.is_alive():
+					enemy.add_buff(str(sk.buff))
 		"teleport_strike":
 			var enemy := _unit_at(cell)
 			if enemy:
@@ -411,7 +449,7 @@ func _use_skill(caster: Node, cell: Vector2i) -> void:
 				grid.add_child(summon)
 				turn_manager.add_unit(summon)
 	if success:
-		caster.start_skill_cooldown()
+		caster.start_skill_cooldown(index)
 	caster.has_acted = true
 
 

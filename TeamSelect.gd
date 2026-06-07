@@ -175,17 +175,18 @@ func _show_class_info(cid: String) -> void:
 	var c: Dictionary = GameData.CLASSES[cid]
 	var t := "%s\n%s\n\n" % [c.name, c.get("description", "")]
 	t += "PV : %d    Dégâts : %d    Portée d'attaque : %d    Déplacement : %d\n" % [c.max_hp, c.attack, c.attack_range, c.move_range]
-	t += "Coups critiques : %d%%\n\nCompétences :\n" % int(c.crit_chance * 100)
-	for s in c.get("skills", []):
-		var line := "• " + str(s["name"]) + " — " + str(s["description"])
-		var extras: Array = []
-		if s.has("damage"):
-			extras.append("Dégâts %d" % int(s["damage"]))
-		if s.has("range"):
-			extras.append("Portée %d" % int(s["range"]))
-		if not extras.is_empty():
-			line += " (" + ", ".join(extras) + ")"
-		t += line + "\n    Effet : " + str(s["effect"]) + "\n"
+	t += "Coups critiques : %d%%" % int(c.crit_chance * 100)
+	if c.has("on_hit"):
+		t += "    Sur chaque attaque : %s" % str(GameData.BUFFS.get(c.on_hit, {}).get("name", c.on_hit))
+	# Compétences actives (jusqu'à 3 ; les emplacements suivants sont à venir).
+	var acts: Array = c.get("actives", [c.active] if c.has("active") else [])
+	t += "\n\nCompétences (3 emplacements) :\n"
+	for i in 3:
+		if i < acts.size():
+			var s: Dictionary = acts[i]
+			t += "• %s — %s\n" % [str(s["name"]), str(s.get("desc", ""))]
+		else:
+			t += "• (emplacement libre — à venir)\n"
 	_info_label.text = t
 
 
