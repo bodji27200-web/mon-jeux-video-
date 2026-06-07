@@ -5,6 +5,7 @@ extends Node2D
 @onready var grid: Node2D = $Grid
 @onready var turn_manager: Node = $TurnManager
 @onready var end_label: Label = $UI/EndLabel
+@onready var replay_button: Button = $UI/RejouerButton
 
 const UNIT_SCENE := preload("res://Unit.tscn")
 
@@ -15,8 +16,14 @@ var _finished := false
 
 func _ready() -> void:
 	_spawn_units()
+	replay_button.pressed.connect(_on_replay)
 	turn_manager.turn_started.connect(_on_turn_started)
 	turn_manager.start()
+
+
+func _on_replay() -> void:
+	# Relance une partie depuis l'écran de sélection (équipe + difficulté).
+	get_tree().change_scene_to_file("res://TeamSelect.tscn")
 
 
 # Crée les unités à partir des équipes choisies (GameData).
@@ -151,6 +158,7 @@ func _check_end() -> bool:
 		end_label.add_theme_color_override("font_color", Color(0.2, 0.9, 0.3) if p else Color(0.9, 0.2, 0.2))
 		end_label.add_theme_font_size_override("font_size", 64)
 		end_label.visible = true
+		replay_button.visible = true
 		return true
 	return false
 
