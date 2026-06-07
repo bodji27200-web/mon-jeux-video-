@@ -127,9 +127,26 @@ func heal(amount: int) -> void:
 func add_buff(id: String) -> void:
 	if not GameData.BUFFS.has(id):
 		return
-	var b: Dictionary = GameData.BUFFS[id].duplicate()
-	b["id"] = id
-	buffs.append(b)
+	# Re-appliquer un effet déjà présent rafraîchit sa durée (pas d'empilement).
+	for b in buffs:
+		if b.get("id", "") == id:
+			b.duration = int(GameData.BUFFS[id].duration)
+			queue_redraw()
+			return
+	var nb: Dictionary = GameData.BUFFS[id].duplicate()
+	nb["id"] = id
+	buffs.append(nb)
+	queue_redraw()
+
+
+# Retire les effets négatifs (poison, brûlure, gel...). Garde les bonus.
+func purge_debuffs() -> void:
+	var kept: Array = []
+	for b in buffs:
+		if b.has("dmg_per_turn") or b.has("move_penalty"):
+			continue
+		kept.append(b)
+	buffs = kept
 	queue_redraw()
 
 

@@ -284,6 +284,21 @@ static func _plan_skill(unit: Node, enemies: Array, allies: Array, grid: Node, f
 					best_score = s
 					best_e = e
 			return best_e.grid_position if best_e != null else null
+		"purify":
+			# Nettoyer l'allié (ou soi) le plus chargé d'effets négatifs.
+			var pool: Array = allies.duplicate()
+			pool.append(unit)
+			var best_c = null
+			var best_cnt := 0
+			for a in pool:
+				var d: int = 0 if a == unit else grid.manhattan(from, a.grid_position)
+				if d > rng:
+					continue
+				var cnt := _removable_count(a)
+				if cnt > best_cnt:
+					best_cnt = cnt
+					best_c = a.grid_position
+			return best_c
 		"frost_nova":
 			# Viser le point qui gèle le plus d'ennemis (au moins 2).
 			var radius: int = int(sk.get("radius", 1))
@@ -308,3 +323,11 @@ static func _has_buff(u: Node, id: String) -> bool:
 		if b.get("id", "") == id:
 			return true
 	return false
+
+
+static func _removable_count(u: Node) -> int:
+	var n := 0
+	for b in u.buffs:
+		if b.has("dmg_per_turn") or b.has("move_penalty"):
+			n += 1
+	return n

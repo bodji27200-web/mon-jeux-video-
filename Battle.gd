@@ -218,6 +218,8 @@ func _skill_targets(unit: Node) -> Array:
 	if not unit.skill_ready():
 		return cells
 	var sk: Dictionary = unit.data.active
+	if sk.target == "ally" and sk.get("can_self", false):
+		cells.append(unit.grid_position)  # certaines compétences peuvent se cibler
 	for u in get_tree().get_nodes_in_group("units"):
 		if not u.is_alive() or u == unit:
 			continue
@@ -238,6 +240,10 @@ func _use_skill(caster: Node, cell: Vector2i) -> void:
 			var ally := _unit_at(cell)
 			if ally:
 				ally.add_buff("bouclier")
+		"purify":
+			var ally := _unit_at(cell)
+			if ally:
+				ally.purge_debuffs()
 		"teleport_strike":
 			var enemy := _unit_at(cell)
 			if enemy:

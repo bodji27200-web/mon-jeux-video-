@@ -57,9 +57,12 @@ const CLASSES := {
 		"description": "Soutien. Soigne ses alliés (et lui-même) mais frappe faiblement.",
 		"max_hp": 24, "move_range": 3, "attack": 4, "attack_range": 1,
 		"crit_chance": 0.0, "behavior": "heal", "heal": 12, "heal_range": 3, "role": "healer",
+		"active": {"name": "Purification", "type": "purify", "target": "ally", "range": 3, "cooldown": 3, "can_self": true,
+			"desc": "Retire tous les effets négatifs (poison, brûlure, gel) d'un allié ou de soi."},
 		"skills": [
-			{"name": "Soin", "description": "Restaure les PV d'un allié ou de soi-même.", "effect": "Rend 12 PV à la cible.", "range": 1},
+			{"name": "Soin", "description": "Restaure les PV d'un allié ou de soi-même.", "effect": "Rend 12 PV à la cible.", "range": 3},
 			{"name": "Bâton", "description": "Faible attaque de mêlée.", "effect": "Inflige peu de dégâts au corps à corps.", "damage": 4, "range": 1},
+			{"name": "Purification (compétence)", "description": "Nettoie les debuffs.", "effect": "Retire poison/brûlure/gel d'un allié ou de soi. Recharge : 3 tours."},
 		],
 	},
 	"paladin": {
