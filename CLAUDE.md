@@ -99,19 +99,39 @@ Ordre de priorité (✅ = fait) :
 4. ✅ Attaque (corps à corps / distance, coups critiques)
 5. ✅ IA de base
 6. ✅ Sélection d'équipe + difficulté avant combat
-7. ✅ Classes data-driven (Tank, Archer, Assassin, Mage, Soigneur, Paladin, Berserker)
-8. ✅ Buffs/debuffs génériques (poison, brûlure, régén, bouclier, force)
+7. ✅ Classes data-driven (Tank, Archer, Assassin, Mage, Soigneur, Paladin,
+   Berserker, **Mage de glace**, **Lancier**) — 9 classes
+8. ✅ Buffs/debuffs génériques (poison, brûlure, régén, bouclier, force, **gel**)
 9. ✅ Difficultés (Facile/Normal/Difficile/Hardcore)
 10. ✅ IA avancée (ciblage prioritaire, kite, protection des alliés)
+11. ✅ Soigneur équilibré (portée de soin dédiée `heal_range`)
+12. ✅ Composition d'équipe IA cohérente selon la difficulté (rôles + counter)
+13. ✅ Compétences actives data-driven avec cooldown (Protection, Frappe de
+    l'ombre/téléportation, Nova de givre, Purification) — joueur **et** IA
+14. ✅ IA avancée : positionnement conscient de la menace (repli des fragiles)
+15. ✅ Équilibrage 1v1 validé par simulation headless
 
 ### Fichiers clés
-- `GameData.gd` (autoload) : dictionnaires CLASSES, DIFFICULTIES, BUFFS + sélections
+- `GameData.gd` (autoload) : dictionnaires CLASSES (stats + `role` + `active`),
+  DIFFICULTIES, BUFFS + sélections courantes
 - `Grid.gd` : grille + utilitaires (coordonnées, BFS de déplacement)
-- `Unit.gd` / `Unit.tscn` : unité data-driven (stats, PV, buffs)
+- `Unit.gd` / `Unit.tscn` : unité data-driven (stats, PV, buffs, cooldown de
+  compétence ; `action_range()`/`move_range()` effectifs)
 - `TurnManager.gd` : ordre des tours
-- `Battle.gd` (racine de `Main.tscn`) : orchestration, entrées joueur, victoire
-- `AI.gd` (`TacticalAI`) : décisions de l'IA
+- `Battle.gd` (racine de `Main.tscn`) : orchestration, entrées joueur, victoire,
+  exécution des compétences (`_use_skill`)
+- `AI.gd` (`TacticalAI`) : décisions de l'IA + composition d'équipe
+  (`compose_team`) + usage des compétences (`_plan_skill`)
 - `TeamSelect.gd/.tscn` : écran de préparation (scène de démarrage)
+
+### Ajouter du contenu (data-driven)
+- **Nouvelle classe** : une entrée dans `CLASSES` (avec `role` pour la compo IA,
+  `active` optionnel pour une compétence). Elle apparaît seule dans l'écran de
+  sélection et la composition IA.
+- **Nouvelle compétence** : un `active` dans la classe + un `case` dans
+  `Battle._use_skill` (effet) et `AI._plan_skill` (quand l'IA l'utilise).
+- **Nouveau buff/debuff** : une entrée dans `BUFFS` (champs `dmg_per_turn`,
+  `heal_per_turn`, `dmg_taken_mult`, `dmg_dealt_mult`, `move_penalty`).
 
 ### Tester le jeu (validation par Claude, sans interface)
 Godot n'est pas préinstallé, mais peut être téléchargé (v4.3, linux x86_64) pour
