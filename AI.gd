@@ -131,6 +131,10 @@ static func _cell_score(unit: Node, cell: Vector2i, target: Node, enemies: Array
 			if a.hp < int(a.data.max_hp) and grid.manhattan(cell, a.grid_position) == 1:
 				score += 25.0
 				break
+	# IA avancée : éviter les cases dangereuses, d'autant plus si l'unité est
+	# fragile ou déjà blessée (les unités se replient au lieu de se sacrifier).
+	var fragility := 1.0 - float(unit.hp) / float(unit.data.max_hp)
+	score -= _threat(cell, enemies, grid) * (3.0 + fragility * 12.0)
 	return score
 
 
@@ -141,6 +145,16 @@ static func _nearest(cell: Vector2i, enemies: Array, grid: Node) -> int:
 	for e in enemies:
 		d = min(d, grid.manhattan(cell, e.grid_position))
 	return d
+
+
+# Nombre d'ennemis pouvant atteindre (déplacement + portée) cette case au tour suivant.
+static func _threat(cell: Vector2i, enemies: Array, grid: Node) -> int:
+	var t := 0
+	for e in enemies:
+		var reach: int = int(e.data.move_range) + e.action_range()
+		if grid.manhattan(cell, e.grid_position) <= reach:
+			t += 1
+	return t
 
 
 static func _safest_cell(candidates: Array, enemies: Array, grid: Node) -> Vector2i:
