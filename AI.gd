@@ -26,6 +26,9 @@ static func decide(unit: Node, grid: Node, units: Array) -> Dictionary:
 	# Cibles potentielles : alliés blessés (soigneur) ou ennemis.
 	var pool: Array = []
 	if is_healer:
+		# Le soigneur peut aussi se soigner lui-même.
+		if unit.hp < int(unit.data.max_hp):
+			pool.append(unit)
 		for a in allies:
 			if a.hp < int(a.data.max_hp):
 				pool.append(a)
@@ -61,7 +64,7 @@ static func decide(unit: Node, grid: Node, units: Array) -> Dictionary:
 				best_score = s
 				best = cell
 
-	var tgt: Node = target if grid.manhattan(best, target.grid_position) <= rng else null
+	var tgt: Node = target if (target == unit or grid.manhattan(best, target.grid_position) <= rng) else null
 	return {"move": best, "target": tgt}
 
 
@@ -101,8 +104,9 @@ static func _pick_ally(allies: Array) -> Node:
 	return best
 
 
-static func _cell_score(_unit: Node, cell: Vector2i, target: Node, enemies: Array, allies: Array, grid: Node, kite: bool, rng: int) -> float:
-	var in_range: bool = grid.manhattan(cell, target.grid_position) <= rng
+static func _cell_score(unit: Node, cell: Vector2i, target: Node, enemies: Array, allies: Array, grid: Node, kite: bool, rng: int) -> float:
+	# Le soigneur peut toujours se cibler lui-même, où qu'il se déplace.
+	var in_range: bool = target == unit or grid.manhattan(cell, target.grid_position) <= rng
 	var score := 1000.0 if in_range else 0.0
 	var near := _nearest(cell, enemies, grid)
 	if kite:

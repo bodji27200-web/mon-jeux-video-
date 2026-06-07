@@ -176,7 +176,7 @@ func _action_targets(unit: Node) -> Array:
 		if grid.manhattan(unit.grid_position, u.grid_position) > int(unit.data.attack_range):
 			continue
 		if _is_healer(unit):
-			if u.team == unit.team and u != unit and u.hp < int(u.data.max_hp):
+			if u.team == unit.team and u.hp < int(u.data.max_hp):
 				cells.append(u.grid_position)
 		elif u.team != unit.team:
 			cells.append(u.grid_position)
