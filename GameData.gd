@@ -204,7 +204,7 @@ const CLASSES := {
 	"squelette_archer": {
 		"name": "Squelette archer", "color": Color(0.70, 0.74, 0.62), "symbol": "y",
 		"description": "Mort-vivant à distance. Très fragile, harcèle les cibles à 3 cases.",
-		"max_hp": 11, "move_range": 3, "attack": 6, "attack_range": 3,
+		"max_hp": 13, "move_range": 3, "attack": 6, "attack_range": 3,
 		"crit_chance": 0.05, "behavior": "kite", "role": "ranged",
 		"hidden": true,
 		"skills": [],
@@ -342,7 +342,7 @@ const CLASSES := {
 	"golem_pierre": {
 		"name": "Golem de pierre", "color": Color(0.45, 0.42, 0.40), "symbol": "g",
 		"description": "Créature de l'Invocateur. Lente mais résistante, bloque le passage.",
-		"max_hp": 26, "move_range": 2, "attack": 5, "attack_range": 1,
+		"max_hp": 28, "move_range": 2, "attack": 5, "attack_range": 1,
 		"crit_chance": 0.0, "behavior": "melee", "role": "tank",
 		"hidden": true,
 		"skills": [],
@@ -358,7 +358,7 @@ const CLASSES := {
 	"archere": {
 		"name": "Archère", "color": Color(0.15, 0.72, 0.58), "symbol": "Å",
 		"description": "Tireuse d'élite (UNIQUE). Reine de la distance : frappe très fort de loin et se repositionne hors de portée. Un seul unique par équipe.",
-		"max_hp": 26, "move_range": 4, "attack": 15, "attack_range": 5,
+		"max_hp": 24, "move_range": 4, "attack": 13, "attack_range": 5,
 		"crit_chance": 0.35, "behavior": "kite", "role": "ranged", "unique": true,
 		"actives": [
 			{"name": "Tir fatal", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.9, "range": 5, "cooldown": 3,
