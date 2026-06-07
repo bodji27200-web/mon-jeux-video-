@@ -4,6 +4,7 @@ extends Node2D
 
 @onready var grid: Node2D = $Grid
 @onready var turn_manager: Node = $TurnManager
+@onready var end_label: Label = $UI/EndLabel
 
 const UNIT_SCENE := preload("res://Unit.tscn")
 
@@ -145,7 +146,11 @@ func _check_end() -> bool:
 	if not p or not a:
 		_finished = true
 		if turn_manager.turn_label:
-			turn_manager.turn_label.text = "Victoire !" if p else "Défaite..."
+			turn_manager.turn_label.text = ""
+		end_label.text = "VICTOIRE !" if p else "DÉFAITE..."
+		end_label.add_theme_color_override("font_color", Color(0.2, 0.9, 0.3) if p else Color(0.9, 0.2, 0.2))
+		end_label.add_theme_font_size_override("font_size", 64)
+		end_label.visible = true
 		return true
 	return false
 
