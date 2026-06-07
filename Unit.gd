@@ -8,6 +8,7 @@ extends Node2D
 @export var grid_position := Vector2i.ZERO
 
 const RADIUS := 22.0
+const FLOATING_TEXT := preload("res://FloatingText.tscn")
 
 var data: Dictionary = {}
 var hp := 0
@@ -54,11 +55,33 @@ func reset_turn() -> void:
 	has_acted = false
 
 
-func take_damage(amount: int) -> void:
+func take_damage(amount: int, is_crit := false) -> void:
 	hp = max(0, hp - amount)
+	if amount > 0:
+		_show_damage_text(amount, is_crit)
 	queue_redraw()
 	if hp == 0:
 		visible = false
+
+
+# Affiche un texte flottant de dégâts au-dessus de l'unité (rouge si critique).
+func _show_damage_text(amount: int, is_crit: bool) -> void:
+	var parent := get_parent()
+	if parent == null:
+		return
+	var ft := FLOATING_TEXT.instantiate()
+	if is_crit:
+		ft.text = "CRITIQUE !\n-%d" % amount
+		ft.color_value = Color(1.0, 0.25, 0.20)
+		ft.font_size_value = 26
+		ft.duration = 1.4
+	else:
+		ft.text = "-%d" % amount
+		ft.color_value = Color(1.0, 0.95, 0.60)
+		ft.font_size_value = 20
+		ft.duration = 1.0
+	ft.position = position + Vector2(-14.0, -46.0)
+	parent.add_child(ft)
 
 
 func heal(amount: int) -> void:

@@ -119,11 +119,12 @@ func _perform_action(unit: Node, target: Node) -> void:
 		target.heal(int(unit.data.heal))
 	else:
 		var dmg: float = unit.data.attack
-		if randf() < unit.data.crit_chance:
+		var is_crit: bool = randf() < unit.data.crit_chance
+		if is_crit:
 			dmg *= 2.0
 		dmg *= unit.damage_dealt_mult() * target.damage_taken_mult()
 		dmg *= _difficulty_damage_mult(unit)
-		target.take_damage(int(round(dmg)))
+		target.take_damage(int(round(dmg)), is_crit)
 		# Certaines classes infligent un debuff au contact.
 		if unit.data.has("on_hit") and target.is_alive():
 			target.add_buff(unit.data.on_hit)
