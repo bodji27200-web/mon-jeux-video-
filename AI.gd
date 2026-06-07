@@ -101,7 +101,7 @@ static func _pick_ally(allies: Array) -> Node:
 	return best
 
 
-static func _cell_score(unit: Node, cell: Vector2i, target: Node, enemies: Array, allies: Array, grid: Node, kite: bool, rng: int) -> float:
+static func _cell_score(_unit: Node, cell: Vector2i, target: Node, enemies: Array, allies: Array, grid: Node, kite: bool, rng: int) -> float:
 	var in_range: bool = grid.manhattan(cell, target.grid_position) <= rng
 	var score := 1000.0 if in_range else 0.0
 	var near := _nearest(cell, enemies, grid)

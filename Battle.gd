@@ -144,7 +144,8 @@ func _check_end() -> bool:
 				a = true
 	if not p or not a:
 		_finished = true
-		turn_manager.turn_label.text = "Victoire !" if p else "Défaite..."
+		if turn_manager.turn_label:
+			turn_manager.turn_label.text = "Victoire !" if p else "Défaite..."
 		return true
 	return false
 
