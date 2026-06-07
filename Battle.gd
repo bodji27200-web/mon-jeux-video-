@@ -84,7 +84,7 @@ func _ai_take_turn(unit: Node) -> void:
 		unit.move_to(plan.move)
 		await get_tree().create_timer(0.35).timeout
 	if plan.target != null and plan.target.is_alive() \
-			and grid.manhattan(unit.grid_position, plan.target.grid_position) <= int(unit.data.attack_range):
+			and grid.manhattan(unit.grid_position, plan.target.grid_position) <= unit.action_range():
 		_perform_action(unit, plan.target)
 	await get_tree().create_timer(0.2).timeout
 	_end_turn()
@@ -182,7 +182,7 @@ func _action_targets(unit: Node) -> Array:
 	for u in get_tree().get_nodes_in_group("units"):
 		if not u.is_alive():
 			continue
-		if grid.manhattan(unit.grid_position, u.grid_position) > int(unit.data.attack_range):
+		if grid.manhattan(unit.grid_position, u.grid_position) > unit.action_range():
 			continue
 		if _is_healer(unit):
 			if u.team == unit.team and u.hp < int(u.data.max_hp):

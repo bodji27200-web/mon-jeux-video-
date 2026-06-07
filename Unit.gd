@@ -39,6 +39,13 @@ func is_alive() -> bool:
 	return hp > 0
 
 
+# Portée d'action effective : portée de soin pour un soigneur, sinon d'attaque.
+func action_range() -> int:
+	if data.behavior == "heal":
+		return int(data.get("heal_range", data.attack_range))
+	return int(data.attack_range)
+
+
 func move_to(cell: Vector2i) -> void:
 	grid_position = cell
 	_refresh_position()

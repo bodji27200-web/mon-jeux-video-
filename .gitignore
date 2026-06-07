@@ -1,2 +1,6 @@
 # Godot
 .godot/
+
+# Dev only
+SimTest.gd
+SimTest.tscn

@@ -47,7 +47,7 @@ static func decide(unit: Node, grid: Node, units: Array) -> Dictionary:
 		return {"move": _safest_cell(candidates, enemies, grid), "target": null}
 
 	var target: Node = _pick_ally(pool) if is_healer else _pick_enemy(unit, pool)
-	var rng := int(unit.data.attack_range)
+	var rng: int = unit.action_range()
 	var kite: bool = is_healer or unit.data.behavior == "kite"
 
 	# Erreur volontaire selon la difficulté.

@@ -50,7 +50,7 @@ const CLASSES := {
 		"name": "Soigneur", "color": Color(0.95, 0.95, 0.95), "symbol": "+",
 		"description": "Soutien. Soigne ses alliés (et lui-même) mais frappe faiblement.",
 		"max_hp": 24, "move_range": 3, "attack": 4, "attack_range": 1,
-		"crit_chance": 0.0, "behavior": "heal", "heal": 12,
+		"crit_chance": 0.0, "behavior": "heal", "heal": 12, "heal_range": 3,
 		"skills": [
 			{"name": "Soin", "description": "Restaure les PV d'un allié ou de soi-même.", "effect": "Rend 12 PV à la cible.", "range": 1},
 			{"name": "Bâton", "description": "Faible attaque de mêlée.", "effect": "Inflige peu de dégâts au corps à corps.", "damage": 4, "range": 1},
