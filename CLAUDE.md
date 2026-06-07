@@ -124,6 +124,19 @@ Ordre de priorité (✅ = fait) :
     mêlée) — via décisions joueur, sans système dédié
 20. ✅ Ré-équilibrage 16 classes par simulation headless (aucun outlier > 65 % en
     1v1, supports volontairement bas seuls car pensés pour l'équipe)
+21. ✅ **Draft alterné** : joueur pioche 1, IA pioche 1, en alternance jusqu'à 3
+    chacun ; pool partagé (classe prise = retirée pour tous) ; l'IA adapte ses
+    choix (rôle manquant + counter en difficile/hardcore) — `TacticalAI.draft_pick`
+22. ✅ **Barre de compétences souris** : 3 carrés en bas à droite quand une unité
+    joueur est sélectionnée. Carré 0 = compétence de la classe (clic = sélection,
+    reclic = annulation, puis clic sur la cible) ; carrés 1-2 réservés (vides).
+    Aucun raccourci clavier. (`Battle._build_skill_bar` / `_refresh_skill_bar`)
+23. ✅ **Nécromancien à 2 invocations à rôles distincts** : Squelette guerrier
+    (mêlée, tient la ligne) + Squelette archer (distance, harcèle). Permanents,
+    réinvocables 3 tours après leur mort (cooldown). `summon_classes` (liste).
+24. ✅ **Invocateur** (nouvelle classe) : invoque Golem de pierre (tank lent) +
+    Loup spectral (rapide, fonce sur les fragiles). Mêmes règles permanentes.
+25. ✅ Alchimiste légèrement renforcé (atk 8→9, Cocktail acide CD 4→3)
 
 ### Mécaniques data-driven additionnelles
 - `on_hit` (classe) : applique un buff/debuff à chaque attaque (poison, gel,
@@ -132,6 +145,9 @@ Ordre de priorité (✅ = fait) :
 - `drain_pct` (classe) : soigne l'attaquant d'un % des dégâts infligés.
 - `max_summons` (active invoke) + `is_summon`/`summoner` (Unit) : invocations
   permanentes, comptées vivantes, ajoutées au TurnManager (`add_unit`).
+- `summon_classes` (active invoke) : liste d'invocations à rôles distincts ;
+  `Battle._next_summon_class` invoque celle dont l'invocateur a le moins
+  d'exemplaires vivants (variété). `summon_class` (single) reste supporté.
 - `immobilized` (buff) : `move_range()` renvoie 0 (Racines, durée 2 = 1 vrai tour).
 - `hidden: true` (classe) : exclue de la sélection joueur et de la compo IA
   (ex : squelette).

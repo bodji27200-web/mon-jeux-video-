@@ -6,22 +6,56 @@ extends Node2D
 @onready var turn_manager: Node = $TurnManager
 @onready var end_label: Label = $UI/EndLabel
 @onready var replay_button: Button = $UI/RejouerButton
-@onready var skill_button: Button = $UI/SkillButton
+@onready var skill_hint: Label = $UI/SkillHint
 
 const UNIT_SCENE := preload("res://Unit.tscn")
+
+# Barre de compétences : 3 carrés en bas à droite. Le carré 0 = compétence
+# active de la classe ; les carrés 1 et 2 sont des emplacements vides réservés
+# pour de futures compétences. Icône courte par type de compétence.
+const SKILL_SLOTS := 3
+const SKILL_ICONS := {
+	"invoke": "Inv", "roots": "Rac", "war_heal": "Soin", "double_dot": "DoT",
+	"drain_strike": "Drain", "mark_shot": "Marq", "empower_ally": "Force",
+	"shield_ally": "Bouc", "purify": "Pur", "frost_nova": "Gel",
+	"teleport_strike": "Saut", "piercing_shot": "Perce", "traps": "Piège",
+	"summon_pick": "Inv2",
+}
 
 var active_unit: Node = null
 var phase := "idle"  # "move", "attack" puis éventuellement "skill" (joueur)
 var _finished := false
+var skill_slots: Array = []  # boutons de la barre de compétences
 
 
 func _ready() -> void:
+	_build_skill_bar()
 	_generate_terrain()
 	_spawn_units()
 	replay_button.pressed.connect(_on_replay)
-	skill_button.pressed.connect(_on_skill_button)
 	turn_manager.turn_started.connect(_on_turn_started)
 	turn_manager.start()
+
+
+# Construit la barre de 3 carrés (UI souris uniquement, pas de raccourci clavier).
+func _build_skill_bar() -> void:
+	var s := 52
+	var gap := 6
+	var total := SKILL_SLOTS * s + (SKILL_SLOTS - 1) * gap
+	var x0 := 832 - total - 12
+	var y := 704 - s - 10
+	for i in SKILL_SLOTS:
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(s, s)
+		b.size = Vector2(s, s)
+		b.position = Vector2(x0 + i * (s + gap), y)
+		b.focus_mode = Control.FOCUS_NONE
+		b.disabled = true
+		b.add_theme_font_size_override("font_size", 14)
+		b.pressed.connect(_on_skill_slot.bind(i))
+		$UI.add_child(b)
+		skill_slots.append(b)
+	_refresh_skill_bar()
 
 
 func _on_replay() -> void:
@@ -68,6 +102,7 @@ func _show_moves(unit: Node) -> void:
 	grid.target_cells = []
 	grid.heal_cells = []
 	grid.skill_cells = []
+	_refresh_skill_bar()
 	grid.queue_redraw()
 
 
@@ -81,18 +116,44 @@ func _enter_action_phase() -> void:
 	else:
 		grid.target_cells = _action_targets(active_unit)
 		grid.heal_cells = []
-	_refresh_skill_button()
+	_refresh_skill_bar()
 	grid.queue_redraw()
 
 
-# Compétence : bouton visible seulement si l'unité du joueur en a une prête.
-func _refresh_skill_button() -> void:
-	var ready: bool = phase in ["attack", "skill"] and active_unit != null \
-			and active_unit.is_player() and active_unit.skill_ready()
-	skill_button.visible = ready
-	if ready:
+# Met à jour la barre de 3 carrés selon l'unité active et la phase.
+# Carré 0 = compétence de la classe (cliquable si prête en phase d'action) ;
+# carrés 1 et 2 = emplacements vides (réservés pour de futures compétences).
+func _refresh_skill_bar() -> void:
+	var show_bar: bool = active_unit != null and active_unit.is_player() \
+			and phase in ["move", "attack", "skill"]
+	for b in skill_slots:
+		b.visible = show_bar
+	if not show_bar:
+		skill_hint.visible = false
+		return
+	var s0: Button = skill_slots[0]
+	if active_unit.has_active():
 		var sk: Dictionary = active_unit.data.active
-		skill_button.text = "Annuler" if phase == "skill" else "Compétence : " + str(sk.name)
+		s0.text = str(SKILL_ICONS.get(sk.type, "Comp"))
+		s0.tooltip_text = str(sk.name) + "\n" + str(sk.get("desc", ""))
+		var usable: bool = phase in ["attack", "skill"] and active_unit.skill_ready()
+		s0.disabled = not usable
+		s0.modulate = Color(1.0, 1.0, 0.4) if phase == "skill" else Color(1, 1, 1)
+	else:
+		s0.text = "—"
+		s0.disabled = true
+		s0.modulate = Color(1, 1, 1)
+	# Emplacements vides (futures compétences).
+	for i in range(1, SKILL_SLOTS):
+		skill_slots[i].text = ""
+		skill_slots[i].disabled = true
+		skill_slots[i].modulate = Color(0.45, 0.45, 0.5)
+	# Indication textuelle quand une compétence est sélectionnée.
+	if phase == "skill" and active_unit.has_active():
+		skill_hint.text = "Compétence : %s — clique une cible (ou reclique le carré pour annuler)" % str(active_unit.data.active.name)
+		skill_hint.visible = true
+	else:
+		skill_hint.visible = false
 
 
 func _ai_take_turn(unit: Node) -> void:
@@ -111,8 +172,11 @@ func _ai_take_turn(unit: Node) -> void:
 	_end_turn()
 
 
-# Le joueur (dé)sélectionne le mode compétence pendant la phase d'action.
-func _on_skill_button() -> void:
+# Clic sur un carré de compétence : le carré 0 (dé)sélectionne la compétence.
+# Recliquer le carré déjà sélectionné annule (retour à l'attaque normale).
+func _on_skill_slot(index: int) -> void:
+	if index != 0:  # carrés 1 et 2 vides pour l'instant
+		return
 	if active_unit == null or not active_unit.is_player():
 		return
 	if phase == "attack":
@@ -126,7 +190,7 @@ func _enter_skill_phase() -> void:
 	grid.target_cells = []
 	grid.heal_cells = []
 	grid.skill_cells = _skill_targets(active_unit)
-	_refresh_skill_button()
+	_refresh_skill_bar()
 	grid.queue_redraw()
 
 
@@ -196,9 +260,9 @@ func _end_turn() -> void:
 	grid.target_cells = []
 	grid.heal_cells = []
 	grid.skill_cells = []
-	skill_button.visible = false
-	grid.queue_redraw()
 	phase = "idle"
+	_refresh_skill_bar()
+	grid.queue_redraw()
 	if _check_end():
 		return
 	turn_manager.next_turn()
@@ -337,8 +401,9 @@ func _use_skill(caster: Node, cell: Vector2i) -> void:
 			if dest == null:
 				success = false  # pas de place -> pas de CD
 			else:
+				var classes: Array = sk.get("summon_classes", [str(sk.get("summon_class", "squelette_guerrier"))])
 				var summon := UNIT_SCENE.instantiate()
-				summon.set("class_id", str(sk.get("summon_class", "squelette")))
+				summon.set("class_id", _next_summon_class(caster, classes))
 				summon.set("team", caster.team)
 				summon.set("grid_position", dest)
 				summon.set("is_summon", true)
@@ -348,6 +413,25 @@ func _use_skill(caster: Node, cell: Vector2i) -> void:
 	if success:
 		caster.start_skill_cooldown()
 	caster.has_acted = true
+
+
+# Choisit la prochaine créature à invoquer : celle dont l'invocateur a le moins
+# d'exemplaires vivants (donne de la variété entre les rôles, ex. guerrier puis archer).
+func _next_summon_class(caster: Node, classes: Array) -> String:
+	var counts := {}
+	for c in classes:
+		counts[c] = 0
+	for u in get_tree().get_nodes_in_group("units"):
+		if u.is_alive() and u.get("is_summon") and u.get("summoner") == caster:
+			if counts.has(u.class_id):
+				counts[u.class_id] += 1
+	var best: String = classes[0]
+	var best_n := 999999
+	for c in classes:
+		if int(counts[c]) < best_n:
+			best_n = int(counts[c])
+			best = c
+	return best
 
 
 # Première case libre adjacente à une cible (pour la téléportation).

@@ -275,6 +275,33 @@ static func _rand_from(pool: Array) -> String:
 	return pool[randi() % pool.size()] if not pool.is_empty() else ""
 
 
+# --- Draft : l'IA choisit UNE classe dans le pool partagé restant ---
+# S'adapte à son équipe en cours (rôle manquant) et, en difficile/hardcore, à
+# l'équipe adverse (counter). Facile = quasi aléatoire ; normal = imparfait.
+static func draft_pick(available: Array, ai_team: Array, player_team: Array, difficulty: String) -> String:
+	if available.is_empty():
+		return ""
+	if difficulty == "facile":
+		return available[randi() % available.size()]
+	# Classes disponibles regroupées par rôle (uniquement dans le pool restant).
+	var avail_roles := {"tank": [], "melee": [], "ranged": [], "healer": []}
+	for cid in available:
+		var r: String = GameData.CLASSES[cid].get("role", "melee")
+		if avail_roles.has(r):
+			avail_roles[r].append(cid)
+	# Rôle visé pour le pick courant (tank -> dégâts -> soin).
+	var slots: Array = _role_slots(3)
+	var slot: String = slots[min(ai_team.size(), slots.size() - 1)]
+	var counter: bool = difficulty == "hardcore"
+	var pick: String = _pick_for_role(slot, avail_roles, player_team, counter)
+	# Normal : parfois un choix imparfait (aléatoire dans le pool).
+	if difficulty == "normal" and randf() < 0.35:
+		pick = available[randi() % available.size()]
+	if pick == "":
+		pick = available[randi() % available.size()]
+	return pick
+
+
 # --- Décision d'usage des compétences actives ---
 # Renvoie la case à cibler si la compétence vaut le coup depuis `from`, sinon null.
 

@@ -24,12 +24,11 @@ offset_right = 600.0
 offset_bottom = 40.0
 text = "Tour de :"
 
-[node name="SkillButton" type="Button" parent="UI"]
+[node name="SkillHint" type="Label" parent="UI"]
 offset_left = 16.0
 offset_top = 40.0
-offset_right = 320.0
-offset_bottom = 72.0
-text = "Compétence"
+offset_right = 600.0
+offset_bottom = 64.0
 visible = false
 
 [node name="EndLabel" type="Label" parent="UI"]
