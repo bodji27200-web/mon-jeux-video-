@@ -21,12 +21,15 @@ const CLASSES := {
 	},
 	"archer": {
 		"name": "Archer", "color": Color(0.30, 0.85, 0.40), "symbol": "A",
-		"description": "Tireur agile. Harcèle de loin et empoisonne ses cibles.",
+		"description": "Tireur agile. Harcèle de loin, empoisonne et peut traverser une ligne d'ennemis.",
 		"max_hp": 22, "move_range": 4, "attack": 10, "attack_range": 4,
 		"crit_chance": 0.20, "behavior": "kite", "on_hit": "poison", "role": "ranged",
+		"active": {"name": "Tir perforant", "type": "piercing_shot", "target": "line", "range": 4, "cooldown": 3,
+			"desc": "Frappe TOUS les ennemis alignés dans une direction. Recharge : 3 tours."},
 		"skills": [
 			{"name": "Tir", "description": "Attaque à distance.", "effect": "Inflige des dégâts à distance.", "damage": 10, "range": 4},
 			{"name": "Flèche empoisonnée", "description": "Chaque tir empoisonne la cible.", "effect": "Applique Poison : 3 dégâts/tour pendant 3 tours.", "range": 4},
+			{"name": "Tir perforant (compétence)", "description": "Traverse la ligne.", "effect": "Touche tous les ennemis alignés jusqu'à 4 cases. Recharge : 3 tours."},
 		],
 	},
 	"assassin": {
@@ -78,10 +81,10 @@ const CLASSES := {
 	"berserker": {
 		"name": "Berserker", "color": Color(0.95, 0.50, 0.20), "symbol": "B",
 		"description": "Combattant agressif. Gros dégâts de mêlée et bonne mobilité.",
-		"max_hp": 30, "move_range": 4, "attack": 11, "attack_range": 1,
+		"max_hp": 30, "move_range": 4, "attack": 10, "attack_range": 1,
 		"crit_chance": 0.10, "behavior": "melee", "role": "melee",
 		"skills": [
-			{"name": "Entaille", "description": "Attaque de mêlée puissante.", "effect": "Inflige de gros dégâts au corps à corps.", "damage": 12, "range": 1},
+			{"name": "Entaille", "description": "Attaque de mêlée puissante.", "effect": "Inflige de gros dégâts au corps à corps.", "damage": 10, "range": 1},
 			{"name": "Agressivité", "description": "Se déplace loin pour atteindre ses cibles.", "effect": "Grande portée de déplacement (passif)."},
 		],
 	},
@@ -108,6 +111,101 @@ const CLASSES := {
 			{"name": "Allonge", "description": "Frappe sans contact direct (passif).", "effect": "Peut attaquer à 2 cases de distance."},
 		],
 	},
+	"necromancien": {
+		"name": "Nécromancien", "color": Color(0.50, 0.15, 0.65), "symbol": "N",
+		"description": "Invocateur. Faible seul, redoutable avec ses squelettes (max 2 simultanés).",
+		"max_hp": 18, "move_range": 3, "attack": 6, "attack_range": 3,
+		"crit_chance": 0.05, "behavior": "kite", "role": "ranged",
+		"active": {"name": "Invoquer", "type": "invoke", "summon_class": "squelette",
+			"max_summons": 1, "range": 1, "cooldown": 3,
+			"desc": "Invoque un Squelette adjacent (max 1 simultané). Recharge : 3 tours."},
+		"skills": [
+			{"name": "Rayon d'ombre", "description": "Attaque magique faible.", "effect": "Inflige des dégâts à distance.", "damage": 6, "range": 3},
+			{"name": "Invoquer squelette (compétence)", "description": "Invocation permanente.", "effect": "Un Squelette (14 PV, 7 dégâts) rejoint l'équipe. Max 1 simultané. Recharge : 3 tours."},
+		],
+	},
+	"squelette": {
+		"name": "Squelette", "color": Color(0.82, 0.82, 0.78), "symbol": "X",
+		"description": "Invocation du Nécromancien.",
+		"max_hp": 10, "move_range": 3, "attack": 5, "attack_range": 1,
+		"crit_chance": 0.05, "behavior": "melee", "role": "melee",
+		"hidden": true,
+		"skills": [],
+	},
+	"druide": {
+		"name": "Druide", "color": Color(0.25, 0.65, 0.25), "symbol": "D",
+		"description": "Contrôle et soutien. Immobilise les ennemis et attaque à distance.",
+		"max_hp": 25, "move_range": 3, "attack": 8, "attack_range": 2,
+		"crit_chance": 0.08, "behavior": "kite", "role": "ranged",
+		"active": {"name": "Racines", "type": "roots", "target": "enemy", "range": 3, "cooldown": 3,
+			"desc": "Immobilise un ennemi : il ne peut pas se déplacer pendant 1 tour. Recharge : 3 tours."},
+		"skills": [
+			{"name": "Toucher de nature", "description": "Attaque à distance.", "effect": "Frappe jusqu'à 2 cases.", "damage": 8, "range": 2},
+			{"name": "Racines (compétence)", "description": "Immobilisation.", "effect": "Empêche un ennemi de bouger pendant 1 tour. Synérgie : associer aux tireurs. Recharge : 3 tours."},
+		],
+	},
+	"pretreguerrier": {
+		"name": "Prêtre de guerre", "color": Color(0.92, 0.88, 0.50), "symbol": "W",
+		"description": "Support offensif. Attaque à distance ET peut soigner ses alliés.",
+		"max_hp": 28, "move_range": 3, "attack": 10, "attack_range": 3,
+		"crit_chance": 0.08, "behavior": "kite", "role": "ranged",
+		"active": {"name": "Soin de guerre", "type": "war_heal", "target": "ally", "range": 2,
+			"heal_amount": 14, "cooldown": 3, "can_self": true,
+			"desc": "Soigne un allié (ou soi-même) de 14 PV. Recharge : 3 tours."},
+		"skills": [
+			{"name": "Frappe divine", "description": "Attaque à distance.", "effect": "Inflige des dégâts à distance.", "damage": 10, "range": 3},
+			{"name": "Soin de guerre (compétence)", "description": "Soin à distance.", "effect": "Restaure 14 PV à un allié à 2 cases (ou soi). Recharge : 3 tours."},
+		],
+	},
+	"alchimiste": {
+		"name": "Alchimiste", "color": Color(0.72, 0.55, 0.18), "symbol": "Q",
+		"description": "Empoisonneur. Empile les DoTs : chaque attaque empoisonne, sa compétence ajoute la brûlure.",
+		"max_hp": 20, "move_range": 3, "attack": 8, "attack_range": 3,
+		"crit_chance": 0.08, "behavior": "kite", "on_hit": "poison", "role": "ranged",
+		"active": {"name": "Cocktail acide", "type": "double_dot", "target": "enemy", "range": 3, "cooldown": 4,
+			"desc": "Applique simultanément Poison ET Brûlure sur une cible. Recharge : 4 tours."},
+		"skills": [
+			{"name": "Fiole empoisonnée", "description": "Attaque toxique.", "effect": "Inflige des dégâts et applique Poison (3/tour, 3 tours).", "damage": 8, "range": 3},
+			{"name": "Cocktail acide (compétence)", "description": "Double DoT.", "effect": "Applique Poison + Brûlure simultanément. Dégâts sur la durée massifs. Recharge : 4 tours."},
+		],
+	},
+	"chevaliernoir": {
+		"name": "Chevalier noir", "color": Color(0.22, 0.12, 0.38), "symbol": "K",
+		"description": "Tank agressif. Se soigne en attaquant (drain 20%). Résistant, mais plus fragile seul qu'en equipe.",
+		"max_hp": 30, "move_range": 3, "attack": 9, "attack_range": 1,
+		"crit_chance": 0.10, "behavior": "melee", "drain_pct": 0.20, "role": "tank",
+		"active": {"name": "Drain de vie", "type": "drain_strike", "target": "enemy", "range": 1, "cooldown": 4,
+			"desc": "Attaque puissante + soin du Chevalier (60% des dégâts en PV récupérés). Recharge : 4 tours."},
+		"skills": [
+			{"name": "Épée maudite", "description": "Frappe drainante.", "effect": "Inflige des dégâts et récupère 20% en PV.", "damage": 9, "range": 1},
+			{"name": "Drain de vie (compétence)", "description": "Drain massif.", "effect": "Frappe + soin pour 60% des dégâts. Recharge : 4 tours."},
+		],
+	},
+	"chasseur": {
+		"name": "Chasseur", "color": Color(0.50, 0.78, 0.32), "symbol": "C",
+		"description": "Marqueur. Chaque tir marque la cible (+50% de dégâts du Chasseur sur les cibles marquées).",
+		"max_hp": 22, "move_range": 4, "attack": 9, "attack_range": 3,
+		"crit_chance": 0.15, "behavior": "kite", "on_hit": "marque",
+		"mark_bonus_mult": 1.5, "role": "ranged",
+		"active": {"name": "Tir ciblé", "type": "mark_shot", "target": "enemy", "range": 4, "cooldown": 3,
+			"desc": "Marque une cible à longue portée (4 cases). Recharge : 3 tours."},
+		"skills": [
+			{"name": "Flèche traçante", "description": "Marque la cible.", "effect": "Inflige des dégâts et applique Marque (+50% de dégâts du Chasseur).", "damage": 9, "range": 3},
+			{"name": "Tir ciblé (compétence)", "description": "Marque à longue portée.", "effect": "Applique Marque à 4 cases. Recharge : 3 tours."},
+		],
+	},
+	"envouteur": {
+		"name": "Envoûteur", "color": Color(0.78, 0.32, 0.72), "symbol": "V",
+		"description": "Manipulateur. Affaiblit les ennemis (-30% dégâts) et renforce les alliés (+50% dégâts).",
+		"max_hp": 20, "move_range": 3, "attack": 7, "attack_range": 3,
+		"crit_chance": 0.08, "behavior": "kite", "on_hit": "affaiblissement", "role": "ranged",
+		"active": {"name": "Renforcement", "type": "empower_ally", "target": "ally", "range": 3, "cooldown": 3,
+			"desc": "Donne Force (+50% dégâts) à un allié pendant 2 tours. Recharge : 3 tours."},
+		"skills": [
+			{"name": "Malédiction", "description": "Attaque affaiblissante.", "effect": "Inflige des dégâts et réduit les dégâts de la cible de 30% (2 tours).", "damage": 7, "range": 3},
+			{"name": "Renforcement (compétence)", "description": "Buff offensif.", "effect": "Donne Force à un allié (+50% dégâts, 2 tours). Recharge : 3 tours."},
+		],
+	},
 }
 
 # Difficultés (les effets sont appliqués à l'étape 9 dans l'IA et les dégâts).
@@ -126,7 +224,20 @@ const BUFFS := {
 	"regen":    {"name": "Régénération", "duration": 3, "heal_per_turn": 5},
 	"bouclier": {"name": "Bouclier",     "duration": 2, "dmg_taken_mult": 0.5},
 	"force":    {"name": "Force",        "duration": 2, "dmg_dealt_mult": 1.5},
-	"gel":      {"name": "Gel",          "duration": 2, "move_penalty": 2},
+	"gel":           {"name": "Gel",             "duration": 2, "move_penalty": 2},
+	"racines":       {"name": "Racines",         "duration": 2, "immobilized": true},
+	"marque":        {"name": "Marque",          "duration": 2, "marked": true},
+	"affaiblissement": {"name": "Affaiblissement", "duration": 2, "dmg_dealt_mult": 0.70},
+}
+
+# Terrain tactique (data-driven). Chaque type modifie dégâts ou déplacement.
+const TERRAIN := {
+	"foret":    {"name": "Forêt",    "color": Color(0.05, 0.30, 0.05, 0.52), "symbol": "F",
+	             "ranged_dmg_mult": 0.65},
+	"ruines":   {"name": "Ruines",   "color": Color(0.40, 0.38, 0.28, 0.48), "symbol": "R",
+	             "dmg_taken_mult": 0.80},
+	"marecage": {"name": "Marécage", "color": Color(0.18, 0.32, 0.12, 0.52), "symbol": "M",
+	             "move_penalty": 2},
 }
 
 # Sélections courantes (définies à l'écran de préparation, étape 6).

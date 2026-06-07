@@ -39,6 +39,8 @@ func _ready() -> void:
 	class_box.columns = 5
 	root.add_child(class_box)
 	for cid in GameData.CLASSES:
+		if GameData.CLASSES[cid].get("hidden", false):
+			continue
 		var b := Button.new()
 		b.text = GameData.CLASSES[cid].name
 		b.pressed.connect(_on_add_class.bind(cid))

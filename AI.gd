@@ -39,7 +39,9 @@ static func decide(unit: Node, grid: Node, units: Array) -> Dictionary:
 	for u in units:
 		if u != unit and u.is_alive():
 			occupied[u.grid_position] = true
-	var candidates: Array = grid.get_reachable_cells(unit.grid_position, unit.move_range(), occupied)
+	var terrain_pen: int = grid.terrain_move_penalty_at(unit.grid_position)
+	var eff_range: int = max(0, unit.move_range() - terrain_pen)
+	var candidates: Array = grid.get_reachable_cells(unit.grid_position, eff_range, occupied)
 	candidates.append(unit.grid_position)
 
 	# Rien à faire : se replier loin des ennemis.
@@ -91,14 +93,20 @@ static func _pick_enemy(unit: Node, enemies: Array) -> Node:
 	var est := _est_damage(unit)
 	var best: Node = enemies[0]
 	var best_score := -INF
+	var hard: bool = GameData.difficulty in ["difficile", "hardcore"]
 	for e in enemies:
-		var s := -float(e.hp)             # privilégier les plus faibles
+		var s := -float(e.hp)
 		if float(e.hp) <= est:
 			s += 500.0                    # achevable ce tour-ci
 		if e.data.behavior == "heal":
 			s += 60.0                     # tuer le soigneur en priorité
 		elif e.data.behavior == "kite":
 			s += 30.0                     # puis les tireurs
+		# Hardcore/Difficile : tenir compte de la dangerosité de l'ennemi
+		if hard:
+			var threat_bonus := float(e.data.attack) * 1.5
+			if e.get("summoner") == null and not e.get("is_summon"):
+				s += threat_bonus * 0.5   # éviter les cibles invoquées pour focus les vraies
 		if s > best_score:
 			best_score = s
 			best = e
@@ -193,7 +201,10 @@ static func compose_team(size: int, difficulty: String, player_team: Array) -> A
 
 
 static func _random_team(size: int) -> Array:
-	var ids: Array = GameData.CLASSES.keys()
+	var ids: Array = []
+	for cid in GameData.CLASSES:
+		if not GameData.CLASSES[cid].get("hidden", false):
+			ids.append(cid)
 	var t: Array = []
 	for i in size:
 		t.append(ids[randi() % ids.size()])
@@ -203,6 +214,8 @@ static func _random_team(size: int) -> Array:
 static func _classes_by_role() -> Dictionary:
 	var g := {"tank": [], "melee": [], "ranged": [], "healer": []}
 	for cid in GameData.CLASSES:
+		if GameData.CLASSES[cid].get("hidden", false):
+			continue
 		var r: String = GameData.CLASSES[cid].get("role", "melee")
 		if g.has(r):
 			g[r].append(cid)
@@ -314,7 +327,6 @@ static func _plan_skill(unit: Node, enemies: Array, allies: Array, grid: Node, f
 					best_c = a.grid_position
 			return best_c
 		"frost_nova":
-			# Viser le point qui gèle le plus d'ennemis (au moins 2).
 			var radius: int = int(sk.get("radius", 1))
 			var best_cell = null
 			var best_cnt := 1
@@ -329,6 +341,111 @@ static func _plan_skill(unit: Node, enemies: Array, allies: Array, grid: Node, f
 					best_cnt = cnt
 					best_cell = e.grid_position
 			return best_cell
+		"roots":
+			# Immobiliser l'ennemi le plus mobile à portée, non déjà immobilisé.
+			var best_e: Node = null
+			var best_mv := -1
+			for e in enemies:
+				if grid.manhattan(from, e.grid_position) > rng or _has_buff(e, "racines"):
+					continue
+				var mv: int = e.move_range()
+				if mv > best_mv:
+					best_mv = mv
+					best_e = e
+			return best_e.grid_position if best_e != null else null
+		"double_dot":
+			# Cibler l'ennemi sans DoT ou avec le moins de DoTs actifs.
+			var best_e: Node = null
+			var best_score := -INF
+			for e in enemies:
+				if grid.manhattan(from, e.grid_position) > rng:
+					continue
+				var dot_count := 0
+				for b in e.buffs:
+					if b.has("dmg_per_turn"):
+						dot_count += 1
+				if dot_count >= 2:
+					continue  # déjà saturé
+				var score := -float(e.hp) + (15.0 if dot_count == 0 else 0.0)
+				if score > best_score:
+					best_score = score
+					best_e = e
+			return best_e.grid_position if best_e != null else null
+		"war_heal":
+			# Soigner l'allié (ou soi-même) le plus blessé à portée.
+			var pool: Array = allies.duplicate()
+			pool.append(unit)
+			var best_a: Node = null
+			var best_ratio := 0.75
+			for a in pool:
+				var d: int = 0 if a == unit else grid.manhattan(from, a.grid_position)
+				if d > rng:
+					continue
+				var ratio := float(a.hp) / float(a.data.max_hp)
+				if ratio < best_ratio:
+					best_ratio = ratio
+					best_a = a
+			return best_a.grid_position if best_a != null else null
+		"empower_ally":
+			# Booster l'allié à plus fort potentiel offensif non encore boosté.
+			var best_a: Node = null
+			var best_atk := -1
+			for a in allies:
+				if grid.manhattan(from, a.grid_position) > rng or _has_buff(a, "force"):
+					continue
+				var atk: int = int(a.data.attack)
+				if atk > best_atk:
+					best_atk = atk
+					best_a = a
+			return best_a.grid_position if best_a != null else null
+		"mark_shot":
+			# Marquer l'ennemi le plus dangereux non encore marqué.
+			var best_e: Node = null
+			var best_score := -INF
+			for e in enemies:
+				if grid.manhattan(from, e.grid_position) > rng or _has_buff(e, "marque"):
+					continue
+				var score := float(e.data.attack) * 2.0 - float(e.hp) * 0.05
+				if score > best_score:
+					best_score = score
+					best_e = e
+			return best_e.grid_position if best_e != null else null
+		"drain_strike":
+			# Frapper la cible la plus faible (le drain en fait un finisher).
+			var best_e: Node = null
+			var best_score := -INF
+			for e in enemies:
+				if grid.manhattan(from, e.grid_position) > rng:
+					continue
+				var score := -float(e.hp)
+				if float(e.hp) <= _est_damage(unit) * 1.3:
+					score += 300.0
+				if score > best_score:
+					best_score = score
+					best_e = e
+			return best_e.grid_position if best_e != null else null
+		"piercing_shot":
+			# Direction avec le plus d'ennemis alignés (au moins 1).
+			var best_dir := Vector2i.ZERO
+			var best_cnt := 0
+			for dir in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var cnt := 0
+				for i in range(1, rng + 1):
+					var c: Vector2i = from + dir * i
+					if not grid.is_inside(c):
+						break
+					for e in enemies:
+						if e.grid_position == c:
+							cnt += 1
+				if cnt > best_cnt:
+					best_cnt = cnt
+					best_dir = dir
+			if best_cnt > 0 and best_dir != Vector2i.ZERO:
+				return from + best_dir
+			return null
+		"invoke":
+			# Invoquer si une case adjacente est libre (vérifié dans _use_skill).
+			return from
 	return null
 
 

@@ -15,7 +15,9 @@ var hp := 0
 var has_moved := false
 var has_acted := false
 var skill_cd := 0  # tours restants avant de pouvoir réutiliser la compétence
-var buffs: Array = []  # buffs/debuffs actifs (étape 8)
+var buffs: Array = []
+var is_summon := false   # true = invoqué par un nécromancien
+var summoner: Node = null
 var _active := false
 
 
@@ -47,8 +49,11 @@ func action_range() -> int:
 	return int(data.attack_range)
 
 
-# Déplacement effectif : portée de base réduite par les debuffs (gel...), min 1.
+# Déplacement effectif : 0 si immobilisé (racines), sinon réduit par gel, min 1.
 func move_range() -> int:
+	for b in buffs:
+		if b.get("immobilized", false):
+			return 0
 	var m := int(data.move_range)
 	for b in buffs:
 		if b.has("move_penalty"):
@@ -81,11 +86,24 @@ func has_active() -> bool:
 
 
 func skill_ready() -> bool:
-	return has_active() and skill_cd <= 0
+	if not has_active() or skill_cd > 0:
+		return false
+	var sk: Dictionary = data.active
+	if sk.has("max_summons"):
+		return _count_summons() < int(sk.max_summons)
+	return true
 
 
 func start_skill_cooldown() -> void:
 	skill_cd = int(data.active.cooldown)
+
+
+func _count_summons() -> int:
+	var n := 0
+	for u in get_tree().get_nodes_in_group("units"):
+		if u != self and u.is_alive() and u.get("is_summon") and u.get("summoner") == self:
+			n += 1
+	return n
 
 
 func take_damage(amount: int, is_crit := false) -> void:
@@ -139,11 +157,13 @@ func add_buff(id: String) -> void:
 	queue_redraw()
 
 
-# Retire les effets négatifs (poison, brûlure, gel...). Garde les bonus.
+# Retire les effets négatifs (poison, brûlure, gel, racines, affaiblissement).
 func purge_debuffs() -> void:
 	var kept: Array = []
 	for b in buffs:
-		if b.has("dmg_per_turn") or b.has("move_penalty"):
+		if b.has("dmg_per_turn") or b.has("move_penalty") \
+				or b.get("immobilized", false) \
+				or (b.has("dmg_dealt_mult") and float(b.dmg_dealt_mult) < 1.0):
 			continue
 		kept.append(b)
 	buffs = kept
@@ -204,8 +224,12 @@ func _draw() -> void:
 		elif b.has("dmg_taken_mult"):
 			c = Color(0.30, 0.50, 1.00)
 		elif b.has("dmg_dealt_mult"):
-			c = Color(0.95, 0.60, 0.20)
+			c = Color(0.95, 0.60, 0.20) if float(b.dmg_dealt_mult) >= 1.0 else Color(0.70, 0.20, 0.70)
 		elif b.has("move_penalty"):
 			c = Color(0.55, 0.85, 1.00)
+		elif b.get("immobilized", false):
+			c = Color(0.20, 0.82, 0.20)
+		elif b.get("marked", false):
+			c = Color(0.95, 0.80, 0.10)
 		draw_circle(Vector2(bx + 4.0, RADIUS + 12.0), 4.0, c)
 		bx += 11.0

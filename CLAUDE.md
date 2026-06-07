@@ -110,11 +110,36 @@ Ordre de priorité (✅ = fait) :
     l'ombre/téléportation, Nova de givre, Purification) — joueur **et** IA
 14. ✅ IA avancée : positionnement conscient de la menace (repli des fragiles)
 15. ✅ Équilibrage 1v1 validé par simulation headless
+16. ✅ 7 nouvelles classes (16 visibles + squelette invoqué) : **Nécromancien**
+    (invocation permanente, max 1 squelette), **Druide** (Racines = immobilisation),
+    **Prêtre de guerre** (soin actif), **Alchimiste** (double DoT), **Chevalier
+    noir** (drain de vie), **Chasseur** (marque + bonus dégâts), **Envoûteur**
+    (affaiblit/renforce)
+17. ✅ Compétences actives data-driven supplémentaires : Tir perforant (Archer,
+    ligne), Invocation, Racines, Cocktail acide, Drain de vie, Tir ciblé,
+    Renforcement — joueur **et** IA (`_plan_skill` couvre tous les types)
+18. ✅ Terrain tactique léger (Forêt = -dégâts à distance, Ruines = -dégâts subis,
+    Marécage = -déplacement), généré aléatoirement, effets data-driven (`TERRAIN`)
+19. ✅ Synergies tactiques émergentes (Racines + tireurs, Marque + burst, Gel +
+    mêlée) — via décisions joueur, sans système dédié
+20. ✅ Ré-équilibrage 16 classes par simulation headless (aucun outlier > 65 % en
+    1v1, supports volontairement bas seuls car pensés pour l'équipe)
+
+### Mécaniques data-driven additionnelles
+- `on_hit` (classe) : applique un buff/debuff à chaque attaque (poison, gel,
+  marque, affaiblissement).
+- `mark_bonus_mult` (classe) : multiplie les dégâts contre une cible marquée.
+- `drain_pct` (classe) : soigne l'attaquant d'un % des dégâts infligés.
+- `max_summons` (active invoke) + `is_summon`/`summoner` (Unit) : invocations
+  permanentes, comptées vivantes, ajoutées au TurnManager (`add_unit`).
+- `immobilized` (buff) : `move_range()` renvoie 0 (Racines, durée 2 = 1 vrai tour).
+- `hidden: true` (classe) : exclue de la sélection joueur et de la compo IA
+  (ex : squelette).
 
 ### Fichiers clés
 - `GameData.gd` (autoload) : dictionnaires CLASSES (stats + `role` + `active`),
-  DIFFICULTIES, BUFFS + sélections courantes
-- `Grid.gd` : grille + utilitaires (coordonnées, BFS de déplacement)
+  DIFFICULTIES, BUFFS, **TERRAIN** + sélections courantes
+- `Grid.gd` : grille + utilitaires (coordonnées, BFS, **terrain** + ses effets)
 - `Unit.gd` / `Unit.tscn` : unité data-driven (stats, PV, buffs, cooldown de
   compétence ; `action_range()`/`move_range()` effectifs)
 - `TurnManager.gd` : ordre des tours

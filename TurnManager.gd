@@ -30,6 +30,11 @@ func next_turn() -> void:
 			return
 
 
+# Ajoute une unité invoquée en cours de partie (ex : squelette du nécromancien).
+func add_unit(unit: Node) -> void:
+	units.append(unit)
+
+
 func _begin(index: int) -> void:
 	current_index = index
 	var unit: Node = units[index]

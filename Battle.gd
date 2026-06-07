@@ -16,6 +16,7 @@ var _finished := false
 
 
 func _ready() -> void:
+	_generate_terrain()
 	_spawn_units()
 	replay_button.pressed.connect(_on_replay)
 	skill_button.pressed.connect(_on_skill_button)
@@ -61,7 +62,9 @@ func _on_turn_started(unit: Node) -> void:
 
 
 func _show_moves(unit: Node) -> void:
-	grid.move_cells = grid.get_reachable_cells(unit.grid_position, unit.move_range(), _occupied(unit))
+	var terrain_pen: int = grid.terrain_move_penalty_at(unit.grid_position)
+	var eff_range: int = max(0, unit.move_range() - terrain_pen)
+	grid.move_cells = grid.get_reachable_cells(unit.grid_position, eff_range, _occupied(unit))
 	grid.target_cells = []
 	grid.heal_cells = []
 	grid.skill_cells = []
@@ -162,17 +165,30 @@ func _perform_action(unit: Node, target: Node) -> void:
 	unit.has_acted = true
 
 
-# Attaque de base : dégâts, coup critique, multiplicateurs, debuff au contact.
+# Attaque de base : dégâts, critique, terrain, marque, drain, debuff.
 func _attack(unit: Node, target: Node) -> void:
 	var dmg: float = unit.data.attack
 	var is_crit: bool = randf() < unit.data.crit_chance
 	if is_crit:
 		dmg *= 2.0
 	dmg *= unit.damage_dealt_mult() * target.damage_taken_mult()
+	# Chasseur : bonus si la cible est marquée
+	if unit.data.has("mark_bonus_mult") and _target_has_buff(target, "marque"):
+		dmg *= float(unit.data.mark_bonus_mult)
+	# Terrain : forêt réduit les dégâts à distance ; ruines protègent
+	var tt: Dictionary = grid.terrain_at(target.grid_position)
+	if not tt.is_empty():
+		if tt.has("dmg_taken_mult"):
+			dmg *= float(tt.dmg_taken_mult)
+		if tt.has("ranged_dmg_mult") and int(unit.data.attack_range) > 1:
+			dmg *= float(tt.ranged_dmg_mult)
 	dmg *= _difficulty_damage_mult(unit)
 	target.take_damage(int(round(dmg)), is_crit)
 	if unit.data.has("on_hit") and target.is_alive():
 		target.add_buff(unit.data.on_hit)
+	# Chevalier noir : drain passif (25% des dégâts récupérés en PV)
+	if unit.data.has("drain_pct"):
+		unit.heal(int(round(dmg * float(unit.data.drain_pct))))
 
 
 func _end_turn() -> void:
@@ -212,22 +228,39 @@ func _check_end() -> bool:
 
 # --- Compétences actives ---
 
-# Cases ciblables par la compétence de l'unité (alliés ou ennemis à portée).
+# Cases ciblables par la compétence de l'unité (alliés, ennemis ou ligne).
 func _skill_targets(unit: Node) -> Array:
 	var cells: Array = []
 	if not unit.skill_ready():
 		return cells
 	var sk: Dictionary = unit.data.active
-	if sk.target == "ally" and sk.get("can_self", false):
-		cells.append(unit.grid_position)  # certaines compétences peuvent se cibler
+	# Tir perforant : cases dans les 4 directions jusqu'à portée max
+	if sk.get("target", "") == "line":
+		for dir in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			for i in range(1, int(sk.range) + 1):
+				var c: Vector2i = unit.grid_position + dir * i
+				if not grid.is_inside(c):
+					break
+				cells.append(c)
+		return cells
+	# Invocation : cases adjacentes libres
+	if sk.get("type", "") == "invoke":
+		var occ := _occupied()
+		for dir in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var c: Vector2i = unit.grid_position + dir
+			if grid.is_inside(c) and not occ.has(c):
+				cells.append(c)
+		return cells
+	if sk.get("target", "") == "ally" and sk.get("can_self", false):
+		cells.append(unit.grid_position)
 	for u in get_tree().get_nodes_in_group("units"):
 		if not u.is_alive() or u == unit:
 			continue
 		if grid.manhattan(unit.grid_position, u.grid_position) > int(sk.range):
 			continue
-		if sk.target == "ally" and u.team == unit.team:
+		if sk.get("target", "") == "ally" and u.team == unit.team:
 			cells.append(u.grid_position)
-		elif sk.target == "enemy" and u.team != unit.team:
+		elif sk.get("target", "") == "enemy" and u.team != unit.team:
 			cells.append(u.grid_position)
 	return cells
 
@@ -235,15 +268,43 @@ func _skill_targets(unit: Node) -> Array:
 # Applique l'effet de la compétence selon son type (data-driven, extensible).
 func _use_skill(caster: Node, cell: Vector2i) -> void:
 	var sk: Dictionary = caster.data.active
+	var success := true
 	match sk.type:
 		"shield_ally":
 			var ally := _unit_at(cell)
 			if ally:
 				ally.add_buff("bouclier")
+		"empower_ally":
+			var ally := _unit_at(cell)
+			if ally:
+				ally.add_buff("force")
 		"purify":
 			var ally := _unit_at(cell)
 			if ally:
 				ally.purge_debuffs()
+		"war_heal":
+			var ally := _unit_at(cell)
+			if ally:
+				ally.heal(int(sk.get("heal_amount", 12)))
+		"roots":
+			var enemy := _unit_at(cell)
+			if enemy:
+				enemy.add_buff("racines")
+		"double_dot":
+			var enemy := _unit_at(cell)
+			if enemy:
+				enemy.add_buff("poison")
+				enemy.add_buff("brulure")
+		"mark_shot":
+			var enemy := _unit_at(cell)
+			if enemy:
+				enemy.add_buff("marque")
+		"drain_strike":
+			var enemy := _unit_at(cell)
+			if enemy:
+				_attack(caster, enemy)
+				# Drain supplémentaire : soigne 60% de l'attaque de base en PV
+				caster.heal(int(round(float(caster.data.attack) * 0.60)))
 		"teleport_strike":
 			var enemy := _unit_at(cell)
 			if enemy:
@@ -257,7 +318,35 @@ func _use_skill(caster: Node, cell: Vector2i) -> void:
 				if u.is_alive() and u.team != caster.team \
 						and grid.manhattan(u.grid_position, cell) <= radius:
 					u.add_buff("gel")
-	caster.start_skill_cooldown()
+		"piercing_shot":
+			var diff: Vector2i = cell - caster.grid_position
+			var dir: Vector2i
+			if abs(diff.x) >= abs(diff.y):
+				dir = Vector2i(sign(diff.x), 0)
+			else:
+				dir = Vector2i(0, sign(diff.y))
+			for i in range(1, int(sk.range) + 1):
+				var c: Vector2i = caster.grid_position + dir * i
+				if not grid.is_inside(c):
+					break
+				var enemy := _unit_at(c)
+				if enemy and enemy.team != caster.team and enemy.is_alive():
+					_attack(caster, enemy)
+		"invoke":
+			var dest = _free_adjacent(caster.grid_position, caster)
+			if dest == null:
+				success = false  # pas de place -> pas de CD
+			else:
+				var summon := UNIT_SCENE.instantiate()
+				summon.set("class_id", str(sk.get("summon_class", "squelette")))
+				summon.set("team", caster.team)
+				summon.set("grid_position", dest)
+				summon.set("is_summon", true)
+				summon.set("summoner", caster)
+				grid.add_child(summon)
+				turn_manager.add_unit(summon)
+	if success:
+		caster.start_skill_cooldown()
 	caster.has_acted = true
 
 
@@ -269,6 +358,29 @@ func _free_adjacent(cell: Vector2i, caster: Node):
 		if grid.is_inside(c) and not occ.has(c):
 			return c
 	return null
+
+
+# Génère le terrain tactique au centre de la grille (évite les zones de spawn).
+func _generate_terrain() -> void:
+	var types: Array = GameData.TERRAIN.keys()
+	var placed := 0
+	var attempts := 0
+	while placed < 12 and attempts < 80:
+		attempts += 1
+		var col: int = 2 + randi() % 8  # colonnes 2-9 (zones de spawn : 1 et 10)
+		var row: int = randi() % grid.ROWS
+		var cell := Vector2i(col, row)
+		if not grid.terrain.has(cell):
+			grid.terrain[cell] = types[randi() % types.size()]
+			placed += 1
+	grid.queue_redraw()
+
+
+func _target_has_buff(unit: Node, id: String) -> bool:
+	for b in unit.buffs:
+		if b.get("id", "") == id:
+			return true
+	return false
 
 
 # --- Utilitaires ---
