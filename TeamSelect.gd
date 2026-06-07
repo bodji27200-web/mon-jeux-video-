@@ -125,14 +125,6 @@ func _show_class_info(cid: String) -> void:
 func _on_start() -> void:
 	GameData.difficulty = _difficulty
 	GameData.player_team = _player.duplicate()
-	GameData.ai_team = _make_ai_team(_player.size())
+	# L'IA compose une équipe cohérente selon la difficulté (voir TacticalAI).
+	GameData.ai_team = TacticalAI.compose_team(_player.size(), _difficulty, _player)
 	get_tree().change_scene_to_file("res://Main.tscn")
-
-
-# L'IA prend autant d'unités que le joueur, choisies aléatoirement.
-func _make_ai_team(count: int) -> Array:
-	var ids: Array = GameData.CLASSES.keys()
-	var team: Array = []
-	for i in count:
-		team.append(ids[randi() % ids.size()])
-	return team

@@ -10,7 +10,7 @@ const CLASSES := {
 		"name": "Tank", "color": Color(0.30, 0.50, 1.00), "symbol": "T",
 		"description": "Mur défensif. Beaucoup de PV, encaisse les coups en première ligne.",
 		"max_hp": 42, "move_range": 3, "attack": 8, "attack_range": 1,
-		"crit_chance": 0.05, "behavior": "melee",
+		"crit_chance": 0.05, "behavior": "melee", "role": "tank",
 		"skills": [
 			{"name": "Frappe", "description": "Attaque de mêlée de base.", "effect": "Inflige des dégâts au corps à corps.", "damage": 8, "range": 1},
 			{"name": "Robustesse", "description": "PV très élevés (passif).", "effect": "Encaisse les dégâts pour protéger l'équipe."},
@@ -20,7 +20,7 @@ const CLASSES := {
 		"name": "Archer", "color": Color(0.30, 0.85, 0.40), "symbol": "A",
 		"description": "Tireur agile. Harcèle de loin et empoisonne ses cibles.",
 		"max_hp": 22, "move_range": 4, "attack": 10, "attack_range": 4,
-		"crit_chance": 0.20, "behavior": "kite", "on_hit": "poison",
+		"crit_chance": 0.20, "behavior": "kite", "on_hit": "poison", "role": "ranged",
 		"skills": [
 			{"name": "Tir", "description": "Attaque à distance.", "effect": "Inflige des dégâts à distance.", "damage": 10, "range": 4},
 			{"name": "Flèche empoisonnée", "description": "Chaque tir empoisonne la cible.", "effect": "Applique Poison : 3 dégâts/tour pendant 3 tours.", "range": 4},
@@ -30,7 +30,7 @@ const CLASSES := {
 		"name": "Assassin", "color": Color(0.60, 0.30, 0.80), "symbol": "S",
 		"description": "Tueur mobile. Très grande mobilité et coups critiques dévastateurs.",
 		"max_hp": 18, "move_range": 5, "attack": 14, "attack_range": 1,
-		"crit_chance": 0.35, "behavior": "melee",
+		"crit_chance": 0.35, "behavior": "melee", "role": "melee",
 		"skills": [
 			{"name": "Lame rapide", "description": "Attaque de mêlée puissante.", "effect": "Inflige de gros dégâts au corps à corps.", "damage": 14, "range": 1},
 			{"name": "Coups critiques", "description": "35% de chances de coup critique.", "effect": "Double les dégâts de l'attaque."},
@@ -40,7 +40,7 @@ const CLASSES := {
 		"name": "Mage", "color": Color(0.85, 0.25, 0.25), "symbol": "M",
 		"description": "Lanceur de sorts. Dégâts à distance et brûlures.",
 		"max_hp": 20, "move_range": 3, "attack": 13, "attack_range": 3,
-		"crit_chance": 0.10, "behavior": "kite", "on_hit": "brulure",
+		"crit_chance": 0.10, "behavior": "kite", "on_hit": "brulure", "role": "ranged",
 		"skills": [
 			{"name": "Éclair", "description": "Attaque magique à distance.", "effect": "Inflige des dégâts à distance.", "damage": 13, "range": 3},
 			{"name": "Brûlure", "description": "Enflamme la cible à chaque coup.", "effect": "Applique Brûlure : 5 dégâts/tour pendant 2 tours.", "range": 3},
@@ -50,7 +50,7 @@ const CLASSES := {
 		"name": "Soigneur", "color": Color(0.95, 0.95, 0.95), "symbol": "+",
 		"description": "Soutien. Soigne ses alliés (et lui-même) mais frappe faiblement.",
 		"max_hp": 24, "move_range": 3, "attack": 4, "attack_range": 1,
-		"crit_chance": 0.0, "behavior": "heal", "heal": 12, "heal_range": 3,
+		"crit_chance": 0.0, "behavior": "heal", "heal": 12, "heal_range": 3, "role": "healer",
 		"skills": [
 			{"name": "Soin", "description": "Restaure les PV d'un allié ou de soi-même.", "effect": "Rend 12 PV à la cible.", "range": 1},
 			{"name": "Bâton", "description": "Faible attaque de mêlée.", "effect": "Inflige peu de dégâts au corps à corps.", "damage": 4, "range": 1},
@@ -60,7 +60,7 @@ const CLASSES := {
 		"name": "Paladin", "color": Color(0.90, 0.80, 0.30), "symbol": "P",
 		"description": "Tank polyvalent. Résistant et frappe correctement au corps à corps.",
 		"max_hp": 38, "move_range": 3, "attack": 9, "attack_range": 1,
-		"crit_chance": 0.05, "behavior": "melee",
+		"crit_chance": 0.05, "behavior": "melee", "role": "tank",
 		"skills": [
 			{"name": "Frappe sacrée", "description": "Attaque de mêlée.", "effect": "Inflige des dégâts au corps à corps.", "damage": 9, "range": 1},
 			{"name": "Endurance", "description": "PV élevés (passif).", "effect": "Tient la ligne de front."},
@@ -70,7 +70,7 @@ const CLASSES := {
 		"name": "Berserker", "color": Color(0.95, 0.50, 0.20), "symbol": "B",
 		"description": "Combattant agressif. Gros dégâts de mêlée et bonne mobilité.",
 		"max_hp": 30, "move_range": 4, "attack": 12, "attack_range": 1,
-		"crit_chance": 0.15, "behavior": "melee",
+		"crit_chance": 0.15, "behavior": "melee", "role": "melee",
 		"skills": [
 			{"name": "Entaille", "description": "Attaque de mêlée puissante.", "effect": "Inflige de gros dégâts au corps à corps.", "damage": 12, "range": 1},
 			{"name": "Agressivité", "description": "Se déplace loin pour atteindre ses cibles.", "effect": "Grande portée de déplacement (passif)."},

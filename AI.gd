@@ -140,3 +140,97 @@ static func _safest_cell(candidates: Array, enemies: Array, grid: Node) -> Vecto
 			best_d = d
 			best = cell
 	return best
+
+
+# --- Composition de l'équipe IA ---
+# Plus la difficulté est haute, plus la composition est cohérente (ligne de
+# front / dégâts / soin) et adaptée à l'équipe du joueur. Data-driven : lit le
+# champ "role" des classes, donc une nouvelle classe est prise en compte seule.
+
+static func compose_team(size: int, difficulty: String, player_team: Array) -> Array:
+	if size <= 0:
+		return []
+	if difficulty == "facile":
+		return _random_team(size)  # choix presque aléatoire
+	var imperfection := 0.35 if difficulty == "normal" else 0.0
+	var counter: bool = difficulty == "hardcore"  # adapte au joueur
+	var groups := _classes_by_role()
+	var team: Array = []
+	for role in _role_slots(size):
+		var cid: String = _random_team(1)[0] if randf() < imperfection \
+				else _pick_for_role(role, groups, player_team, counter)
+		if cid != "":
+			team.append(cid)
+	while team.size() < size:  # filet de sécurité si un rôle était vide
+		team.append(_random_team(1)[0])
+	return team
+
+
+static func _random_team(size: int) -> Array:
+	var ids: Array = GameData.CLASSES.keys()
+	var t: Array = []
+	for i in size:
+		t.append(ids[randi() % ids.size()])
+	return t
+
+
+static func _classes_by_role() -> Dictionary:
+	var g := {"tank": [], "melee": [], "ranged": [], "healer": []}
+	for cid in GameData.CLASSES:
+		var r: String = GameData.CLASSES[cid].get("role", "melee")
+		if g.has(r):
+			g[r].append(cid)
+	return g
+
+
+# Roles voulus selon la taille : 1 front, des dégâts, un soin dès 3 unités.
+static func _role_slots(size: int) -> Array:
+	if size == 1:
+		return ["damage"]
+	if size == 2:
+		return ["tank", "damage"]
+	var slots: Array = ["tank", "damage", "healer"]
+	var extra := ["damage", "tank", "damage", "healer"]
+	var i := 0
+	while slots.size() < size:
+		slots.append(extra[i % extra.size()])
+		i += 1
+	return slots
+
+
+static func _pick_for_role(role: String, groups: Dictionary, player_team: Array, counter: bool) -> String:
+	match role:
+		"tank":
+			return _rand_from(groups.tank if not groups.tank.is_empty() else groups.melee)
+		"healer":
+			return _rand_from(groups.healer if not groups.healer.is_empty() else groups.ranged)
+		_:  # "damage"
+			var pool: Array = _counter_damage_pool(groups, player_team) if counter \
+					else groups.melee + groups.ranged
+			return _rand_from(pool)
+
+
+# Choix des unités de dégâts adapté à la composition du joueur (hardcore).
+static func _counter_damage_pool(groups: Dictionary, player_team: Array) -> Array:
+	var melee_cnt := 0
+	var ranged_cnt := 0
+	var has_healer := false
+	for cid in player_team:
+		var r: String = GameData.CLASSES[cid].get("role", "melee")
+		if r == "ranged":
+			ranged_cnt += 1
+		elif r == "healer":
+			has_healer = true
+		else:
+			melee_cnt += 1
+	if has_healer and not groups.melee.is_empty():
+		return groups.melee   # burst pour percer les soins
+	if melee_cnt > ranged_cnt and not groups.ranged.is_empty():
+		return groups.ranged  # joueur corps à corps -> on kite
+	if ranged_cnt > melee_cnt and not groups.melee.is_empty():
+		return groups.melee   # joueur à distance -> on fonce
+	return groups.melee + groups.ranged
+
+
+static func _rand_from(pool: Array) -> String:
+	return pool[randi() % pool.size()] if not pool.is_empty() else ""
