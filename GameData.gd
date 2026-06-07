@@ -78,8 +78,8 @@ const CLASSES := {
 	"berserker": {
 		"name": "Berserker", "color": Color(0.95, 0.50, 0.20), "symbol": "B",
 		"description": "Combattant agressif. Gros dégâts de mêlée et bonne mobilité.",
-		"max_hp": 30, "move_range": 4, "attack": 12, "attack_range": 1,
-		"crit_chance": 0.15, "behavior": "melee", "role": "melee",
+		"max_hp": 30, "move_range": 4, "attack": 11, "attack_range": 1,
+		"crit_chance": 0.10, "behavior": "melee", "role": "melee",
 		"skills": [
 			{"name": "Entaille", "description": "Attaque de mêlée puissante.", "effect": "Inflige de gros dégâts au corps à corps.", "damage": 12, "range": 1},
 			{"name": "Agressivité", "description": "Se déplace loin pour atteindre ses cibles.", "effect": "Grande portée de déplacement (passif)."},
@@ -101,7 +101,7 @@ const CLASSES := {
 	"lancier": {
 		"name": "Lancier", "color": Color(0.60, 0.65, 0.70), "symbol": "L",
 		"description": "Combattant d'allonge. Frappe à 2 cases : tient la ligne sans se coller à l'ennemi.",
-		"max_hp": 32, "move_range": 3, "attack": 11, "attack_range": 2,
+		"max_hp": 32, "move_range": 3, "attack": 10, "attack_range": 2,
 		"crit_chance": 0.10, "behavior": "melee", "role": "melee",
 		"skills": [
 			{"name": "Coup de lance", "description": "Attaque d'allonge.", "effect": "Frappe une cible jusqu'à 2 cases.", "damage": 11, "range": 2},
