@@ -16,6 +16,7 @@ var _start_btn: Button
 var _info_label: Label
 var _diff_buttons := {}
 var _class_buttons := {}  # cid -> Button (pour les désactiver quand pris)
+var _taken := {}          # cid -> true : classes déjà draftées (pool partagé)
 
 
 func _ready() -> void:
@@ -38,7 +39,7 @@ func _ready() -> void:
 		diff_box.add_child(b)
 		_diff_buttons[d] = b
 
-	root.add_child(_section("Draft (toi, puis l'IA, en alternance — %d chacun) :" % TEAM_SIZE))
+	root.add_child(_section("Draft (toi, puis l'IA, en alternance — %d chacun). ★ = classe UNIQUE (1 seule par équipe) :" % TEAM_SIZE))
 	# Grille pour éviter que la rangée de classes déborde de la fenêtre.
 	var class_box := GridContainer.new()
 	class_box.columns = 5
@@ -47,7 +48,13 @@ func _ready() -> void:
 		if GameData.CLASSES[cid].get("hidden", false):
 			continue
 		var b := Button.new()
-		b.text = GameData.CLASSES[cid].name
+		# Classe unique : badge ★ + libellé doré (max 1 par équipe).
+		if GameData.CLASSES[cid].get("unique", false):
+			b.text = "★ " + str(GameData.CLASSES[cid].name)
+			b.add_theme_color_override("font_color", Color(1.0, 0.84, 0.30))
+			b.add_theme_color_override("font_hover_color", Color(1.0, 0.92, 0.50))
+		else:
+			b.text = GameData.CLASSES[cid].name
 		b.pressed.connect(_on_pick_class.bind(cid))
 		b.mouse_entered.connect(_show_class_info.bind(cid))
 		b.focus_entered.connect(_show_class_info.bind(cid))
@@ -110,25 +117,45 @@ func _on_pick_class(cid: String) -> void:
 	_show_class_info(cid)
 	if _player.size() >= TEAM_SIZE:
 		return
-	if not _class_buttons.has(cid) or _class_buttons[cid].disabled:
+	if not _class_buttons.has(cid) or _taken.has(cid):
+		return
+	# Règle : une seule classe unique par équipe.
+	if GameData.CLASSES[cid].get("unique", false) and _player_has_unique():
 		return
 	_player.append(cid)
-	_class_buttons[cid].disabled = true
+	_taken[cid] = true
 	_lock_difficulty()
 	# Réponse de l'IA (si elle n'a pas encore son équipe complète).
 	if _ai.size() < TEAM_SIZE:
 		var ai_cid: String = TacticalAI.draft_pick(_available(), _ai, _player, _difficulty)
 		if ai_cid != "":
 			_ai.append(ai_cid)
-			if _class_buttons.has(ai_cid):
-				_class_buttons[ai_cid].disabled = true
+			_taken[ai_cid] = true
+	_update_buttons()
 	_refresh()
+
+
+# Le joueur possède-t-il déjà une classe unique ?
+func _player_has_unique() -> bool:
+	for c in _player:
+		if GameData.CLASSES[c].get("unique", false):
+			return true
+	return false
+
+
+# Met à jour l'état grisé des boutons : pris (pool) OU unique verrouillé pour le joueur.
+func _update_buttons() -> void:
+	var locked: bool = _player_has_unique() or _player.size() >= TEAM_SIZE
+	for cid in _class_buttons:
+		var taken: bool = _taken.has(cid)
+		var unique_locked: bool = locked and GameData.CLASSES[cid].get("unique", false)
+		_class_buttons[cid].disabled = taken or unique_locked
 
 
 func _available() -> Array:
 	var pool: Array = []
 	for cid in _class_buttons:
-		if not _class_buttons[cid].disabled:
+		if not _taken.has(cid):
 			pool.append(cid)
 	return pool
 
@@ -141,8 +168,8 @@ func _lock_difficulty() -> void:
 func _on_reset() -> void:
 	_player.clear()
 	_ai.clear()
-	for cid in _class_buttons:
-		_class_buttons[cid].disabled = false
+	_taken.clear()
+	_update_buttons()
 	# Déverrouille la difficulté (draft vide).
 	for key in _diff_buttons:
 		_diff_buttons[key].disabled = (key == _difficulty)
@@ -173,7 +200,8 @@ func _show_class_info(cid: String) -> void:
 	if _info_label == null:
 		return
 	var c: Dictionary = GameData.CLASSES[cid]
-	var t := "%s\n%s\n\n" % [c.name, c.get("description", "")]
+	var badge := "★ CLASSE UNIQUE (1 par équipe)\n" if c.get("unique", false) else ""
+	var t := "%s%s\n%s\n\n" % [badge, c.name, c.get("description", "")]
 	t += "PV : %d    Dégâts : %d    Portée d'attaque : %d    Déplacement : %d\n" % [c.max_hp, c.attack, c.attack_range, c.move_range]
 	t += "Coups critiques : %d%%" % int(c.crit_chance * 100)
 	if c.has("on_hit"):

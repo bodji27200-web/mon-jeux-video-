@@ -9,6 +9,7 @@ extends Node2D
 @onready var skill_hint: Label = $UI/SkillHint
 
 const UNIT_SCENE := preload("res://Unit.tscn")
+const SKILL_FX := preload("res://SkillFX.gd")
 
 # Barre de compétences : 3 carrés en bas à droite, un par compétence active de
 # la classe (jusqu'à 3). Les carrés sans compétence restent vides/désactivés.
@@ -21,6 +22,7 @@ const SKILL_ICONS := {
 	"teleport_strike": "Saut", "piercing_shot": "Perce", "traps": "Piège",
 	"heavy_strike": "Charge", "cleave": "Fauche", "self_buff": "Buff",
 	"apply_debuff": "Malus", "buff_ally": "Aura",
+	"team_buff": "Hymne", "team_debuff": "Discord", "retreat_shot": "Recul",
 }
 
 var active_unit: Node = null
@@ -230,6 +232,7 @@ func _handle_click(cell: Vector2i) -> void:
 func _perform_action(unit: Node, target: Node) -> void:
 	if _is_healer(unit):
 		target.heal(int(unit.data.heal))
+		_fx("buff", target.grid_position, target.grid_position, Color(0.30, 0.90, 0.40))
 	else:
 		_attack(unit, target)
 	unit.has_acted = true
@@ -237,7 +240,15 @@ func _perform_action(unit: Node, target: Node) -> void:
 
 # Attaque de base : dégâts, critique, terrain, marque, drain, debuff.
 # `mult` permet aux compétences de frapper plus fort (Charge, Fauche...).
-func _attack(unit: Node, target: Node, mult := 1.0) -> void:
+# `is_counter` = true quand c'est une riposte (évite qu'une riposte en déclenche une autre).
+func _attack(unit: Node, target: Node, mult := 1.0, is_counter := false) -> void:
+	# Animation : projectile si l'attaque est à distance, coup de lame sinon.
+	var atk_kind: String = "projectile" if int(unit.data.attack_range) > 1 else "slash"
+	_fx(atk_kind, unit.grid_position, target.grid_position, unit.data.color)
+	# Parade : la cible bloque entièrement la prochaine attaque reçue (le buff est consommé).
+	if _consume_parade(target):
+		_show_blocked_text(target)
+		return
 	var dmg: float = float(unit.data.attack) * mult
 	var is_crit: bool = randf() < unit.data.crit_chance
 	if is_crit:
@@ -260,6 +271,46 @@ func _attack(unit: Node, target: Node, mult := 1.0) -> void:
 	# Chevalier noir : drain passif (25% des dégâts récupérés en PV)
 	if unit.data.has("drain_pct"):
 		unit.heal(int(round(dmg * float(unit.data.drain_pct))))
+	# Duelliste : riposte automatique si la cible est en posture et l'attaquant à sa portée de mêlée.
+	if not is_counter and target.is_alive() and unit.is_alive() \
+			and _has_buff(target, "riposte") \
+			and grid.manhattan(unit.grid_position, target.grid_position) <= target.action_range():
+		_attack(target, unit, 1.0, true)
+
+
+# Consomme le buff "parade" de l'unité (bloque la prochaine attaque). True si présent.
+func _consume_parade(target: Node) -> bool:
+	for i in target.buffs.size():
+		if target.buffs[i].get("block_next", false):
+			target.buffs.remove_at(i)
+			target.queue_redraw()
+			return true
+	return false
+
+
+func _has_buff(u: Node, id: String) -> bool:
+	for b in u.buffs:
+		if b.get("id", "") == id:
+			return true
+	return false
+
+
+# Instancie un effet visuel de compétence/attaque (cosmétique, auto-libéré).
+func _fx(kind: String, from_cell: Vector2i, to_cell: Vector2i, color: Color, rad_px := 32.0) -> void:
+	var fx := SKILL_FX.new()
+	fx.setup(kind, grid.cell_to_local(from_cell), grid.cell_to_local(to_cell), color, rad_px)
+	grid.add_child(fx)
+
+
+# Texte flottant "Paré !" au-dessus de l'unité qui a paré.
+func _show_blocked_text(target: Node) -> void:
+	var ft := preload("res://FloatingText.tscn").instantiate()
+	ft.text = "Paré !"
+	ft.color_value = Color(0.6, 0.85, 1.0)
+	ft.font_size_value = 22
+	ft.duration = 1.0
+	ft.position = target.position + Vector2(-14.0, -46.0)
+	grid.add_child(ft)
 
 
 func _end_turn() -> void:
@@ -349,37 +400,46 @@ func _use_skill(caster: Node, cell: Vector2i, index: int) -> void:
 			var ally := _unit_at(cell)
 			if ally:
 				ally.add_buff("bouclier")
+				_fx("buff", cell, cell, Color(0.45, 0.65, 1.0))
 		"empower_ally":
 			var ally := _unit_at(cell)
 			if ally:
 				ally.add_buff("force")
+				_fx("buff", cell, cell, Color(1.0, 0.55, 0.20))
 		"purify":
 			var ally := _unit_at(cell)
 			if ally:
 				ally.purge_debuffs()
+				_fx("buff", cell, cell, Color(0.85, 0.95, 1.0))
 		"war_heal":
 			var ally := _unit_at(cell)
 			if ally:
 				ally.heal(int(sk.get("heal_amount", 12)))
+				_fx("buff", cell, cell, Color(0.30, 0.90, 0.40))
 		"roots":
 			var enemy := _unit_at(cell)
 			if enemy:
 				enemy.add_buff("racines")
+				_fx("debuff", cell, cell, Color(0.25, 0.75, 0.25))
 		"double_dot":
 			var enemy := _unit_at(cell)
 			if enemy:
 				enemy.add_buff("poison")
 				enemy.add_buff("brulure")
+				_fx("debuff", cell, cell, Color(0.55, 0.80, 0.20))
 		"mark_shot":
 			var enemy := _unit_at(cell)
 			if enemy:
+				_fx("projectile", caster.grid_position, cell, caster.data.color)
 				enemy.add_buff("marque")
+				_fx("debuff", cell, cell, Color(0.95, 0.80, 0.10))
 		"drain_strike":
 			var enemy := _unit_at(cell)
 			if enemy:
 				_attack(caster, enemy)
 				# Drain supplémentaire : soigne 60% de l'attaque de base en PV
 				caster.heal(int(round(float(caster.data.attack) * 0.60)))
+				_fx("beam", cell, caster.grid_position, Color(0.55, 0.10, 0.20))
 		"heavy_strike":
 			# Gros coup unique : attaque multipliée sur une cible.
 			var enemy := _unit_at(cell)
@@ -388,6 +448,7 @@ func _use_skill(caster: Node, cell: Vector2i, index: int) -> void:
 		"cleave":
 			# Frappe la cible et tous les ennemis adjacents (mêlée de zone).
 			var radius: int = int(sk.get("radius", 1))
+			_fx("explosion", cell, cell, caster.data.color, (radius + 0.5) * grid.CELL_SIZE)
 			for u in get_tree().get_nodes_in_group("units"):
 				if u.is_alive() and u.team != caster.team \
 						and grid.manhattan(u.grid_position, cell) <= radius:
@@ -395,11 +456,31 @@ func _use_skill(caster: Node, cell: Vector2i, index: int) -> void:
 		"self_buff":
 			# Buff personnel (rage, garde, régén...).
 			caster.add_buff(str(sk.buff))
+			_fx("buff", caster.grid_position, caster.grid_position, Color(1.0, 0.85, 0.30))
 		"buff_ally":
 			# Applique un buff nommé à un allié (ou soi si can_self).
 			var ally := _unit_at(cell)
 			if ally:
 				ally.add_buff(str(sk.buff))
+				_fx("buff", cell, cell, Color(1.0, 0.85, 0.30))
+		"team_buff":
+			# Barde : applique un buff à TOUTE l'équipe (lui-même inclus).
+			for u in get_tree().get_nodes_in_group("units"):
+				if u.is_alive() and u.team == caster.team:
+					u.add_buff(str(sk.buff))
+					_fx("buff", u.grid_position, u.grid_position, Color(1.0, 0.85, 0.30))
+		"team_debuff":
+			# Barde : applique un debuff à TOUS les ennemis.
+			for u in get_tree().get_nodes_in_group("units"):
+				if u.is_alive() and u.team != caster.team:
+					u.add_buff(str(sk.buff))
+					_fx("debuff", u.grid_position, u.grid_position, Color(0.75, 0.25, 0.85))
+		"retreat_shot":
+			# Archère : tire sur la cible puis recule de N cases hors de portée.
+			var enemy_rs := _unit_at(cell)
+			if enemy_rs:
+				_attack(caster, enemy_rs)
+				_retreat(caster, enemy_rs.grid_position, int(sk.get("retreat", 2)))
 		"apply_debuff":
 			# Tir handicapant : attaque + applique un debuff nommé.
 			var enemy := _unit_at(cell)
@@ -407,15 +488,18 @@ func _use_skill(caster: Node, cell: Vector2i, index: int) -> void:
 				_attack(caster, enemy, float(sk.get("dmg_mult", 1.0)))
 				if enemy.is_alive():
 					enemy.add_buff(str(sk.buff))
+					_fx("debuff", cell, cell, Color(0.75, 0.25, 0.85))
 		"teleport_strike":
 			var enemy := _unit_at(cell)
 			if enemy:
 				var dest = _free_adjacent(cell, caster)
 				if dest != null:
+					_fx("teleport", caster.grid_position, dest, caster.data.color)
 					caster.move_to(dest)
 				_attack(caster, enemy)
 		"frost_nova":
 			var radius: int = int(sk.get("radius", 1))
+			_fx("nova", cell, cell, Color(0.55, 0.85, 1.0), (radius + 0.5) * grid.CELL_SIZE)
 			for u in get_tree().get_nodes_in_group("units"):
 				if u.is_alive() and u.team != caster.team \
 						and grid.manhattan(u.grid_position, cell) <= radius:
@@ -427,6 +511,8 @@ func _use_skill(caster: Node, cell: Vector2i, index: int) -> void:
 				dir = Vector2i(sign(diff.x), 0)
 			else:
 				dir = Vector2i(0, sign(diff.y))
+			var end_cell: Vector2i = caster.grid_position + dir * int(sk.range)
+			_fx("beam", caster.grid_position, end_cell, caster.data.color)
 			for i in range(1, int(sk.range) + 1):
 				var c: Vector2i = caster.grid_position + dir * i
 				if not grid.is_inside(c):
@@ -448,6 +534,7 @@ func _use_skill(caster: Node, cell: Vector2i, index: int) -> void:
 				summon.set("summoner", caster)
 				grid.add_child(summon)
 				turn_manager.add_unit(summon)
+				_fx("teleport", dest, dest, caster.data.color)
 	if success:
 		caster.start_skill_cooldown(index)
 	caster.has_acted = true
@@ -470,6 +557,28 @@ func _next_summon_class(caster: Node, classes: Array) -> String:
 			best_n = int(counts[c])
 			best = c
 	return best
+
+
+# Recule le lanceur de `steps` cases dans la direction opposée à `from_cell`
+# (sur l'axe dominant), en s'arrêtant à la dernière case libre rencontrée.
+func _retreat(unit: Node, from_cell: Vector2i, steps: int) -> void:
+	var diff: Vector2i = unit.grid_position - from_cell
+	var dir: Vector2i
+	if abs(diff.x) >= abs(diff.y):
+		dir = Vector2i(sign(diff.x), 0)
+	else:
+		dir = Vector2i(0, sign(diff.y))
+	if dir == Vector2i.ZERO:
+		dir = Vector2i(-1, 0)
+	var occ := _occupied(unit)
+	var dest: Vector2i = unit.grid_position
+	for i in range(1, steps + 1):
+		var c: Vector2i = unit.grid_position + dir * i
+		if not grid.is_inside(c) or occ.has(c):
+			break
+		dest = c
+	if dest != unit.grid_position:
+		unit.move_to(dest)
 
 
 # Première case libre adjacente à une cible (pour la téléportation).

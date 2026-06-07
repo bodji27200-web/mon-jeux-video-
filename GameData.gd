@@ -46,9 +46,9 @@ const CLASSES := {
 	},
 	"assassin": {
 		"name": "Assassin", "color": Color(0.60, 0.30, 0.80), "symbol": "S",
-		"description": "Tueur mobile. Très grande mobilité et coups critiques dévastateurs.",
-		"max_hp": 18, "move_range": 5, "attack": 14, "attack_range": 1,
-		"crit_chance": 0.35, "behavior": "melee", "role": "melee",
+		"description": "Tueur mobile (UNIQUE). Mobilité extrême et coups critiques dévastateurs : un seul unique par équipe.",
+		"max_hp": 26, "move_range": 5, "attack": 17, "attack_range": 1,
+		"crit_chance": 0.45, "behavior": "melee", "role": "melee", "unique": true,
 		"actives": [
 			{"name": "Frappe de l'ombre", "type": "teleport_strike", "target": "enemy", "range": 5, "cooldown": 3,
 				"desc": "Se téléporte au contact d'un ennemi (jusqu'à 5 cases) et le frappe. Recharge : 3 tours."},
@@ -175,9 +175,9 @@ const CLASSES := {
 	},
 	"necromancien": {
 		"name": "Nécromancien", "color": Color(0.50, 0.15, 0.65), "symbol": "N",
-		"description": "Invocateur. Faible seul, redoutable avec ses squelettes (max 2 simultanés).",
-		"max_hp": 18, "move_range": 3, "attack": 6, "attack_range": 3,
-		"crit_chance": 0.05, "behavior": "kite", "role": "ranged",
+		"description": "Invocateur (UNIQUE). Faible seul, redoutable avec ses squelettes (max 2 simultanés) : un seul unique par équipe.",
+		"max_hp": 20, "move_range": 3, "attack": 6, "attack_range": 3,
+		"crit_chance": 0.05, "behavior": "kite", "role": "ranged", "unique": true,
 		"actives": [
 			{"name": "Invoquer mort-vivant", "type": "invoke",
 				"summon_classes": ["squelette_guerrier", "squelette_archer"],
@@ -196,7 +196,7 @@ const CLASSES := {
 	"squelette_guerrier": {
 		"name": "Squelette guerrier", "color": Color(0.78, 0.78, 0.72), "symbol": "x",
 		"description": "Mort-vivant de mêlée. Faible mais tient la ligne de front du Nécromancien.",
-		"max_hp": 10, "move_range": 3, "attack": 4, "attack_range": 1,
+		"max_hp": 18, "move_range": 3, "attack": 6, "attack_range": 1,
 		"crit_chance": 0.05, "behavior": "melee", "role": "melee",
 		"hidden": true,
 		"skills": [],
@@ -204,7 +204,7 @@ const CLASSES := {
 	"squelette_archer": {
 		"name": "Squelette archer", "color": Color(0.70, 0.74, 0.62), "symbol": "y",
 		"description": "Mort-vivant à distance. Très fragile, harcèle les cibles à 3 cases.",
-		"max_hp": 7, "move_range": 3, "attack": 3, "attack_range": 3,
+		"max_hp": 11, "move_range": 3, "attack": 6, "attack_range": 3,
 		"crit_chance": 0.05, "behavior": "kite", "role": "ranged",
 		"hidden": true,
 		"skills": [],
@@ -321,9 +321,9 @@ const CLASSES := {
 	},
 	"invocateur": {
 		"name": "Invocateur", "color": Color(0.30, 0.62, 0.72), "symbol": "I",
-		"description": "Maître des créatures. Faible seul, invoque un Golem (tank) et un Loup spectral (rapide). Permanent.",
-		"max_hp": 19, "move_range": 3, "attack": 6, "attack_range": 3,
-		"crit_chance": 0.05, "behavior": "kite", "role": "ranged",
+		"description": "Maître des créatures (UNIQUE). Invoque un Golem (tank) et un Loup spectral (rapide), permanents : un seul unique par équipe.",
+		"max_hp": 21, "move_range": 3, "attack": 6, "attack_range": 3,
+		"crit_chance": 0.05, "behavior": "kite", "role": "ranged", "unique": true,
 		"actives": [
 			{"name": "Invoquer créature", "type": "invoke",
 				"summon_classes": ["golem_pierre", "loup_spectral"],
@@ -342,7 +342,7 @@ const CLASSES := {
 	"golem_pierre": {
 		"name": "Golem de pierre", "color": Color(0.45, 0.42, 0.40), "symbol": "g",
 		"description": "Créature de l'Invocateur. Lente mais résistante, bloque le passage.",
-		"max_hp": 18, "move_range": 2, "attack": 4, "attack_range": 1,
+		"max_hp": 26, "move_range": 2, "attack": 5, "attack_range": 1,
 		"crit_chance": 0.0, "behavior": "melee", "role": "tank",
 		"hidden": true,
 		"skills": [],
@@ -350,9 +350,54 @@ const CLASSES := {
 	"loup_spectral": {
 		"name": "Loup spectral", "color": Color(0.40, 0.55, 0.62), "symbol": "w",
 		"description": "Créature de l'Invocateur. Très rapide, fond sur les cibles fragiles.",
-		"max_hp": 9, "move_range": 4, "attack": 6, "attack_range": 1,
+		"max_hp": 12, "move_range": 4, "attack": 8, "attack_range": 1,
 		"crit_chance": 0.10, "behavior": "melee", "role": "melee",
 		"hidden": true,
+		"skills": [],
+	},
+	"archere": {
+		"name": "Archère", "color": Color(0.15, 0.72, 0.58), "symbol": "Å",
+		"description": "Tireuse d'élite (UNIQUE). Reine de la distance : frappe très fort de loin et se repositionne hors de portée. Un seul unique par équipe.",
+		"max_hp": 26, "move_range": 4, "attack": 15, "attack_range": 5,
+		"crit_chance": 0.35, "behavior": "kite", "role": "ranged", "unique": true,
+		"actives": [
+			{"name": "Tir fatal", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.9, "range": 5, "cooldown": 3,
+				"desc": "Tir d'élite surpuissant (×1.9) à très longue portée. Recharge : 3 tours."},
+			{"name": "Pluie de flèches", "type": "cleave", "target": "enemy", "radius": 1, "dmg_mult": 1.0, "range": 5, "cooldown": 3,
+				"desc": "Salve qui s'abat sur une zone : touche la cible et tous les ennemis adjacents. Recharge : 3 tours."},
+			{"name": "Tir en retraite", "type": "retreat_shot", "target": "enemy", "range": 5, "retreat": 2, "cooldown": 3,
+				"desc": "Tire puis bondit de 2 cases en arrière : injouable au corps à corps. Recharge : 3 tours."},
+		],
+		"skills": [],
+	},
+	"barde": {
+		"name": "Barde", "color": Color(0.95, 0.75, 0.30), "symbol": "♪",
+		"description": "Soutien d'équipe (UNIQUE). Ses chants affectent TOUTE l'équipe (ou tous les ennemis) à la fois. Un seul unique par équipe.",
+		"max_hp": 24, "move_range": 3, "attack": 6, "attack_range": 3,
+		"crit_chance": 0.05, "behavior": "kite", "role": "healer", "unique": true,
+		"actives": [
+			{"name": "Chant de bravoure", "type": "team_buff", "target": "self", "buff": "force", "cooldown": 4,
+				"desc": "Galvanise TOUTE ton équipe : +50% de dégâts pendant 2 tours. Recharge : 4 tours."},
+			{"name": "Chant de garde", "type": "team_buff", "target": "self", "buff": "bouclier", "cooldown": 4,
+				"desc": "Protège TOUTE ton équipe : dégâts subis -50% pendant 2 tours. Recharge : 4 tours."},
+			{"name": "Note discordante", "type": "team_debuff", "target": "self", "buff": "affaiblissement", "cooldown": 4,
+				"desc": "Affaiblit TOUS les ennemis : -30% de dégâts pendant 2 tours. Recharge : 4 tours."},
+		],
+		"skills": [],
+	},
+	"duelliste": {
+		"name": "Duelliste", "color": Color(0.85, 0.18, 0.32), "symbol": "Đ",
+		"description": "Bretteur (UNIQUE). Contre automatiquement quiconque le frappe au corps à corps, et peut parer. Un seul unique par équipe.",
+		"max_hp": 32, "move_range": 4, "attack": 10, "attack_range": 1,
+		"crit_chance": 0.15, "behavior": "melee", "role": "melee", "unique": true,
+		"actives": [
+			{"name": "Posture de riposte", "type": "self_buff", "target": "self", "buff": "riposte", "cooldown": 3,
+				"desc": "Pendant 2 tours, contre-attaque automatiquement tout ennemi qui le frappe au corps à corps. Recharge : 3 tours."},
+			{"name": "Parade", "type": "self_buff", "target": "self", "buff": "parade", "cooldown": 3,
+				"desc": "Pare totalement la prochaine attaque reçue. Recharge : 3 tours."},
+			{"name": "Estocade", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.8, "range": 1, "cooldown": 3,
+				"desc": "Botte secrète : coup d'estoc dévastateur (×1.8) au corps à corps. Recharge : 3 tours."},
+		],
 		"skills": [],
 	},
 }
@@ -380,6 +425,9 @@ const BUFFS := {
 	"rage":          {"name": "Rage",            "duration": 2, "dmg_dealt_mult": 1.5, "dmg_taken_mult": 1.25},
 	"garde":         {"name": "Garde",           "duration": 2, "dmg_taken_mult": 0.4},
 	"vulnerabilite": {"name": "Vulnérabilité",   "duration": 2, "dmg_taken_mult": 1.35},
+	# Duelliste : riposte = contre-attaque auto au corps à corps ; parade = bloque la prochaine attaque.
+	"riposte":       {"name": "Riposte",         "duration": 2, "riposte": true},
+	"parade":        {"name": "Parade",          "duration": 2, "block_next": true},
 }
 
 # Terrain tactique (data-driven). Chaque type modifie dégâts ou déplacement.

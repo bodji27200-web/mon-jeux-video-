@@ -290,6 +290,21 @@ static func _rand_from(pool: Array) -> String:
 static func draft_pick(available: Array, ai_team: Array, player_team: Array, difficulty: String) -> String:
 	if available.is_empty():
 		return ""
+	# Règle : une seule classe unique par équipe. Si l'IA en a déjà une, on retire
+	# les uniques du pool de choix (elles restent draftables par le joueur).
+	var ai_has_unique := false
+	for c in ai_team:
+		if GameData.CLASSES[c].get("unique", false):
+			ai_has_unique = true
+			break
+	if ai_has_unique:
+		var filtered: Array = []
+		for cid in available:
+			if not GameData.CLASSES[cid].get("unique", false):
+				filtered.append(cid)
+		available = filtered
+		if available.is_empty():
+			return ""
 	if difficulty == "facile":
 		return available[randi() % available.size()]
 	# Classes disponibles regroupées par rôle (uniquement dans le pool restant).
@@ -526,10 +541,17 @@ static func _plan_skill(sk: Dictionary, unit: Node, enemies: Array, allies: Arra
 				return null
 			var binfo: Dictionary = GameData.BUFFS.get(str(sk.buff), {})
 			var offensive: bool = binfo.has("dmg_dealt_mult") and float(binfo.dmg_dealt_mult) > 1.0
+			var counter: bool = binfo.get("riposte", false) or binfo.get("block_next", false)
 			var defensive: bool = (binfo.has("dmg_taken_mult") and float(binfo.dmg_taken_mult) < 1.0) or binfo.has("heal_per_turn")
 			if offensive:
 				for e in enemies:
 					if grid.manhattan(from, e.grid_position) <= unit.action_range():
+						return from
+				return null
+			if counter:
+				# Riposte / parade : utile quand un ennemi est au contact (ou sur le point de l'être).
+				for e in enemies:
+					if grid.manhattan(from, e.grid_position) <= unit.action_range() + 1:
 						return from
 				return null
 			if defensive:
@@ -570,6 +592,37 @@ static func _plan_skill(sk: Dictionary, unit: Node, enemies: Array, allies: Arra
 					best_sc = score
 					best_d = e
 			return best_d.grid_position if best_d != null else null
+		"team_buff":
+			# Barde : chanter quand le combat est engagé et que le buff n'est pas déjà actif.
+			if _has_buff(unit, str(sk.buff)):
+				return null
+			for e in enemies:
+				if grid.manhattan(from, e.grid_position) <= 7:
+					return from
+			return null
+		"team_debuff":
+			# Barde : affaiblir tous les ennemis dès qu'ils sont engagés (au moins un non affecté).
+			for e in enemies:
+				if grid.manhattan(from, e.grid_position) <= 7 and not _has_buff(e, str(sk.buff)):
+					return from
+			return null
+		"retreat_shot":
+			# Archère : tirer sur la meilleure cible à portée, surtout si un ennemi approche.
+			var best_rs: Node = null
+			var best_rs_score := -INF
+			var threatened: bool = _nearest(from, enemies, grid) <= 2
+			for e in enemies:
+				if grid.manhattan(from, e.grid_position) > rng:
+					continue
+				var s := -float(e.hp)
+				if e.data.behavior == "heal":
+					s += 40.0
+				if threatened:
+					s += 30.0
+				if s > best_rs_score:
+					best_rs_score = s
+					best_rs = e
+			return best_rs.grid_position if best_rs != null else null
 	return null
 
 

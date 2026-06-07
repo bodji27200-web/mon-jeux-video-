@@ -156,6 +156,24 @@ Ordre de priorité (✅ = fait) :
     prend la première pertinente (actives rangées par priorité ; `_plan_skill`
     renvoie null si inutile → jamais de cast à vide).
 31. ✅ Ré-équilibrage roster complet (aucun outlier > 65 % en 1v1)
+32. ✅ **Classes UNIQUES** (`unique: true`) : classes « boss » volontairement
+    fortes (peuvent dépasser 65 %). **Max 1 unique par équipe** (joueur ET IA),
+    badge ★ + libellé doré dans le draft (`TeamSelect`), filtre dans
+    `TacticalAI.draft_pick`. Uniques : Nécromancien (~80 %), Invocateur (~80 %),
+    Assassin (~80 %), **Archère** (~60 %), **Barde**, **Duelliste**.
+33. ✅ **3 nouvelles classes** : **Archère** (sniper, portée 5, `retreat_shot`),
+    **Barde** (soutien, `team_buff`/`team_debuff` = chants sur TOUTE l'équipe ou
+    tous les ennemis), **Duelliste** (`riposte` + `parade`).
+34. ✅ **3 nouvelles mécaniques de combat** :
+    - `riposte` (buff) : contre-attaque auto au corps à corps (géré dans
+      `Battle._attack` / `SimTest._act`, paramètre `is_counter` anti-récursion).
+    - `parade` (buff `block_next`) : annule entièrement la prochaine attaque reçue
+      (consommé à l'usage, `_consume_parade`).
+    - `retreat_shot` (type) : tire puis recule de N cases (`Battle._retreat`).
+35. ✅ **Animations de compétences** (`SkillFX.gd`, instancié par `Battle._fx`) :
+    projectile qui traverse l'écran (tirs), coup de lame (mêlée), faisceau (tir
+    perforant / drain), nova/explosion (zone), halo (buff/debuff), téléportation.
+    100 % cosmétique (tween, auto-libéré), n'altère jamais l'état du combat.
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`
@@ -180,6 +198,12 @@ Ordre de priorité (✅ = fait) :
 - `immobilized` (buff) : `move_range()` renvoie 0 (Racines, durée 2 = 1 vrai tour).
 - `hidden: true` (classe) : exclue de la sélection joueur et de la compo IA
   (ex : squelette).
+- `unique: true` (classe) : classe « boss » ; max 1 par équipe (badge ★ dans le
+  draft, filtrée dans `draft_pick`).
+- `riposte` (buff) : contre-attaque auto au corps à corps ; `parade`
+  (`block_next`) : bloque la prochaine attaque (consommé).
+- `team_buff` / `team_debuff` (types) : applique un buff à toute l'équipe / un
+  debuff à tous les ennemis (Barde). `retreat_shot` : tire puis recule.
 
 ### Fichiers clés
 - `GameData.gd` (autoload) : dictionnaires CLASSES (stats + `role` + `active`),
@@ -191,8 +215,10 @@ Ordre de priorité (✅ = fait) :
 - `Battle.gd` (racine de `Main.tscn`) : orchestration, entrées joueur, victoire,
   exécution des compétences (`_use_skill`)
 - `AI.gd` (`TacticalAI`) : décisions de l'IA + composition d'équipe
-  (`compose_team`) + usage des compétences (`_plan_skill`)
-- `TeamSelect.gd/.tscn` : écran de préparation (scène de démarrage)
+  (`compose_team`) + draft (`draft_pick`, respecte « 1 unique max ») + usage des
+  compétences (`_plan_skill`)
+- `TeamSelect.gd/.tscn` : écran de préparation (draft alterné, badge ★ uniques)
+- `SkillFX.gd` : effet visuel d'attaque/compétence (cosmétique, auto-libéré)
 
 ### Ajouter du contenu (data-driven)
 - **Nouvelle classe** : une entrée dans `CLASSES` (avec `role` pour la compo IA,
