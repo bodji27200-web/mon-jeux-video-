@@ -196,7 +196,7 @@ const CLASSES := {
 	"squelette_guerrier": {
 		"name": "Squelette guerrier", "color": Color(0.78, 0.78, 0.72), "symbol": "x",
 		"description": "Mort-vivant de mêlée. Faible mais tient la ligne de front du Nécromancien.",
-		"max_hp": 18, "move_range": 3, "attack": 6, "attack_range": 1,
+		"max_hp": 18, "move_range": 3, "attack": 7, "attack_range": 1,
 		"crit_chance": 0.05, "behavior": "melee", "role": "melee",
 		"hidden": true,
 		"skills": [],
@@ -350,7 +350,7 @@ const CLASSES := {
 	"loup_spectral": {
 		"name": "Loup spectral", "color": Color(0.40, 0.55, 0.62), "symbol": "w",
 		"description": "Créature de l'Invocateur. Très rapide, fond sur les cibles fragiles.",
-		"max_hp": 12, "move_range": 4, "attack": 8, "attack_range": 1,
+		"max_hp": 12, "move_range": 4, "attack": 9, "attack_range": 1,
 		"crit_chance": 0.10, "behavior": "melee", "role": "melee",
 		"hidden": true,
 		"skills": [],
@@ -358,7 +358,7 @@ const CLASSES := {
 	"archere": {
 		"name": "Archère", "color": Color(0.15, 0.72, 0.58), "symbol": "Å",
 		"description": "Tireuse d'élite (UNIQUE). Reine de la distance : frappe très fort de loin et se repositionne hors de portée. Un seul unique par équipe.",
-		"max_hp": 24, "move_range": 4, "attack": 13, "attack_range": 5,
+		"max_hp": 24, "move_range": 4, "attack": 11, "attack_range": 5,
 		"crit_chance": 0.35, "behavior": "kite", "role": "ranged", "unique": true,
 		"actives": [
 			{"name": "Tir fatal", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.9, "range": 5, "cooldown": 3,
