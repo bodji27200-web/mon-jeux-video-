@@ -64,8 +64,20 @@ static func decide(unit: Node, grid: Node, units: Array) -> Dictionary:
 				best_score = s
 				best = cell
 
+	# Compétence active : décider si (et où) l'utiliser ce tour-ci.
+	var skill_cell = null
+	if not mistake and unit.skill_ready():
+		var sk: Dictionary = unit.data.active
+		if sk.type == "teleport_strike":
+			# La téléportation remplace le déplacement normal.
+			skill_cell = _plan_skill(unit, enemies, allies, grid, unit.grid_position)
+			if skill_cell != null:
+				best = unit.grid_position
+		else:
+			skill_cell = _plan_skill(unit, enemies, allies, grid, best)
+
 	var tgt: Node = target if (target == unit or grid.manhattan(best, target.grid_position) <= rng) else null
-	return {"move": best, "target": tgt}
+	return {"move": best, "target": tgt, "skill_cell": skill_cell}
 
 
 # Dégâts estimés (pour repérer les cibles que l'on peut achever).
@@ -234,3 +246,65 @@ static func _counter_damage_pool(groups: Dictionary, player_team: Array) -> Arra
 
 static func _rand_from(pool: Array) -> String:
 	return pool[randi() % pool.size()] if not pool.is_empty() else ""
+
+
+# --- Décision d'usage des compétences actives ---
+# Renvoie la case à cibler si la compétence vaut le coup depuis `from`, sinon null.
+
+static func _plan_skill(unit: Node, enemies: Array, allies: Array, grid: Node, from: Vector2i):
+	var sk: Dictionary = unit.data.active
+	var rng: int = int(sk.range)
+	match sk.type:
+		"shield_ally":
+			# Protéger l'allié le plus menacé à portée (et pas déjà protégé).
+			var best_a: Node = null
+			var best_ratio := 0.6  # seulement si vraiment blessé
+			for a in allies:
+				if grid.manhattan(from, a.grid_position) > rng or _has_buff(a, "bouclier"):
+					continue
+				var ratio := float(a.hp) / float(a.data.max_hp)
+				if ratio < best_ratio:
+					best_ratio = ratio
+					best_a = a
+			return best_a.grid_position if best_a != null else null
+		"teleport_strike":
+			# Foncer sur la meilleure cible à portée qui n'est pas déjà au contact.
+			var best_e: Node = null
+			var best_score := -INF
+			for e in enemies:
+				var d: int = grid.manhattan(from, e.grid_position)
+				if d > rng or d <= 1:
+					continue
+				var s := -float(e.hp)
+				if e.data.behavior == "heal":
+					s += 60.0
+				elif e.data.behavior == "kite":
+					s += 30.0
+				if s > best_score:
+					best_score = s
+					best_e = e
+			return best_e.grid_position if best_e != null else null
+		"frost_nova":
+			# Viser le point qui gèle le plus d'ennemis (au moins 2).
+			var radius: int = int(sk.get("radius", 1))
+			var best_cell = null
+			var best_cnt := 1
+			for e in enemies:
+				if grid.manhattan(from, e.grid_position) > rng:
+					continue
+				var cnt := 0
+				for o in enemies:
+					if grid.manhattan(o.grid_position, e.grid_position) <= radius:
+						cnt += 1
+				if cnt > best_cnt:
+					best_cnt = cnt
+					best_cell = e.grid_position
+			return best_cell
+	return null
+
+
+static func _has_buff(u: Node, id: String) -> bool:
+	for b in u.buffs:
+		if b.get("id", "") == id:
+			return true
+	return false

@@ -11,9 +11,12 @@ const CLASSES := {
 		"description": "Mur défensif. Beaucoup de PV, encaisse les coups en première ligne.",
 		"max_hp": 42, "move_range": 3, "attack": 8, "attack_range": 1,
 		"crit_chance": 0.05, "behavior": "melee", "role": "tank",
+		"active": {"name": "Protection", "type": "shield_ally", "target": "ally", "range": 2, "cooldown": 3,
+			"desc": "Donne un bouclier (dégâts réduits de moitié) à un allié à 2 cases."},
 		"skills": [
 			{"name": "Frappe", "description": "Attaque de mêlée de base.", "effect": "Inflige des dégâts au corps à corps.", "damage": 8, "range": 1},
 			{"name": "Robustesse", "description": "PV très élevés (passif).", "effect": "Encaisse les dégâts pour protéger l'équipe."},
+			{"name": "Protection (compétence)", "description": "Bouclier sur un allié.", "effect": "Réduit de moitié les dégâts subis par un allié pendant 2 tours. Recharge : 3 tours."},
 		],
 	},
 	"archer": {
@@ -31,9 +34,12 @@ const CLASSES := {
 		"description": "Tueur mobile. Très grande mobilité et coups critiques dévastateurs.",
 		"max_hp": 18, "move_range": 5, "attack": 14, "attack_range": 1,
 		"crit_chance": 0.35, "behavior": "melee", "role": "melee",
+		"active": {"name": "Frappe de l'ombre", "type": "teleport_strike", "target": "enemy", "range": 5, "cooldown": 3,
+			"desc": "Se téléporte au contact d'un ennemi (jusqu'à 5 cases) et le frappe."},
 		"skills": [
 			{"name": "Lame rapide", "description": "Attaque de mêlée puissante.", "effect": "Inflige de gros dégâts au corps à corps.", "damage": 14, "range": 1},
 			{"name": "Coups critiques", "description": "35% de chances de coup critique.", "effect": "Double les dégâts de l'attaque."},
+			{"name": "Frappe de l'ombre (compétence)", "description": "Téléportation offensive.", "effect": "Se téléporte au contact d'un ennemi à 5 cases puis l'attaque. Recharge : 3 tours."},
 		],
 	},
 	"mage": {
@@ -81,9 +87,12 @@ const CLASSES := {
 		"description": "Contrôle. Ralentit ses cibles à distance pour les empêcher de fuir ou d'approcher.",
 		"max_hp": 21, "move_range": 3, "attack": 9, "attack_range": 3,
 		"crit_chance": 0.10, "behavior": "kite", "on_hit": "gel", "role": "ranged",
+		"active": {"name": "Nova de givre", "type": "frost_nova", "target": "enemy", "range": 3, "radius": 1, "cooldown": 4,
+			"desc": "Gèle tous les ennemis autour d'une cible (jusqu'à 3 cases)."},
 		"skills": [
 			{"name": "Éclat de givre", "description": "Attaque de glace à distance.", "effect": "Inflige des dégâts à distance.", "damage": 9, "range": 3},
 			{"name": "Gel", "description": "Chaque tir ralentit la cible.", "effect": "Applique Gel : -2 déplacement pendant 2 tours.", "range": 3},
+			{"name": "Nova de givre (compétence)", "description": "Gel de zone.", "effect": "Ralentit tous les ennemis autour d'une cible. Recharge : 4 tours."},
 		],
 	},
 	"lancier": {

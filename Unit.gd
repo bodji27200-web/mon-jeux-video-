@@ -14,6 +14,7 @@ var data: Dictionary = {}
 var hp := 0
 var has_moved := false
 var has_acted := false
+var skill_cd := 0  # tours restants avant de pouvoir réutiliser la compétence
 var buffs: Array = []  # buffs/debuffs actifs (étape 8)
 var _active := false
 
@@ -69,6 +70,22 @@ func set_active(active: bool) -> void:
 func reset_turn() -> void:
 	has_moved = false
 	has_acted = false
+	if skill_cd > 0:  # la compétence recharge au fil des tours de l'unité
+		skill_cd -= 1
+
+
+# --- Compétence active (optionnelle, définie dans GameData via "active") ---
+
+func has_active() -> bool:
+	return data.has("active")
+
+
+func skill_ready() -> bool:
+	return has_active() and skill_cd <= 0
+
+
+func start_skill_cooldown() -> void:
+	skill_cd = int(data.active.cooldown)
 
 
 func take_damage(amount: int, is_crit := false) -> void:

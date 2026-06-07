@@ -6,17 +6,19 @@ extends Node2D
 @onready var turn_manager: Node = $TurnManager
 @onready var end_label: Label = $UI/EndLabel
 @onready var replay_button: Button = $UI/RejouerButton
+@onready var skill_button: Button = $UI/SkillButton
 
 const UNIT_SCENE := preload("res://Unit.tscn")
 
 var active_unit: Node = null
-var phase := "idle"  # "move" puis "attack" pendant le tour du joueur
+var phase := "idle"  # "move", "attack" puis éventuellement "skill" (joueur)
 var _finished := false
 
 
 func _ready() -> void:
 	_spawn_units()
 	replay_button.pressed.connect(_on_replay)
+	skill_button.pressed.connect(_on_skill_button)
 	turn_manager.turn_started.connect(_on_turn_started)
 	turn_manager.start()
 
@@ -62,19 +64,32 @@ func _show_moves(unit: Node) -> void:
 	grid.move_cells = grid.get_reachable_cells(unit.grid_position, unit.move_range(), _occupied(unit))
 	grid.target_cells = []
 	grid.heal_cells = []
+	grid.skill_cells = []
 	grid.queue_redraw()
 
 
 func _enter_action_phase() -> void:
 	phase = "attack"
 	grid.move_cells = []
+	grid.skill_cells = []
 	if _is_healer(active_unit):
 		grid.heal_cells = _action_targets(active_unit)
 		grid.target_cells = []
 	else:
 		grid.target_cells = _action_targets(active_unit)
 		grid.heal_cells = []
+	_refresh_skill_button()
 	grid.queue_redraw()
+
+
+# Compétence : bouton visible seulement si l'unité du joueur en a une prête.
+func _refresh_skill_button() -> void:
+	var ready: bool = phase in ["attack", "skill"] and active_unit != null \
+			and active_unit.is_player() and active_unit.skill_ready()
+	skill_button.visible = ready
+	if ready:
+		var sk: Dictionary = active_unit.data.active
+		skill_button.text = "Annuler" if phase == "skill" else "Compétence : " + str(sk.name)
 
 
 func _ai_take_turn(unit: Node) -> void:
@@ -83,11 +98,33 @@ func _ai_take_turn(unit: Node) -> void:
 	if plan.move != unit.grid_position:
 		unit.move_to(plan.move)
 		await get_tree().create_timer(0.35).timeout
-	if plan.target != null and plan.target.is_alive() \
+	# L'IA utilise sa compétence si elle l'a jugée utile, sinon attaque normale.
+	if plan.get("skill_cell") != null and unit.skill_ready():
+		_use_skill(unit, plan.skill_cell)
+	elif plan.target != null and plan.target.is_alive() \
 			and grid.manhattan(unit.grid_position, plan.target.grid_position) <= unit.action_range():
 		_perform_action(unit, plan.target)
 	await get_tree().create_timer(0.2).timeout
 	_end_turn()
+
+
+# Le joueur (dé)sélectionne le mode compétence pendant la phase d'action.
+func _on_skill_button() -> void:
+	if active_unit == null or not active_unit.is_player():
+		return
+	if phase == "attack":
+		_enter_skill_phase()
+	elif phase == "skill":
+		_enter_action_phase()  # annuler -> retour à l'attaque
+
+
+func _enter_skill_phase() -> void:
+	phase = "skill"
+	grid.target_cells = []
+	grid.heal_cells = []
+	grid.skill_cells = _skill_targets(active_unit)
+	_refresh_skill_button()
+	grid.queue_redraw()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -111,6 +148,9 @@ func _handle_click(cell: Vector2i) -> void:
 		if target:
 			_perform_action(active_unit, target)
 			_end_turn()
+	elif phase == "skill" and cell in grid.skill_cells:
+		_use_skill(active_unit, cell)
+		_end_turn()
 
 
 # Soin si soigneur, sinon attaque (avec coup critique éventuel).
@@ -118,23 +158,29 @@ func _perform_action(unit: Node, target: Node) -> void:
 	if _is_healer(unit):
 		target.heal(int(unit.data.heal))
 	else:
-		var dmg: float = unit.data.attack
-		var is_crit: bool = randf() < unit.data.crit_chance
-		if is_crit:
-			dmg *= 2.0
-		dmg *= unit.damage_dealt_mult() * target.damage_taken_mult()
-		dmg *= _difficulty_damage_mult(unit)
-		target.take_damage(int(round(dmg)), is_crit)
-		# Certaines classes infligent un debuff au contact.
-		if unit.data.has("on_hit") and target.is_alive():
-			target.add_buff(unit.data.on_hit)
+		_attack(unit, target)
 	unit.has_acted = true
+
+
+# Attaque de base : dégâts, coup critique, multiplicateurs, debuff au contact.
+func _attack(unit: Node, target: Node) -> void:
+	var dmg: float = unit.data.attack
+	var is_crit: bool = randf() < unit.data.crit_chance
+	if is_crit:
+		dmg *= 2.0
+	dmg *= unit.damage_dealt_mult() * target.damage_taken_mult()
+	dmg *= _difficulty_damage_mult(unit)
+	target.take_damage(int(round(dmg)), is_crit)
+	if unit.data.has("on_hit") and target.is_alive():
+		target.add_buff(unit.data.on_hit)
 
 
 func _end_turn() -> void:
 	grid.move_cells = []
 	grid.target_cells = []
 	grid.heal_cells = []
+	grid.skill_cells = []
+	skill_button.visible = false
 	grid.queue_redraw()
 	phase = "idle"
 	if _check_end():
@@ -162,6 +208,61 @@ func _check_end() -> bool:
 		replay_button.visible = true
 		return true
 	return false
+
+
+# --- Compétences actives ---
+
+# Cases ciblables par la compétence de l'unité (alliés ou ennemis à portée).
+func _skill_targets(unit: Node) -> Array:
+	var cells: Array = []
+	if not unit.skill_ready():
+		return cells
+	var sk: Dictionary = unit.data.active
+	for u in get_tree().get_nodes_in_group("units"):
+		if not u.is_alive() or u == unit:
+			continue
+		if grid.manhattan(unit.grid_position, u.grid_position) > int(sk.range):
+			continue
+		if sk.target == "ally" and u.team == unit.team:
+			cells.append(u.grid_position)
+		elif sk.target == "enemy" and u.team != unit.team:
+			cells.append(u.grid_position)
+	return cells
+
+
+# Applique l'effet de la compétence selon son type (data-driven, extensible).
+func _use_skill(caster: Node, cell: Vector2i) -> void:
+	var sk: Dictionary = caster.data.active
+	match sk.type:
+		"shield_ally":
+			var ally := _unit_at(cell)
+			if ally:
+				ally.add_buff("bouclier")
+		"teleport_strike":
+			var enemy := _unit_at(cell)
+			if enemy:
+				var dest = _free_adjacent(cell, caster)
+				if dest != null:
+					caster.move_to(dest)
+				_attack(caster, enemy)
+		"frost_nova":
+			var radius: int = int(sk.get("radius", 1))
+			for u in get_tree().get_nodes_in_group("units"):
+				if u.is_alive() and u.team != caster.team \
+						and grid.manhattan(u.grid_position, cell) <= radius:
+					u.add_buff("gel")
+	caster.start_skill_cooldown()
+	caster.has_acted = true
+
+
+# Première case libre adjacente à une cible (pour la téléportation).
+func _free_adjacent(cell: Vector2i, caster: Node):
+	var occ := _occupied(caster)
+	for dir in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var c: Vector2i = cell + dir
+		if grid.is_inside(c) and not occ.has(c):
+			return c
+	return null
 
 
 # --- Utilitaires ---
