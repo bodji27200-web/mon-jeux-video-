@@ -101,7 +101,7 @@ static func decide(unit: Node, grid: Node, units: Array) -> Dictionary:
 		var all_pool: Array = allies.duplicate()
 		all_pool.append(unit)
 		for a in all_pool:
-			var d := 0 if a == unit else grid.manhattan(best, a.grid_position)
+			var d: int = 0 if a == unit else grid.manhattan(best, a.grid_position)
 			if d <= heal_rng:
 				var ratio := float(a.hp) / float(a.data.max_hp)
 				if ratio < best_ratio and ratio < 1.0:
