@@ -23,7 +23,7 @@ const SPRITES := {
 	"archere":         Rect2(128, 16, 16, 16),   # elf_f
 	"mage":            Rect2(128, 170, 16, 22),  # wizzard_m
 	"soigneur":        Rect2(128, 132, 16, 28),  # wizzard_f
-	"assassin":        Rect2(128, 299, 16, 24),  # hero (zone après alchimiste)
+	"assassin":        Rect2(432, 240, 16, 13),  # créature sombre (tight bounds)
 	"duelliste":       Rect2(128, 205, 16, 19),  # lizard_f
 	"berserker":       Rect2(368, 204, 16, 20),  # orc_warrior
 	"lancier":         Rect2(368, 172, 16, 20),  # masked_orc
@@ -36,7 +36,7 @@ const SPRITES := {
 	"chasseur":        Rect2(128, 325, 16, 26),  # guerrier vert = rôle chasseur/rôdeur
 	"pretreguerrier":  Rect2(128, 237, 16, 19),  # lizard_m
 	"invocateur":      Rect2(16, 364, 32, 36),   # big_demon
-	"barde":           Rect2(128, 351, 16, 24),  # hero (zone après chasseur)
+	"barde":           Rect2(128, 372, 16, 28),  # hero dernier slot (tight bounds)
 	"squelette_guerrier": Rect2(368, 80, 16, 16),  # skelet
 	"squelette_archer":   Rect2(368, 80, 16, 16),  # skelet
 	"golem_pierre":    Rect2(16, 320, 32, 32),   # ogre

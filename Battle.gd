@@ -108,7 +108,7 @@ func _build_skill_bar() -> void:
 	# Panneau d'info instantané (s'affiche au survol, pas de tooltip lent).
 	_skill_info_panel = PanelContainer.new()
 	_skill_info_panel.custom_minimum_size = Vector2(240, 0)
-	_skill_info_panel.position = Vector2(x0 - 10, y - 120)
+	_skill_info_panel.position = Vector2(832 - 252, y - 120)  # ancré à droite, pas de débord
 	_skill_info_panel.visible = false
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 4)
