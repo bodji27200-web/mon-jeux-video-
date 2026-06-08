@@ -23,7 +23,7 @@ const SPRITES := {
 	"archere":         Rect2(128, 16, 16, 16),   # elf_f
 	"mage":            Rect2(128, 170, 16, 22),  # wizzard_m
 	"soigneur":        Rect2(128, 132, 16, 28),  # wizzard_f
-	"assassin":        Rect2(128, 360, 16, 40),  # hero_11 (cape sombre, bien mieux que wogol)
+	# assassin : fallback vectoriel (sprite trouvé = mauvais perso, wrong atlas)
 	"duelliste":       Rect2(128, 205, 16, 19),  # lizard_f
 	"berserker":       Rect2(368, 204, 16, 20),  # orc_warrior
 	"lancier":         Rect2(368, 172, 16, 20),  # masked_orc
@@ -31,12 +31,12 @@ const SPRITES := {
 	"mage_glace":      Rect2(368, 236, 16, 20),  # orc_shaman
 	"necromancien":    Rect2(366, 270, 16, 20),  # necromancer
 	"envouteur":       Rect2(368, 48, 16, 16),   # imp
-	"druide":          Rect2(128, 434, 16, 28),  # hero_12 : blonde en vert = nature parfaite
-	"alchimiste":      Rect2(128, 264, 16, 36),  # hero_9 : gnome/nain gris = inventeur
-	# chasseur : supprimé (goblin ne convient pas) → fallback vectoriel avec arc
+	"druide":          Rect2(128, 448, 16, 13),  # hero_12 recadré (tight bounds)
+	"alchimiste":      Rect2(128, 271, 16, 28),  # hero_9 recadré (tight bounds)
+	"chasseur":        Rect2(128, 325, 16, 26),  # guerrier vert = rôle chasseur/rôdeur
 	"pretreguerrier":  Rect2(128, 237, 16, 19),  # lizard_m
 	"invocateur":      Rect2(16, 364, 32, 36),   # big_demon
-	"barde":           Rect2(368, 360, 16, 20),  # hero nouveau : blonde/bleu (bien mieux que zombie)
+	# barde : fallback vectoriel (sprite trouvé = tête partielle, wrong atlas)
 	"squelette_guerrier": Rect2(368, 80, 16, 16),  # skelet
 	"squelette_archer":   Rect2(368, 80, 16, 16),  # skelet
 	"golem_pierre":    Rect2(16, 320, 32, 32),   # ogre
@@ -351,37 +351,41 @@ func _draw() -> void:
 		hp_col = Color(0.92, 0.75, 0.20)
 	draw_rect(Rect2(-RADIUS, bar_y, RADIUS * 2.0 * ratio, 5), hp_col)
 
-	# Pastilles des buffs/debuffs actifs.
+	# Pastilles des buffs/debuffs actifs (icône + couleur codée).
 	var bx := -RADIUS
 	for b in buffs:
 		var c := Color(0.7, 0.7, 0.7)
+		var icon := "•"
 		if b.has("dmg_per_turn"):
-			c = Color(0.85, 0.20, 0.20)
+			c = Color(0.85, 0.20, 0.20);    icon = "☠"
 		elif b.has("heal_per_turn"):
-			c = Color(0.20, 0.85, 0.30)
+			c = Color(0.20, 0.85, 0.30);    icon = "♥"
 		elif b.has("dmg_taken_mult"):
-			c = Color(0.30, 0.50, 1.00) if float(b.dmg_taken_mult) < 1.0 else Color(0.80, 0.15, 0.15)
+			if float(b.dmg_taken_mult) < 1.0:
+				c = Color(0.30, 0.50, 1.00); icon = "⊕"
+			else:
+				c = Color(0.80, 0.15, 0.15); icon = "△"
 		elif b.has("dmg_dealt_mult"):
-			c = Color(0.95, 0.60, 0.20) if float(b.dmg_dealt_mult) >= 1.0 else Color(0.70, 0.20, 0.70)
+			if float(b.dmg_dealt_mult) >= 1.0:
+				c = Color(0.95, 0.60, 0.20); icon = "▲"
+			else:
+				c = Color(0.70, 0.20, 0.70); icon = "▼"
 		elif b.has("move_penalty"):
-			c = Color(0.55, 0.85, 1.00)
+			c = Color(0.55, 0.85, 1.00);    icon = "❄"
 		elif b.get("immobilized", false):
-			c = Color(0.20, 0.82, 0.20)
+			c = Color(0.20, 0.82, 0.20);    icon = "✦"
 		elif b.get("marked", false):
-			c = Color(0.95, 0.80, 0.10)
+			c = Color(0.95, 0.80, 0.10);    icon = "★"
 		elif b.get("riposte", false):
-			c = Color(0.95, 0.45, 0.20)
+			c = Color(0.95, 0.45, 0.20);    icon = "↺"
 		elif b.get("block_next", false):
-			c = Color(0.45, 0.85, 1.00)
-		var dot_pos := Vector2(bx + 4.0, 20.0)
-		draw_circle(dot_pos, 5.0, c)
-		# Durée restante de l'effet, au centre de la pastille.
-		var dur := int(b.get("duration", 0))
-		if dur > 0:
-			var dfont := ThemeDB.fallback_font
-			draw_string(dfont, dot_pos + Vector2(-3.0, 3.5), str(dur),
-					HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(0, 0, 0, 0.9))
-		bx += 13.0
+			c = Color(0.45, 0.85, 1.00);    icon = "◈"
+		var dot_pos := Vector2(bx + 5.0, 20.0)
+		draw_circle(dot_pos, 6.5, c)
+		var dfont := ThemeDB.fallback_font
+		draw_string(dfont, dot_pos + Vector2(-5.0, 4.5), icon,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0, 0, 0, 0.92))
+		bx += 16.0
 
 
 # Dessine le sprite du personnage (frame idle courante), mis à l'échelle pour

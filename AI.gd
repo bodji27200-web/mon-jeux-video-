@@ -106,18 +106,20 @@ static func _pick_enemy(unit: Node, enemies: Array) -> Node:
 	for e in enemies:
 		var s := -float(e.hp)
 		if float(e.hp) <= est:
-			s += 500.0                    # achevable ce tour-ci
+			s += 800.0                    # achevable ce tour-ci : priorité absolue
+		elif float(e.hp) <= est * 1.5:
+			s += 200.0                    # presque achevable : fortement préféré
 		if _has_buff(e, "parade"):
 			s -= 180.0                    # cible en parade : la prochaine attaque sera bloquée
 		if e.data.behavior == "heal":
-			s += 60.0                     # tuer le soigneur en priorité
+			s += 80.0                     # tuer le soigneur en priorité
 		elif e.data.behavior == "kite":
-			s += 30.0                     # puis les tireurs
-		# Hardcore/Difficile : tenir compte de la dangerosité de l'ennemi
+			s += 40.0                     # puis les tireurs
+		if e.get("is_summon"):
+			s -= 60.0                     # éviter les invocations, focus les vraies unités
 		if hard:
-			var threat_bonus := float(e.data.attack) * 1.5
-			if e.get("summoner") == null and not e.get("is_summon"):
-				s += threat_bonus * 0.5   # éviter les cibles invoquées pour focus les vraies
+			# Difficile/Hardcore : focus la cible la plus dangereuse parmi les faibles
+			s += float(e.data.attack) * 0.8
 		if s > best_score:
 			best_score = s
 			best = e
@@ -136,24 +138,25 @@ static func _pick_ally(allies: Array) -> Node:
 
 
 static func _cell_score(unit: Node, cell: Vector2i, target: Node, enemies: Array, allies: Array, grid: Node, kite: bool, rng: int) -> float:
-	# Le soigneur peut toujours se cibler lui-même, où qu'il se déplace.
 	var in_range: bool = target == unit or grid.manhattan(cell, target.grid_position) <= rng
 	var score := 1000.0 if in_range else 0.0
 	var near := _nearest(cell, enemies, grid)
 	if kite:
-		score += near * 4.0           # rester loin
+		score += near * 4.0
 		if near <= 1:
-			score -= 200.0            # ne pas finir collé
+			score -= 200.0
 	else:
-		score -= grid.manhattan(cell, target.grid_position) * 4.0  # se rapprocher
-		for a in allies:              # protéger un allié blessé adjacent
+		score -= grid.manhattan(cell, target.grid_position) * 6.0  # approche plus agressive
+		for a in allies:
 			if a.hp < int(a.data.max_hp) and grid.manhattan(cell, a.grid_position) == 1:
 				score += 25.0
 				break
-	# IA avancée : éviter les cases dangereuses, d'autant plus si l'unité est
-	# fragile ou déjà blessée (les unités se replient au lieu de se sacrifier).
+	# Bonus kill : ignorer la menace pour finir une cible à portée.
+	if in_range and float(target.hp) <= _est_damage(unit) * 1.2:
+		score += 500.0
+	# Moins de couardise : les unités saines s'engagent franchement.
 	var fragility := 1.0 - float(unit.hp) / float(unit.data.max_hp)
-	score -= _threat(cell, enemies, grid) * (3.0 + fragility * 12.0)
+	score -= _threat(cell, enemies, grid) * (2.0 + fragility * 8.0)
 	return score
 
 
@@ -500,8 +503,7 @@ static func _plan_skill(sk: Dictionary, unit: Node, enemies: Array, allies: Arra
 			# Invoquer si une case adjacente est libre (vérifié dans _use_skill).
 			return from
 		"heavy_strike":
-			# Gros coup gardé pour achever une cible ou frapper une cible prioritaire
-			# (soigneur/tireur) — sinon on économise le cooldown.
+			# Gros coup : achever / soigneur/tireur / entamer fort une cible dangereuse.
 			var best_e: Node = null
 			var best_score := -INF
 			for e in enemies:
@@ -509,16 +511,18 @@ static func _plan_skill(sk: Dictionary, unit: Node, enemies: Array, allies: Arra
 					continue
 				var score := -float(e.hp)
 				if e.data.behavior == "heal":
-					score += 50.0
+					score += 80.0
 				elif e.data.behavior == "kite":
-					score += 25.0
+					score += 40.0
 				if score > best_score:
 					best_score = score
 					best_e = e
 			if best_e == null:
 				return null
-			var killable: bool = float(best_e.hp) <= _est_damage(unit) * float(sk.get("dmg_mult", 1.8))
-			if killable or best_e.data.behavior in ["heal", "kite"]:
+			var mult: float = float(sk.get("dmg_mult", 1.8))
+			var killable: bool = float(best_e.hp) <= _est_damage(unit) * mult
+			var big_hit: bool = float(best_e.hp) <= _est_damage(unit) * mult * 2.5
+			if killable or big_hit or best_e.data.behavior in ["heal", "kite"]:
 				return best_e.grid_position
 			return null
 		"cleave":

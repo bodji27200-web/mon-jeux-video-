@@ -436,7 +436,7 @@ const TERRAIN := {
 	             "ranged_dmg_mult": 0.65},
 	"ruines":   {"name": "Ruines",   "color": Color(0.40, 0.38, 0.28, 0.48), "symbol": "R",
 	             "dmg_taken_mult": 0.80},
-	"marecage": {"name": "Marécage", "color": Color(0.18, 0.32, 0.12, 0.52), "symbol": "M",
+	"marecage": {"name": "Marécage", "color": Color(0.20, 0.48, 0.14, 0.72), "symbol": "M",
 	             "move_penalty": 2},
 }
 
