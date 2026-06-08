@@ -224,6 +224,18 @@ Ordre de priorité (✅ = fait) :
     et ralentissement) → le Soigneur/Druide IA purifient correctement ; l'IA
     **déprioritise une cible en parade** (`block_next`) pour ne pas gâcher son
     attaque (`AI._pick_enemy`).
+45. ✅ **Lot 🅰 — bugs bloquants de confort** :
+    - **Plein écran** (`project.godot`) : fenêtre démarrée maximisée
+      (`window/size/mode=2`) + mise à l'échelle (`stretch/mode=canvas_items`,
+      `aspect=keep`) → fini le mini-cadre, le jeu remplit l'écran en gardant ses
+      proportions (base 832×704 conservée, donc UI du combat non décalée).
+    - **Bouton COMBAT toujours atteignable** (`TeamSelect.gd`) : tout l'écran de
+      draft est dans un `ScrollContainer` (défilement vertical) → plus besoin de
+      « contourner » pour cliquer COMBAT.
+    - **Compétence sans bouger d'abord** (`Battle.gd`) : la barre de compétences
+      est active dès la phase « déplacement ». Sélection depuis `move` mémorisée
+      dans `_skill_return_phase` ; annuler (reclic) ramène à la phase d'avant
+      (déplacement ou attaque).
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`

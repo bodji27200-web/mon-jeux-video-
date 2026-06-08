@@ -32,6 +32,7 @@ var phase := "idle"  # "move", "attack" puis éventuellement "skill" (joueur)
 var _finished := false
 var skill_slots: Array = []  # boutons de la barre de compétences
 var selected_skill := -1  # index de la compétence sélectionnée (phase "skill")
+var _skill_return_phase := "attack"  # phase à restaurer si on annule une compétence
 var end_turn_btn: Button  # bouton "Fin de tour" (visible au tour du joueur)
 
 # Statistiques de partie (affichées sur l'écran de fin).
@@ -186,7 +187,8 @@ func _refresh_skill_bar() -> void:
 			else:
 				b.text = icon
 			b.tooltip_text = str(sk.name) + "\n" + str(sk.get("desc", ""))
-			var usable: bool = phase in ["attack", "skill"] and active_unit.skill_ready(i)
+			# Utilisable dès le déplacement : plus besoin de bouger avant de lancer une compétence.
+			var usable: bool = phase in ["move", "attack", "skill"] and active_unit.skill_ready(i)
 			b.disabled = not usable
 			b.modulate = Color(1.0, 1.0, 0.4) if (phase == "skill" and selected_skill == i) else Color(1, 1, 1)
 		else:
@@ -218,26 +220,35 @@ func _ai_take_turn(unit: Node) -> void:
 	_end_turn()
 
 
-# Clic sur un carré : sélectionne la compétence correspondante (si elle existe).
-# Recliquer le carré déjà sélectionné annule (retour à l'attaque normale).
+# Clic sur un carré : sélectionne la compétence correspondante (si elle existe),
+# y compris dès le déplacement. Recliquer le carré sélectionné annule (retour à la
+# phase d'avant : déplacement ou attaque).
 func _on_skill_slot(index: int) -> void:
 	if active_unit == null or not active_unit.is_player():
 		return
 	if index >= active_unit.get_actives().size():
 		return  # carré vide
-	if phase == "attack":
-		selected_skill = index
-		_enter_skill_phase()
-	elif phase == "skill":
+	if phase == "skill":
 		if selected_skill == index:
-			_enter_action_phase()  # reclic -> annule
+			# Reclic -> annule, retour à la phase d'avant (déplacement ou attaque).
+			if _skill_return_phase == "move":
+				phase = "move"
+				_show_moves(active_unit)
+			else:
+				_enter_action_phase()
 		else:
 			selected_skill = index  # changer de compétence sélectionnée
 			_enter_skill_phase()
+	else:
+		# Sélection depuis "move" (sans avoir bougé) ou "attack".
+		_skill_return_phase = phase
+		selected_skill = index
+		_enter_skill_phase()
 
 
 func _enter_skill_phase() -> void:
 	phase = "skill"
+	grid.move_cells = []  # masque les cases de déplacement (utile si on vient de "move")
 	grid.target_cells = []
 	grid.heal_cells = []
 	grid.skill_cells = _skill_targets(active_unit, selected_skill)
