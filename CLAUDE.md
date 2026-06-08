@@ -236,6 +236,17 @@ Ordre de priorité (✅ = fait) :
       est active dès la phase « déplacement ». Sélection depuis `move` mémorisée
       dans `_skill_return_phase` ; annuler (reclic) ramène à la phase d'avant
       (déplacement ou attaque).
+46. ✅ **Lot 🅱 — lisibilité tactique** :
+    - **Perso centrés sur leur case** (`Unit._draw`) : anneau de sol + pieds
+      remontés au centre du losange (avant : ~18 px sous le centre → impression de
+      décalage). Sprite calé à `y=6`, figurine vectorielle via `draw_set_transform`,
+      barre de vie/pastilles repositionnées. Anneau de camp agrandi (échelle 2:1).
+    - **Cases plus lisibles** (`Grid.gd`) : contour des cases éclairci/épaissi,
+      **contour net** sur les cases de déplacement/cible/soin/compétence (en plus
+      du remplissage), et **surbrillance blanche de la case survolée**
+      (`hover_cell`, mis à jour dans `Battle._unhandled_input` sur mouvement souris).
+    - **Obstacles cadrés** (`Grid._draw_terrain_feature`) : décor « planté » sur la
+      case (ombre de contact au sol + élément remonté vers le centre du losange).
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`
