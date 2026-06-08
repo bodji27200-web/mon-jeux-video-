@@ -287,6 +287,16 @@ humain :
 - Erreurs d'exécution : lancer une scène, ex. `godot --headless --path . res://Main.tscn`
 Ça ne remplace PAS le test visuel / jouabilité, qui reste fait par l'utilisateur.
 
+### Objectif de distribution (à faire quand le jeu est prêt)
+**Export HTML5 + itch.io privé** : jouer avec Eline (copine) depuis n'importe quel
+appareil (iPhone, Xbox Series S via Edge, PC) sans poster le jeu publiquement.
+- Godot exporte en HTML5/WebAssembly (File > Export > Web)
+- Hébergement sur itch.io en mode "privé, lien seulement" → seuls ceux qui ont le
+  lien peuvent y accéder
+- Pas de multi réseau à coder : chacun joue sa session solo, ou on joue en local
+  (partage d'écran). Le vrai multi en ligne (synchronisation réseau temps réel)
+  serait une très grosse fonctionnalité — ne pas coder sans décision explicite.
+
 ### Reste à faire (idées futures, NE PAS coder sans demande)
 Compléter les 20 classes, compétences actives dédiées, animations, vrais sprites,
 équilibrage fin. Toujours data-driven, une étape à la fois, avec validation.
