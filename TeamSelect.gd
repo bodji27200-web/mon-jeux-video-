@@ -316,7 +316,7 @@ func _show_class_info(cid: String) -> void:
 
 
 func _on_start() -> void:
-	if _player.size() < TEAM_SIZE:
+	if _player.size() < TEAM_SIZE or _ai.size() < TEAM_SIZE:
 		return
 	GameData.difficulty = _difficulty
 	GameData.player_team = _player.duplicate()

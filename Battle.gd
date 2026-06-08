@@ -202,6 +202,9 @@ func _spawn_team(classes: Array, team: int, col: int) -> void:
 
 
 func _on_turn_started(unit: Node) -> void:
+	if unit == null:
+		_check_end()
+		return
 	active_unit = unit
 	# Effets de début de tour (poison, régénération...).
 	unit.tick_buffs()
@@ -634,7 +637,10 @@ func _skill_targets(unit: Node, index: int) -> Array:
 
 # Applique l'effet de la compétence d'index donné (data-driven, extensible).
 func _use_skill(caster: Node, cell: Vector2i, index: int) -> void:
-	var sk: Dictionary = caster.get_actives()[index]
+	var acts := caster.get_actives()
+	if index < 0 or index >= acts.size():
+		return
+	var sk: Dictionary = acts[index]
 	var success := true
 	match sk.type:
 		"shield_ally":

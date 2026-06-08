@@ -33,6 +33,7 @@ func next_turn() -> void:
 		if units[cand].is_alive():
 			_begin(cand)
 			return
+	turn_started.emit(null)  # sécurité : toutes les unités mortes, Battle._check_end gère
 
 
 # Ajoute une unité invoquée en cours de partie (ex : squelette du nécromancien).
