@@ -637,7 +637,7 @@ func _skill_targets(unit: Node, index: int) -> Array:
 
 # Applique l'effet de la compétence d'index donné (data-driven, extensible).
 func _use_skill(caster: Node, cell: Vector2i, index: int) -> void:
-	var acts := caster.get_actives()
+	var acts: Array = caster.get_actives()
 	if index < 0 or index >= acts.size():
 		return
 	var sk: Dictionary = acts[index]
