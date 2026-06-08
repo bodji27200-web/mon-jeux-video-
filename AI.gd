@@ -22,15 +22,18 @@ static func decide(unit: Node, grid: Node, units: Array) -> Dictionary:
 			enemies.append(u)
 
 	var is_healer: bool = unit.data.behavior == "heal"
+	var rng: int = unit.action_range()
+	var heal_rng: int = int(unit.data.get("heal_range", rng))
 
-	# Cibles potentielles : alliés blessés (soigneur) ou ennemis.
+	# Cibles de navigation : soigneur = alliés vraiment blessés (seuil 80 %),
+	# sinon = ennemis. Pool vide → repli sécurisé.
 	var pool: Array = []
 	if is_healer:
-		# Le soigneur peut aussi se soigner lui-même.
-		if unit.hp < int(unit.data.max_hp):
+		var thresh: float = 0.85 if GameData.difficulty == "hardcore" else 0.80
+		if float(unit.hp) / float(unit.data.max_hp) < thresh:
 			pool.append(unit)
 		for a in allies:
-			if a.hp < int(a.data.max_hp):
+			if float(a.hp) / float(a.data.max_hp) < thresh:
 				pool.append(a)
 	else:
 		pool = enemies
@@ -44,12 +47,14 @@ static func decide(unit: Node, grid: Node, units: Array) -> Dictionary:
 	var candidates: Array = grid.get_reachable_cells(unit.grid_position, eff_range, occupied)
 	candidates.append(unit.grid_position)
 
-	# Rien à faire : se replier loin des ennemis.
-	if pool.is_empty():
+	if pool.is_empty() and not is_healer:
 		return {"move": _safest_cell(candidates, enemies, grid), "target": null}
 
-	var target: Node = _pick_ally(pool) if is_healer else _pick_enemy(unit, pool)
-	var rng: int = unit.action_range()
+	# Cible de navigation (guide le déplacement).
+	var nav_target: Node = null
+	if not pool.is_empty():
+		nav_target = _pick_ally(pool) if is_healer else _pick_enemy(unit, pool)
+
 	var kite: bool = is_healer or unit.data.behavior == "kite"
 
 	# Erreur volontaire selon la difficulté.
@@ -58,17 +63,18 @@ static func decide(unit: Node, grid: Node, units: Array) -> Dictionary:
 	var best: Vector2i = unit.grid_position
 	if mistake:
 		best = candidates[randi() % candidates.size()]
-	else:
+	elif nav_target != null:
 		var best_score := -INF
 		for cell in candidates:
-			var s := _cell_score(unit, cell, target, enemies, allies, grid, kite, rng)
+			var s := _cell_score(unit, cell, nav_target, enemies, allies, grid, kite, rng)
 			if s > best_score:
 				best_score = s
 				best = cell
+	else:
+		# Soigneur sans blessé : rester en sécurité loin des ennemis.
+		best = _safest_cell(candidates, enemies, grid)
 
-	# Compétences actives : on prend la PREMIÈRE compétence prête qui vaut le coup
-	# (les actives sont rangées par priorité dans GameData). L'IA ne lance jamais
-	# une compétence à vide : chaque _plan_skill renvoie null si ce n'est pas utile.
+	# Compétences actives.
 	var skill_cell = null
 	var skill_index := -1
 	if not mistake:
@@ -77,7 +83,6 @@ static func decide(unit: Node, grid: Node, units: Array) -> Dictionary:
 			if not unit.skill_ready(i):
 				continue
 			var sk: Dictionary = acts[i]
-			# La téléportation remplace le déplacement : on l'évalue depuis la position actuelle.
 			var from_cell: Vector2i = unit.grid_position if sk.type == "teleport_strike" else best
 			var cell = _plan_skill(sk, unit, enemies, allies, grid, from_cell)
 			if cell != null:
@@ -87,7 +92,30 @@ static func decide(unit: Node, grid: Node, units: Array) -> Dictionary:
 					best = unit.grid_position
 				break
 
-	var tgt: Node = target if (target == unit or grid.manhattan(best, target.grid_position) <= rng) else null
+	# Cible d'attaque réelle depuis la case finale : on réévalue TOUS les ennemis/alliés
+	# à portée depuis `best`, pas juste la cible de navigation pré-choisie.
+	# Correction du bug "bouge mais n'attaque pas" quand la cible initiale est hors portée.
+	var tgt: Node = null
+	if is_healer:
+		var best_ratio := INF
+		var all_pool: Array = allies.duplicate()
+		all_pool.append(unit)
+		for a in all_pool:
+			var d := 0 if a == unit else grid.manhattan(best, a.grid_position)
+			if d <= heal_rng:
+				var ratio := float(a.hp) / float(a.data.max_hp)
+				if ratio < best_ratio and ratio < 1.0:
+					best_ratio = ratio
+					tgt = a
+	else:
+		var best_atk := -INF
+		for e in enemies:
+			if grid.manhattan(best, e.grid_position) <= rng:
+				var s := _attack_score(unit, e)
+				if s > best_atk:
+					best_atk = s
+					tgt = e
+
 	return {"move": best, "target": tgt, "skill_cell": skill_cell, "skill_index": skill_index}
 
 
@@ -96,6 +124,25 @@ static func _est_damage(unit: Node) -> float:
 	var diff: Dictionary = GameData.DIFFICULTIES[GameData.difficulty]
 	var side: float = diff.player_damage_mult if unit.is_player() else diff.ai_damage_mult
 	return float(unit.data.attack) * unit.damage_dealt_mult() * side
+
+
+# Score d'une cible pour l'attaque depuis la case finale (re-évaluation post-déplacement).
+static func _attack_score(unit: Node, e: Node) -> float:
+	var est := _est_damage(unit)
+	var s := -float(e.hp)
+	if float(e.hp) <= est:
+		s += 800.0
+	elif float(e.hp) <= est * 1.5:
+		s += 200.0
+	if _has_buff(e, "parade"):
+		s -= 180.0
+	if e.data.behavior == "heal":
+		s += 80.0
+	elif e.data.behavior == "kite":
+		s += 40.0
+	if e.get("is_summon"):
+		s -= 60.0
+	return s
 
 
 static func _pick_enemy(unit: Node, enemies: Array) -> Node:
@@ -141,22 +188,42 @@ static func _cell_score(unit: Node, cell: Vector2i, target: Node, enemies: Array
 	var in_range: bool = target == unit or grid.manhattan(cell, target.grid_position) <= rng
 	var score := 1000.0 if in_range else 0.0
 	var near := _nearest(cell, enemies, grid)
+
 	if kite:
-		score += near * 4.0
-		if near <= 1:
-			score -= 200.0
+		if in_range:
+			# À portée : se tenir aussi loin que possible des ennemis (kite classique).
+			score += near * 5.0
+			if near <= 1:
+				score -= 300.0  # jamais au contact
+		else:
+			# HORS portée : avancer vers la cible pour entrer en portée.
+			# (Bug corrigé : avant, near*5 faisait reculer les ranged hors portée.)
+			score -= grid.manhattan(cell, target.grid_position) * 5.0
 	else:
-		score -= grid.manhattan(cell, target.grid_position) * 6.0  # approche plus agressive
-		for a in allies:
-			if a.hp < int(a.data.max_hp) and grid.manhattan(cell, a.grid_position) == 1:
-				score += 25.0
-				break
-	# Bonus kill : ignorer la menace pour finir une cible à portée.
-	if in_range and float(target.hp) <= _est_damage(unit) * 1.2:
-		score += 500.0
-	# Moins de couardise : les unités saines s'engagent franchement.
+		# Mêlée : foncer sur la cible.
+		score -= grid.manhattan(cell, target.grid_position) * 6.0
+		# Bonus si plusieurs ennemis à portée (utile pour cleave/zone).
+		var adj := 0
+		for e in enemies:
+			if grid.manhattan(cell, e.grid_position) <= rng:
+				adj += 1
+		if adj >= 2:
+			score += adj * 35.0
+		# Tank : se placer entre les ennemis et les alliés fragiles.
+		if str(unit.data.get("role", "")) == "tank":
+			for a in allies:
+				if a.data.get("role", "") != "tank" and float(a.hp) / float(a.data.max_hp) < 0.7:
+					if grid.manhattan(cell, a.grid_position) <= 2 and near <= 2:
+						score += 50.0
+						break
+
+	# Bonus kill absolu : ignorer la peur pour finir une cible à portée.
+	if in_range and float(target.hp) <= _est_damage(unit) * 1.3:
+		score += 600.0
+
+	# Pénalité de menace réduite : les unités saines s'engagent franchement.
 	var fragility := 1.0 - float(unit.hp) / float(unit.data.max_hp)
-	score -= _threat(cell, enemies, grid) * (2.0 + fragility * 8.0)
+	score -= _threat(cell, enemies, grid) * (1.5 + fragility * 8.0)
 	return score
 
 
