@@ -10,6 +10,39 @@ extends Node2D
 const RADIUS := 22.0
 const FLOATING_TEXT := preload("res://FloatingText.tscn")
 
+# Sprites de personnages (pack CC0 "DungeonTileset II" de 0x72, voir assets/CREDITS.md).
+# Chaque entrée = rect de la 1re frame idle [x, y, largeur, hauteur] dans la sheet ;
+# l'animation idle compte 4 frames disposées horizontalement (frame i à x + i*largeur).
+const TILESET := preload("res://assets/dungeon_tileset.png")
+const SPRITE_FRAMES := 4
+const SPRITE_ANIM_SPEED := 0.18  # secondes par frame
+const SPRITES := {
+	"tank":            Rect2(128, 106, 16, 22),  # knight_m
+	"paladin":         Rect2(128, 74, 16, 22),   # knight_f
+	"archer":          Rect2(128, 42, 16, 22),   # elf_m
+	"archere":         Rect2(128, 16, 16, 16),   # elf_f
+	"mage":            Rect2(128, 170, 16, 22),  # wizzard_m
+	"soigneur":        Rect2(128, 132, 16, 28),  # wizzard_f
+	"assassin":        Rect2(368, 303, 16, 17),  # wogol
+	"duelliste":       Rect2(128, 205, 16, 19),  # lizard_f
+	"berserker":       Rect2(368, 204, 16, 20),  # orc_warrior
+	"lancier":         Rect2(368, 172, 16, 20),  # masked_orc
+	"chevaliernoir":   Rect2(368, 328, 16, 24),  # chort
+	"mage_glace":      Rect2(368, 236, 16, 20),  # orc_shaman
+	"necromancien":    Rect2(366, 270, 16, 20),  # necromancer
+	"envouteur":       Rect2(368, 48, 16, 16),   # imp
+	"druide":          Rect2(432, 112, 16, 16),  # swampy
+	"alchimiste":      Rect2(368, 112, 16, 16),  # muddy
+	"chasseur":        Rect2(368, 37, 16, 11),   # goblin
+	"pretreguerrier":  Rect2(128, 237, 16, 19),  # lizard_m
+	"invocateur":      Rect2(16, 364, 32, 36),   # big_demon
+	"barde":           Rect2(368, 20, 16, 12),   # tiny_zombie
+	"squelette_guerrier": Rect2(368, 80, 16, 16),  # skelet
+	"squelette_archer":   Rect2(368, 80, 16, 16),  # skelet
+	"golem_pierre":    Rect2(16, 320, 32, 32),   # ogre
+	"loup_spectral":   Rect2(432, 144, 16, 16),  # ice_zombie
+}
+
 var data: Dictionary = {}
 var hp := 0
 var has_moved := false
@@ -19,15 +52,30 @@ var buffs: Array = []
 var is_summon := false   # true = invoqué par un nécromancien
 var summoner: Node = null
 var _active := false
+var _frame := 0          # frame d'animation idle courante
+var _anim_t := 0.0
 
 
 func _ready() -> void:
 	add_to_group("units")
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # pixel art net (pas de flou)
 	data = GameData.CLASSES[class_id]
 	hp = data.max_hp
+	_frame = randi() % SPRITE_FRAMES  # désynchronise l'animation entre unités
 	skill_cds.resize(get_actives().size())
 	skill_cds.fill(0)
 	_refresh_position()
+
+
+# Animation idle : fait défiler doucement les 4 frames du sprite.
+func _process(delta: float) -> void:
+	if not SPRITES.has(class_id) or not is_alive():
+		return
+	_anim_t += delta
+	if _anim_t >= SPRITE_ANIM_SPEED:
+		_anim_t = 0.0
+		_frame = (_frame + 1) % SPRITE_FRAMES
+		queue_redraw()
 
 
 func _refresh_position() -> void:
@@ -251,29 +299,11 @@ func _draw() -> void:
 	# Ombre portée
 	_draw_ellipse(Vector2(0, 18), 12.0, 4.5, Color(0, 0, 0, 0.28))
 
-	# --- Personnage : corps (robe) + tête avec des yeux ---
-	var robe := PackedVector2Array([Vector2(-9, -5), Vector2(9, -5), Vector2(13, 17), Vector2(-13, 17)])
-	draw_colored_polygon(robe, col)
-	# Bas de robe assombri (profondeur)
-	draw_colored_polygon(PackedVector2Array([Vector2(-13, 12), Vector2(13, 12), Vector2(13, 17), Vector2(-13, 17)]), dark)
-	var robe_outline := PackedVector2Array(robe)
-	robe_outline.append(robe[0])
-	draw_polyline(robe_outline, dark, 1.5)
-	# Tête
-	var head_col: Color = col.lightened(0.4)
-	draw_circle(Vector2(0, -13), 8.0, head_col)
-	draw_arc(Vector2(0, -13), 8.0, 0.0, TAU, 20, dark, 1.5)
-	draw_circle(Vector2(-3, -14), 1.4, Color(0.10, 0.10, 0.12))
-	draw_circle(Vector2(3, -14), 1.4, Color(0.10, 0.10, 0.12))
-
-	# --- Arme selon le profil de la classe ---
-	_draw_weapon(_weapon_kind(), col, dark)
-
-	# --- Symbole de classe sur le torse (identification précise) ---
-	var font := ThemeDB.fallback_font
-	var lum: float = col.r * 0.299 + col.g * 0.587 + col.b * 0.114
-	var sym_col: Color = Color.BLACK if lum > 0.55 else Color(1, 1, 1, 0.92)
-	draw_string(font, Vector2(-4.5, 8.0), str(data.symbol), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, sym_col)
+	# --- Personnage : sprite du pack si dispo, sinon figurine vectorielle ---
+	if SPRITES.has(class_id):
+		_draw_sprite()
+	else:
+		_draw_vector_body(col, dark)
 
 	# --- Barre de vie (verte / jaune / rouge selon les PV) ---
 	var ratio := clampf(float(hp) / float(data.max_hp), 0.0, 1.0)
@@ -310,6 +340,40 @@ func _draw() -> void:
 			c = Color(0.45, 0.85, 1.00)
 		draw_circle(Vector2(bx + 4.0, RADIUS + 12.0), 4.0, c)
 		bx += 11.0
+
+
+# Dessine le sprite du personnage (frame idle courante), mis à l'échelle pour
+# tenir dans la case et posé sur l'anneau de sol. Pixel art net (filtre nearest).
+func _draw_sprite() -> void:
+	var f0: Rect2 = SPRITES[class_id]
+	var src := Rect2(f0.position.x + _frame * f0.size.x, f0.position.y, f0.size.x, f0.size.y)
+	var target_h := 42.0                       # hauteur visée à l'écran
+	var scale: float = target_h / f0.size.y
+	var w: float = f0.size.x * scale
+	var h: float = f0.size.y * scale
+	# Centré horizontalement, pieds calés sur l'anneau de sol (y ~ 20).
+	var dest := Rect2(-w / 2.0, 20.0 - h, w, h)
+	draw_texture_rect_region(TILESET, dest, src)
+
+
+# Repli vectoriel (figurine dessinée) pour toute classe sans sprite mappé.
+func _draw_vector_body(col: Color, dark: Color) -> void:
+	var robe := PackedVector2Array([Vector2(-9, -5), Vector2(9, -5), Vector2(13, 17), Vector2(-13, 17)])
+	draw_colored_polygon(robe, col)
+	draw_colored_polygon(PackedVector2Array([Vector2(-13, 12), Vector2(13, 12), Vector2(13, 17), Vector2(-13, 17)]), dark)
+	var robe_outline := PackedVector2Array(robe)
+	robe_outline.append(robe[0])
+	draw_polyline(robe_outline, dark, 1.5)
+	var head_col: Color = col.lightened(0.4)
+	draw_circle(Vector2(0, -13), 8.0, head_col)
+	draw_arc(Vector2(0, -13), 8.0, 0.0, TAU, 20, dark, 1.5)
+	draw_circle(Vector2(-3, -14), 1.4, Color(0.10, 0.10, 0.12))
+	draw_circle(Vector2(3, -14), 1.4, Color(0.10, 0.10, 0.12))
+	_draw_weapon(_weapon_kind(), col, dark)
+	var font := ThemeDB.fallback_font
+	var lum: float = col.r * 0.299 + col.g * 0.587 + col.b * 0.114
+	var sym_col: Color = Color.BLACK if lum > 0.55 else Color(1, 1, 1, 0.92)
+	draw_string(font, Vector2(-4.5, 8.0), str(data.symbol), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, sym_col)
 
 
 # Type d'arme dessinée, déduit du rôle / profil de la classe (data-driven).

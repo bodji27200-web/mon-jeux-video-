@@ -186,6 +186,14 @@ Ordre de priorité (✅ = fait) :
     se résolvait pas depuis le `NodePath` du `.tscn` → le nom de l'unité ne
     s'affichait jamais. Passé en `@export NodePath` résolu dans `_ready()`
     (champ `label`).
+39. ✅ **Vrais sprites pixel-art** (pack CC0 « DungeonTileset II » de 0x72,
+    `assets/dungeon_tileset.png` + `assets/CREDITS.md`) : chaque classe (+ les
+    4 invocations) est mappée à une figurine de la spritesheet via le dico
+    `Unit.SPRITES` (rect de la frame idle). Rendu dans `_draw()` avec
+    `draw_texture_rect_region` (filtre `nearest`, mis à l'échelle ~42 px, posé
+    sur l'anneau de sol), **animation idle 4 frames** (`_process`). Conserve
+    anneau de camp / barre de vie / pastilles. Repli vectoriel
+    (`_draw_vector_body`) pour toute classe non mappée.
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`
