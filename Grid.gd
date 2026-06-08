@@ -4,7 +4,16 @@ extends Node2D
 
 const COLUMNS := 12
 const ROWS := 10
-const CELL_SIZE := 64
+const CELL_SIZE := 64  # conservé pour les rayons d'effets visuels (SkillFX)
+
+# --- Projection isométrique (vue inclinée type Into the Breach / XCOM) ---
+# Une case = un losange de TILE_W de large et TILE_H de haut (ratio 2:1).
+# Le gameplay reste sur des coordonnées de grille entières ; seule la conversion
+# case <-> écran change (cell_to_local / local_to_cell).
+const TILE_W := 64.0
+const TILE_H := 32.0
+# Décalage d'origine : pousse la grille pour que tout reste en coordonnées >= 0.
+const ISO_ORIGIN := Vector2(320.0, 40.0)
 
 const COLOR_CELL := Color(0.13, 0.13, 0.18)
 const COLOR_LINE := Color(0.30, 0.30, 0.40)
@@ -21,49 +30,124 @@ var terrain: Dictionary = {}  # Vector2i -> String (clé dans GameData.TERRAIN)
 
 
 func _draw() -> void:
-	var w := COLUMNS * CELL_SIZE
-	var h := ROWS * CELL_SIZE
-	# Cases de base
-	for col in COLUMNS:
-		for row in ROWS:
-			draw_rect(_cell_rect(Vector2i(col, row)), COLOR_CELL)
-	# Terrain tactique (overlay semi-transparent + lettre)
-	var font := ThemeDB.fallback_font
+	# Sol : un losange par case (du fond vers l'avant pour un recouvrement propre).
+	for row in ROWS:
+		for col in COLUMNS:
+			var cell := Vector2i(col, row)
+			_fill_cell(cell, COLOR_CELL)
+			_outline_cell(cell, COLOR_LINE, 1.0)
+	# Terrain tactique : losange teinté (zone d'effet) + décor vectoriel debout.
 	for cell in terrain:
 		var tid: String = terrain[cell]
 		if not GameData.TERRAIN.has(tid):
 			continue
-		var t: Dictionary = GameData.TERRAIN[tid]
-		draw_rect(_cell_rect(cell), t.color)
-		draw_string(font, Vector2(cell.x * CELL_SIZE + 6.0, cell.y * CELL_SIZE + 22.0),
-				str(t.symbol), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1.0, 1.0, 1.0, 0.75))
-	# Highlights navigation
+		_fill_cell(cell, GameData.TERRAIN[tid].color)
+		_draw_terrain_feature(cell, tid)
+	# Highlights navigation (posés à plat sur les losanges).
 	for cell in move_cells:
-		draw_rect(_cell_rect(cell), COLOR_MOVE)
+		_fill_cell(cell, COLOR_MOVE)
 	for cell in target_cells:
-		draw_rect(_cell_rect(cell), COLOR_TARGET)
+		_fill_cell(cell, COLOR_TARGET)
 	for cell in heal_cells:
-		draw_rect(_cell_rect(cell), COLOR_HEAL)
+		_fill_cell(cell, COLOR_HEAL)
 	for cell in skill_cells:
-		draw_rect(_cell_rect(cell), COLOR_SKILL)
-	# Lignes de grille
-	for col in COLUMNS + 1:
-		draw_line(Vector2(col * CELL_SIZE, 0), Vector2(col * CELL_SIZE, h), COLOR_LINE, 1.0)
-	for row in ROWS + 1:
-		draw_line(Vector2(0, row * CELL_SIZE), Vector2(w, row * CELL_SIZE), COLOR_LINE, 1.0)
+		_fill_cell(cell, COLOR_SKILL)
 
 
-func _cell_rect(cell: Vector2i) -> Rect2:
-	return Rect2(cell.x * CELL_SIZE, cell.y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+# Les 4 sommets du losange d'une case (haut, droite, bas, gauche).
+func _diamond_points(cell: Vector2i) -> PackedVector2Array:
+	var c := cell_to_local(cell)
+	return PackedVector2Array([
+		c + Vector2(0.0, -TILE_H / 2.0),
+		c + Vector2(TILE_W / 2.0, 0.0),
+		c + Vector2(0.0, TILE_H / 2.0),
+		c + Vector2(-TILE_W / 2.0, 0.0)])
 
 
-# Centre d'une case, en coordonnées locales à la grille (pour placer les unités).
+func _fill_cell(cell: Vector2i, color: Color) -> void:
+	draw_colored_polygon(_diamond_points(cell), color)
+
+
+func _outline_cell(cell: Vector2i, color: Color, width: float) -> void:
+	var pts := _diamond_points(cell)
+	pts.append(pts[0])
+	draw_polyline(pts, color, width)
+
+
+# --- Décors de terrain (100 % vectoriel, aucun asset) ---
+# Dessine un obstacle reconnaissable au centre de la case selon son type.
+func _draw_terrain_feature(cell: Vector2i, tid: String) -> void:
+	var c := cell_to_local(cell)  # centre de la case
+	match tid:
+		"foret":
+			_draw_tree(c)
+		"ruines":
+			_draw_ruins(c)
+		"marecage":
+			_draw_swamp(c)
+
+
+# Sapin : tronc + trois étages de feuillage (relief clair/foncé).
+func _draw_tree(c: Vector2) -> void:
+	var trunk := Color(0.36, 0.24, 0.12)
+	draw_rect(Rect2(c.x - 3, c.y + 7, 6, 11), trunk)
+	var dark := Color(0.10, 0.40, 0.16)
+	var light := Color(0.20, 0.58, 0.24)
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(c.x - 16, c.y + 10), Vector2(c.x + 16, c.y + 10), Vector2(c.x, c.y - 4)]), dark)
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(c.x - 13, c.y + 2), Vector2(c.x + 13, c.y + 2), Vector2(c.x, c.y - 13)]), light)
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(c.x - 9, c.y - 6), Vector2(c.x + 9, c.y - 6), Vector2(c.x, c.y - 22)]), dark)
+
+
+# Ruines : socle + colonne brisée (sommet irrégulier) + blocs épars.
+func _draw_ruins(c: Vector2) -> void:
+	var stone := Color(0.60, 0.58, 0.52)
+	var stone_d := Color(0.38, 0.36, 0.32)
+	draw_rect(Rect2(c.x - 14, c.y + 9, 28, 8), stone_d)
+	var col := PackedVector2Array([
+		Vector2(c.x - 8, c.y + 9), Vector2(c.x - 8, c.y - 14),
+		Vector2(c.x - 2, c.y - 18), Vector2(c.x + 3, c.y - 10),
+		Vector2(c.x + 8, c.y - 16), Vector2(c.x + 8, c.y + 9)])
+	draw_colored_polygon(col, stone)
+	draw_polyline(col, stone_d, 1.5)
+	draw_rect(Rect2(c.x + 8, c.y + 2, 9, 7), stone)
+	draw_rect(Rect2(c.x - 18, c.y + 1, 8, 8), stone)
+
+
+# Marécage : flaque (ellipse) + reflet + bulles + roseaux.
+func _draw_swamp(c: Vector2) -> void:
+	_fill_ellipse(c + Vector2(0, 7), 20, 11, Color(0.16, 0.30, 0.13))
+	_fill_ellipse(c + Vector2(-4, 5), 9, 4, Color(0.30, 0.46, 0.20))
+	draw_circle(c + Vector2(6, 7), 2.6, Color(0.55, 0.70, 0.40, 0.85))
+	draw_circle(c + Vector2(-8, 10), 1.8, Color(0.55, 0.70, 0.40, 0.7))
+	draw_line(c + Vector2(11, 9), c + Vector2(13, -9), Color(0.52, 0.56, 0.20), 2.0)
+	draw_line(c + Vector2(14, 10), c + Vector2(16, -3), Color(0.46, 0.50, 0.18), 2.0)
+
+
+# Ellipse pleine (pas de primitive native).
+func _fill_ellipse(center: Vector2, rx: float, ry: float, color: Color) -> void:
+	var pts := PackedVector2Array()
+	for i in 20:
+		var a := TAU * i / 20.0
+		pts.append(center + Vector2(cos(a) * rx, sin(a) * ry))
+	draw_colored_polygon(pts, color)
+
+
+# Centre du losange d'une case, en coordonnées locales à la grille (projection iso).
 func cell_to_local(cell: Vector2i) -> Vector2:
-	return Vector2(cell.x * CELL_SIZE + CELL_SIZE / 2.0, cell.y * CELL_SIZE + CELL_SIZE / 2.0)
+	return ISO_ORIGIN + Vector2(
+		(cell.x - cell.y) * (TILE_W / 2.0),
+		(cell.x + cell.y) * (TILE_H / 2.0))
 
 
+# Inverse de la projection : retrouve la case sous un point local (clic souris).
 func local_to_cell(local_pos: Vector2) -> Vector2i:
-	return Vector2i(floori(local_pos.x / CELL_SIZE), floori(local_pos.y / CELL_SIZE))
+	var p := local_pos - ISO_ORIGIN
+	var fx := p.x / (TILE_W / 2.0)   # = (cell.x - cell.y)
+	var fy := p.y / (TILE_H / 2.0)   # = (cell.x + cell.y)
+	return Vector2i(roundi((fx + fy) / 2.0), roundi((fy - fx) / 2.0))
 
 
 func is_inside(cell: Vector2i) -> bool:

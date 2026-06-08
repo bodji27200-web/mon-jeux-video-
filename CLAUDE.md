@@ -194,6 +194,36 @@ Ordre de priorité (✅ = fait) :
     sur l'anneau de sol), **animation idle 4 frames** (`_process`). Conserve
     anneau de camp / barre de vie / pastilles. Repli vectoriel
     (`_draw_vector_body`) pour toute classe non mappée.
+40. ✅ **Animations de mouvement** : glissement fluide vers la case (`Unit.move_to`
+    via tween) + petit élan d'attaque (`Unit.lunge`, appelé dans `Battle._attack`).
+    Bypass en headless (`DisplayServer.get_name() == "headless"`).
+41. ✅ **Confort & UI** : bouton **Fin de tour** visible (bas gauche), **cooldown
+    affiché** sur les carrés de compétence (`CD n` / `Max`), **cliquer sa propre
+    case** valide la position et passe à l'action, **durée restante** affichée sur
+    les pastilles de buff (`Unit._draw`), **effet du terrain au survol**
+    (`Battle._update_terrain_hint` + `TerrainLabel`), **écran de fin avec stats**
+    (tours joués, ennemis vaincus, alliés perdus, plus gros coup —
+    `Battle._show_stats` + `StatsLabel`).
+44. ✅ **Vue ISOMÉTRIQUE** (type Into the Breach / XCOM) : la grille passe en
+    losanges (projection iso 2:1 dans `Grid.cell_to_local` / `local_to_cell`,
+    constantes `TILE_W`/`TILE_H`/`ISO_ORIGIN`). Sol dessiné en losanges
+    (`_diamond_points`/`_fill_cell`/`_outline_cell`), **tri en profondeur** des
+    unités via `y_sort_enabled` sur le nœud Grid (les FX et textes flottants
+    restent au-dessus grâce à `z_index`). **Gameplay 100 % inchangé** (coords de
+    grille entières, BFS, portées, IA identiques). `CELL_SIZE` conservé pour les
+    rayons d'effets. Limite connue (étape suivante) : pas encore d'occlusion des
+    décors hauts ni de relief/hauteur — c'est la base avant d'ajouter toits,
+    élévation et bonus de hauteur.
+43. ✅ **Décors de terrain vectoriels** (`Grid._draw_terrain_feature`) : la lettre
+    (F/R/M) est remplacée par un vrai obstacle dessiné — **sapin** (Forêt),
+    **colonne brisée + blocs** (Ruines), **flaque + bulles + roseaux** (Marécage).
+    Fond teinté conservé sous le décor (lisibilité de la zone d'effet). 100 %
+    vectoriel, aucun asset.
+42. ✅ **Correctifs IA** : `_removable_count` compte désormais TOUS les debuffs
+    purifiables (racines, affaiblissement, vulnérabilité — avant : seulement DoT
+    et ralentissement) → le Soigneur/Druide IA purifient correctement ; l'IA
+    **déprioritise une cible en parade** (`block_next`) pour ne pas gâcher son
+    attaque (`AI._pick_enemy`).
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`
