@@ -247,6 +247,21 @@ Ordre de priorité (✅ = fait) :
       (`hover_cell`, mis à jour dans `Battle._unhandled_input` sur mouvement souris).
     - **Obstacles cadrés** (`Grid._draw_terrain_feature`) : décor « planté » sur la
       case (ombre de contact au sol + élément remonté vers le centre du losange).
+47. ✅ **Lot 🅲 — barre de compétences améliorée** (`Battle.gd`) :
+    - **Icônes Unicode** par compétence (épée ⚔, arc 🏹, baguette ✨, bouclier 🛡,
+      cœur ❤, éclair ⚡, etc.) remplacent les abréviations texte.
+    - **Couleur de fond par catégorie** (`SKILL_CATEGORY_COLOR`) : orange = attaque,
+      bleu = contrôle, violet = magie, vert = soin, gris = buff.
+    - **Panneau d'info instantané** (`_skill_info_panel`) : survol d'un carré →
+      nom + description apparaissent immédiatement (sans délai tooltip).
+    - **Indicateur de cooldown coloré** : rouge si en recharge, blanc si prêt.
+48. ✅ **Lot 🅳 — sprites collant aux rôles** (`Unit.SPRITES`) :
+    - Scan pixel du tileset 0x72 (Python/PIL) → découverte de 4 sprites inutilisés.
+    - **druide** → hero_12 (blonde en vert, y=434) — rôle nature.
+    - **alchimiste** → hero_9 (gnome gris, y=264) — rôle inventeur.
+    - **assassin** → hero_11 (cape sombre, y=360) — rôle furtif.
+    - **barde** → x=368/y=360 (silhouette blonde/bleu distincte).
+    - **chasseur** : supprimé du dict (goblin inadapté) → fallback vectoriel avec arc.
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`
