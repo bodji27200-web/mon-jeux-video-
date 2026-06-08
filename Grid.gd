@@ -11,24 +11,42 @@ const COLOR_LINE := Color(0.30, 0.30, 0.40)
 const COLOR_MOVE := Color(0.30, 0.55, 0.95, 0.35)    # cases de déplacement
 const COLOR_TARGET := Color(0.90, 0.25, 0.25, 0.40)  # cibles attaquables
 const COLOR_HEAL := Color(0.30, 0.85, 0.40, 0.40)    # alliés soignables
+const COLOR_SKILL := Color(0.75, 0.35, 0.95, 0.45)   # cibles de compétence
 
 var move_cells: Array = []
 var target_cells: Array = []
 var heal_cells: Array = []
+var skill_cells: Array = []
+var terrain: Dictionary = {}  # Vector2i -> String (clé dans GameData.TERRAIN)
 
 
 func _draw() -> void:
 	var w := COLUMNS * CELL_SIZE
 	var h := ROWS * CELL_SIZE
+	# Cases de base
 	for col in COLUMNS:
 		for row in ROWS:
 			draw_rect(_cell_rect(Vector2i(col, row)), COLOR_CELL)
+	# Terrain tactique (overlay semi-transparent + lettre)
+	var font := ThemeDB.fallback_font
+	for cell in terrain:
+		var tid: String = terrain[cell]
+		if not GameData.TERRAIN.has(tid):
+			continue
+		var t: Dictionary = GameData.TERRAIN[tid]
+		draw_rect(_cell_rect(cell), t.color)
+		draw_string(font, Vector2(cell.x * CELL_SIZE + 6.0, cell.y * CELL_SIZE + 22.0),
+				str(t.symbol), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1.0, 1.0, 1.0, 0.75))
+	# Highlights navigation
 	for cell in move_cells:
 		draw_rect(_cell_rect(cell), COLOR_MOVE)
 	for cell in target_cells:
 		draw_rect(_cell_rect(cell), COLOR_TARGET)
 	for cell in heal_cells:
 		draw_rect(_cell_rect(cell), COLOR_HEAL)
+	for cell in skill_cells:
+		draw_rect(_cell_rect(cell), COLOR_SKILL)
+	# Lignes de grille
 	for col in COLUMNS + 1:
 		draw_line(Vector2(col * CELL_SIZE, 0), Vector2(col * CELL_SIZE, h), COLOR_LINE, 1.0)
 	for row in ROWS + 1:
@@ -54,6 +72,18 @@ func is_inside(cell: Vector2i) -> bool:
 
 func manhattan(a: Vector2i, b: Vector2i) -> int:
 	return abs(a.x - b.x) + abs(a.y - b.y)
+
+
+# Terrain à une case donnée (dict GameData.TERRAIN ou {} si aucun).
+func terrain_at(cell: Vector2i) -> Dictionary:
+	var tid: String = terrain.get(cell, "")
+	if tid == "":
+		return {}
+	return GameData.TERRAIN.get(tid, {})
+
+
+func terrain_move_penalty_at(cell: Vector2i) -> int:
+	return int(terrain_at(cell).get("move_penalty", 0))
 
 
 # BFS 4-directionnel : cases atteignables sans traverser une case occupée.
