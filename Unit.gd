@@ -172,6 +172,8 @@ func _show_damage_text(amount: int, is_crit: bool) -> void:
 
 func heal(amount: int) -> void:
 	hp = min(int(data.max_hp), hp + amount)
+	if hp > 0:
+		visible = true  # une unité avec des PV doit rester visible (filet de sécurité)
 	queue_redraw()
 
 
@@ -267,5 +269,9 @@ func _draw() -> void:
 			c = Color(0.20, 0.82, 0.20)
 		elif b.get("marked", false):
 			c = Color(0.95, 0.80, 0.10)
+		elif b.get("riposte", false):
+			c = Color(0.95, 0.45, 0.20)
+		elif b.get("block_next", false):
+			c = Color(0.45, 0.85, 1.00)
 		draw_circle(Vector2(bx + 4.0, RADIUS + 12.0), 4.0, c)
 		bx += 11.0

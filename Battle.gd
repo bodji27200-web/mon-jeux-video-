@@ -438,7 +438,9 @@ func _use_skill(caster: Node, cell: Vector2i, index: int) -> void:
 			if enemy:
 				_attack(caster, enemy)
 				# Drain supplémentaire : soigne 60% de l'attaque de base en PV
-				caster.heal(int(round(float(caster.data.attack) * 0.60)))
+				# (seulement si le lanceur a survécu à une éventuelle riposte).
+				if caster.is_alive():
+					caster.heal(int(round(float(caster.data.attack) * 0.60)))
 				_fx("beam", cell, caster.grid_position, Color(0.55, 0.10, 0.20))
 		"heavy_strike":
 			# Gros coup unique : attaque multipliée sur une cible.
@@ -450,6 +452,8 @@ func _use_skill(caster: Node, cell: Vector2i, index: int) -> void:
 			var radius: int = int(sk.get("radius", 1))
 			_fx("explosion", cell, cell, caster.data.color, (radius + 0.5) * grid.CELL_SIZE)
 			for u in get_tree().get_nodes_in_group("units"):
+				if not caster.is_alive():
+					break  # le lanceur a pu mourir d'une riposte en pleine fauche
 				if u.is_alive() and u.team != caster.team \
 						and grid.manhattan(u.grid_position, cell) <= radius:
 					_attack(caster, u, float(sk.get("dmg_mult", 1.0)))
@@ -480,7 +484,8 @@ func _use_skill(caster: Node, cell: Vector2i, index: int) -> void:
 			var enemy_rs := _unit_at(cell)
 			if enemy_rs:
 				_attack(caster, enemy_rs)
-				_retreat(caster, enemy_rs.grid_position, int(sk.get("retreat", 2)))
+				if caster.is_alive():
+					_retreat(caster, enemy_rs.grid_position, int(sk.get("retreat", 2)))
 		"apply_debuff":
 			# Tir handicapant : attaque + applique un debuff nommé.
 			var enemy := _unit_at(cell)
@@ -514,6 +519,8 @@ func _use_skill(caster: Node, cell: Vector2i, index: int) -> void:
 			var end_cell: Vector2i = caster.grid_position + dir * int(sk.range)
 			_fx("beam", caster.grid_position, end_cell, caster.data.color)
 			for i in range(1, int(sk.range) + 1):
+				if not caster.is_alive():
+					break  # une riposte a pu tuer le lanceur en cours de ligne
 				var c: Vector2i = caster.grid_position + dir * i
 				if not grid.is_inside(c):
 					break
