@@ -245,6 +245,7 @@ func _attack(unit: Node, target: Node, mult := 1.0, is_counter := false) -> void
 	# Animation : projectile si l'attaque est à distance, coup de lame sinon.
 	var atk_kind: String = "projectile" if int(unit.data.attack_range) > 1 else "slash"
 	_fx(atk_kind, unit.grid_position, target.grid_position, unit.data.color)
+	unit.lunge(target.grid_position)  # petit élan de l'attaquant vers la cible
 	# Parade : la cible bloque entièrement la prochaine attaque reçue (le buff est consommé).
 	if _consume_parade(target):
 		_show_blocked_text(target)

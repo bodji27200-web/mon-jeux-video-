@@ -54,6 +54,7 @@ var summoner: Node = null
 var _active := false
 var _frame := 0          # frame d'animation idle courante
 var _anim_t := 0.0
+var _move_tween: Tween   # glissement de déplacement en cours (cosmétique)
 
 
 func _ready() -> void:
@@ -112,9 +113,40 @@ func move_range() -> int:
 
 
 func move_to(cell: Vector2i) -> void:
-	grid_position = cell
-	_refresh_position()
+	grid_position = cell  # logique : la position de grille change tout de suite
 	has_moved = true
+	var grid := get_parent()
+	if grid == null or not grid.has_method("cell_to_local"):
+		return
+	var target: Vector2 = grid.cell_to_local(cell)
+	# En headless (sim de test) : pas d'animation, on saute directement.
+	if DisplayServer.get_name() == "headless":
+		position = target
+		return
+	# Sinon : glissement fluide vers la case (effet de marche).
+	if _move_tween and _move_tween.is_valid():
+		_move_tween.kill()
+	var dur: float = clampf(position.distance_to(target) / 340.0, 0.08, 0.30)
+	_move_tween = create_tween()
+	_move_tween.tween_property(self, "position", target, dur).set_trans(Tween.TRANS_SINE)
+
+
+# Petit élan vers une case (coup porté). Cosmétique, ignoré en headless.
+func lunge(toward_cell: Vector2i) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var grid := get_parent()
+	if grid == null or not grid.has_method("cell_to_local"):
+		return
+	if _move_tween and _move_tween.is_valid():
+		_move_tween.kill()
+	var home: Vector2 = grid.cell_to_local(grid_position)
+	var tgt: Vector2 = grid.cell_to_local(toward_cell)
+	var dir: Vector2 = (tgt - home).normalized() if tgt != home else Vector2.ZERO
+	position = home
+	var tw := create_tween()
+	tw.tween_property(self, "position", home + dir * 12.0, 0.08)
+	tw.tween_property(self, "position", home, 0.12)
 
 
 func set_active(active: bool) -> void:
