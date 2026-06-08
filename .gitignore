@@ -4,3 +4,8 @@
 # Dev only
 SimTest.gd
 SimTest.tscn
+
+# Outils de capture/dev (non commités)
+CaptureShot.gd
+CaptureShot.tscn
+shot.png

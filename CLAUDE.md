@@ -204,6 +204,16 @@ Ordre de priorité (✅ = fait) :
     (`Battle._update_terrain_hint` + `TerrainLabel`), **écran de fin avec stats**
     (tours joués, ennemis vaincus, alliés perdus, plus gros coup —
     `Battle._show_stats` + `StatsLabel`).
+44. ✅ **Vue ISOMÉTRIQUE** (type Into the Breach / XCOM) : la grille passe en
+    losanges (projection iso 2:1 dans `Grid.cell_to_local` / `local_to_cell`,
+    constantes `TILE_W`/`TILE_H`/`ISO_ORIGIN`). Sol dessiné en losanges
+    (`_diamond_points`/`_fill_cell`/`_outline_cell`), **tri en profondeur** des
+    unités via `y_sort_enabled` sur le nœud Grid (les FX et textes flottants
+    restent au-dessus grâce à `z_index`). **Gameplay 100 % inchangé** (coords de
+    grille entières, BFS, portées, IA identiques). `CELL_SIZE` conservé pour les
+    rayons d'effets. Limite connue (étape suivante) : pas encore d'occlusion des
+    décors hauts ni de relief/hauteur — c'est la base avant d'ajouter toits,
+    élévation et bonus de hauteur.
 43. ✅ **Décors de terrain vectoriels** (`Grid._draw_terrain_feature`) : la lettre
     (F/R/M) est remplacée par un vrai obstacle dessiné — **sapin** (Forêt),
     **colonne brisée + blocs** (Ruines), **flaque + bulles + roseaux** (Marécage).

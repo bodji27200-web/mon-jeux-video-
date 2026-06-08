@@ -4,7 +4,16 @@ extends Node2D
 
 const COLUMNS := 12
 const ROWS := 10
-const CELL_SIZE := 64
+const CELL_SIZE := 64  # conservé pour les rayons d'effets visuels (SkillFX)
+
+# --- Projection isométrique (vue inclinée type Into the Breach / XCOM) ---
+# Une case = un losange de TILE_W de large et TILE_H de haut (ratio 2:1).
+# Le gameplay reste sur des coordonnées de grille entières ; seule la conversion
+# case <-> écran change (cell_to_local / local_to_cell).
+const TILE_W := 64.0
+const TILE_H := 32.0
+# Décalage d'origine : pousse la grille pour que tout reste en coordonnées >= 0.
+const ISO_ORIGIN := Vector2(320.0, 40.0)
 
 const COLOR_CELL := Color(0.13, 0.13, 0.18)
 const COLOR_LINE := Color(0.30, 0.30, 0.40)
@@ -21,37 +30,48 @@ var terrain: Dictionary = {}  # Vector2i -> String (clé dans GameData.TERRAIN)
 
 
 func _draw() -> void:
-	var w := COLUMNS * CELL_SIZE
-	var h := ROWS * CELL_SIZE
-	# Cases de base
-	for col in COLUMNS:
-		for row in ROWS:
-			draw_rect(_cell_rect(Vector2i(col, row)), COLOR_CELL)
-	# Terrain tactique : fond teinté discret (zone d'effet) + décor vectoriel.
+	# Sol : un losange par case (du fond vers l'avant pour un recouvrement propre).
+	for row in ROWS:
+		for col in COLUMNS:
+			var cell := Vector2i(col, row)
+			_fill_cell(cell, COLOR_CELL)
+			_outline_cell(cell, COLOR_LINE, 1.0)
+	# Terrain tactique : losange teinté (zone d'effet) + décor vectoriel debout.
 	for cell in terrain:
 		var tid: String = terrain[cell]
 		if not GameData.TERRAIN.has(tid):
 			continue
-		draw_rect(_cell_rect(cell), GameData.TERRAIN[tid].color)
+		_fill_cell(cell, GameData.TERRAIN[tid].color)
 		_draw_terrain_feature(cell, tid)
-	# Highlights navigation
+	# Highlights navigation (posés à plat sur les losanges).
 	for cell in move_cells:
-		draw_rect(_cell_rect(cell), COLOR_MOVE)
+		_fill_cell(cell, COLOR_MOVE)
 	for cell in target_cells:
-		draw_rect(_cell_rect(cell), COLOR_TARGET)
+		_fill_cell(cell, COLOR_TARGET)
 	for cell in heal_cells:
-		draw_rect(_cell_rect(cell), COLOR_HEAL)
+		_fill_cell(cell, COLOR_HEAL)
 	for cell in skill_cells:
-		draw_rect(_cell_rect(cell), COLOR_SKILL)
-	# Lignes de grille
-	for col in COLUMNS + 1:
-		draw_line(Vector2(col * CELL_SIZE, 0), Vector2(col * CELL_SIZE, h), COLOR_LINE, 1.0)
-	for row in ROWS + 1:
-		draw_line(Vector2(0, row * CELL_SIZE), Vector2(w, row * CELL_SIZE), COLOR_LINE, 1.0)
+		_fill_cell(cell, COLOR_SKILL)
 
 
-func _cell_rect(cell: Vector2i) -> Rect2:
-	return Rect2(cell.x * CELL_SIZE, cell.y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+# Les 4 sommets du losange d'une case (haut, droite, bas, gauche).
+func _diamond_points(cell: Vector2i) -> PackedVector2Array:
+	var c := cell_to_local(cell)
+	return PackedVector2Array([
+		c + Vector2(0.0, -TILE_H / 2.0),
+		c + Vector2(TILE_W / 2.0, 0.0),
+		c + Vector2(0.0, TILE_H / 2.0),
+		c + Vector2(-TILE_W / 2.0, 0.0)])
+
+
+func _fill_cell(cell: Vector2i, color: Color) -> void:
+	draw_colored_polygon(_diamond_points(cell), color)
+
+
+func _outline_cell(cell: Vector2i, color: Color, width: float) -> void:
+	var pts := _diamond_points(cell)
+	pts.append(pts[0])
+	draw_polyline(pts, color, width)
 
 
 # --- Décors de terrain (100 % vectoriel, aucun asset) ---
@@ -115,13 +135,19 @@ func _fill_ellipse(center: Vector2, rx: float, ry: float, color: Color) -> void:
 	draw_colored_polygon(pts, color)
 
 
-# Centre d'une case, en coordonnées locales à la grille (pour placer les unités).
+# Centre du losange d'une case, en coordonnées locales à la grille (projection iso).
 func cell_to_local(cell: Vector2i) -> Vector2:
-	return Vector2(cell.x * CELL_SIZE + CELL_SIZE / 2.0, cell.y * CELL_SIZE + CELL_SIZE / 2.0)
+	return ISO_ORIGIN + Vector2(
+		(cell.x - cell.y) * (TILE_W / 2.0),
+		(cell.x + cell.y) * (TILE_H / 2.0))
 
 
+# Inverse de la projection : retrouve la case sous un point local (clic souris).
 func local_to_cell(local_pos: Vector2) -> Vector2i:
-	return Vector2i(floori(local_pos.x / CELL_SIZE), floori(local_pos.y / CELL_SIZE))
+	var p := local_pos - ISO_ORIGIN
+	var fx := p.x / (TILE_W / 2.0)   # = (cell.x - cell.y)
+	var fy := p.y / (TILE_H / 2.0)   # = (cell.x + cell.y)
+	return Vector2i(roundi((fx + fy) / 2.0), roundi((fy - fx) / 2.0))
 
 
 func is_inside(cell: Vector2i) -> bool:

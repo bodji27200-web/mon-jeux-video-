@@ -8,7 +8,8 @@
 script = ExtResource("0_battle")
 
 [node name="Grid" type="Node2D" parent="."]
-position = Vector2(32, 32)
+position = Vector2(60, 130)
+y_sort_enabled = true
 script = ExtResource("1_grid")
 
 [node name="TurnManager" type="Node" parent="."]
