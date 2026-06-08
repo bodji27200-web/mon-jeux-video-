@@ -4,10 +4,15 @@ extends Node
 
 signal turn_started(unit)
 
-@export var turn_label: Label
+@export var turn_label: NodePath  # chemin vers le Label d'affichage du tour
+var label: Label                  # Label résolu (depuis turn_label)
 
 var units: Array = []
 var current_index := -1
+
+
+func _ready() -> void:
+	label = get_node_or_null(turn_label) as Label
 
 
 func start() -> void:
@@ -41,7 +46,7 @@ func _begin(index: int) -> void:
 	for u in units:
 		u.set_active(u == unit)
 	unit.reset_turn()
-	if turn_label:
+	if label:
 		var camp := "Joueur" if unit.is_player() else "IA"
-		turn_label.text = "Tour de : %s (%s)" % [unit.data.name, camp]
+		label.text = "Tour de : %s (%s)" % [unit.data.name, camp]
 	turn_started.emit(unit)

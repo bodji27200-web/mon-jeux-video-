@@ -240,17 +240,52 @@ func damage_dealt_mult() -> float:
 
 
 func _draw() -> void:
-	draw_circle(Vector2.ZERO, RADIUS, data.color)
-	# Symbole de la classe
+	var col: Color = data.color
+	var dark: Color = col.darkened(0.5)
+	var team_tint := Color(0.35, 0.6, 1.0) if is_player() else Color(1.0, 0.4, 0.35)
+
+	# --- Anneau de sol : couleur du camp (doré quand c'est son tour) ---
+	var ring_col: Color = Color(1.0, 0.9, 0.35) if _active else team_tint
+	_draw_ellipse(Vector2(0, 17), 16.0, 6.0, Color(ring_col, 0.20))
+	_draw_ellipse_outline(Vector2(0, 17), 17.0, 7.0, Color(ring_col, 0.95), 3.0 if _active else 2.0)
+	# Ombre portée
+	_draw_ellipse(Vector2(0, 18), 12.0, 4.5, Color(0, 0, 0, 0.28))
+
+	# --- Personnage : corps (robe) + tête avec des yeux ---
+	var robe := PackedVector2Array([Vector2(-9, -5), Vector2(9, -5), Vector2(13, 17), Vector2(-13, 17)])
+	draw_colored_polygon(robe, col)
+	# Bas de robe assombri (profondeur)
+	draw_colored_polygon(PackedVector2Array([Vector2(-13, 12), Vector2(13, 12), Vector2(13, 17), Vector2(-13, 17)]), dark)
+	var robe_outline := PackedVector2Array(robe)
+	robe_outline.append(robe[0])
+	draw_polyline(robe_outline, dark, 1.5)
+	# Tête
+	var head_col: Color = col.lightened(0.4)
+	draw_circle(Vector2(0, -13), 8.0, head_col)
+	draw_arc(Vector2(0, -13), 8.0, 0.0, TAU, 20, dark, 1.5)
+	draw_circle(Vector2(-3, -14), 1.4, Color(0.10, 0.10, 0.12))
+	draw_circle(Vector2(3, -14), 1.4, Color(0.10, 0.10, 0.12))
+
+	# --- Arme selon le profil de la classe ---
+	_draw_weapon(_weapon_kind(), col, dark)
+
+	# --- Symbole de classe sur le torse (identification précise) ---
 	var font := ThemeDB.fallback_font
-	draw_string(font, Vector2(-6, 6), str(data.symbol), HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color.BLACK)
-	# Barre de vie
+	var lum: float = col.r * 0.299 + col.g * 0.587 + col.b * 0.114
+	var sym_col: Color = Color.BLACK if lum > 0.55 else Color(1, 1, 1, 0.92)
+	draw_string(font, Vector2(-4.5, 8.0), str(data.symbol), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, sym_col)
+
+	# --- Barre de vie (verte / jaune / rouge selon les PV) ---
 	var ratio := clampf(float(hp) / float(data.max_hp), 0.0, 1.0)
 	var bar_y := -RADIUS - 10.0
 	draw_rect(Rect2(-RADIUS, bar_y, RADIUS * 2.0, 5), Color(0.15, 0.0, 0.0))
-	draw_rect(Rect2(-RADIUS, bar_y, RADIUS * 2.0 * ratio, 5), Color(0.20, 0.85, 0.25))
-	if _active:
-		draw_arc(Vector2.ZERO, RADIUS + 5.0, 0.0, TAU, 32, Color(1, 1, 0.4), 3.0)
+	var hp_col := Color(0.20, 0.85, 0.25)
+	if ratio < 0.3:
+		hp_col = Color(0.90, 0.25, 0.20)
+	elif ratio < 0.6:
+		hp_col = Color(0.92, 0.75, 0.20)
+	draw_rect(Rect2(-RADIUS, bar_y, RADIUS * 2.0 * ratio, 5), hp_col)
+
 	# Pastilles des buffs/debuffs actifs.
 	var bx := -RADIUS
 	for b in buffs:
@@ -275,3 +310,72 @@ func _draw() -> void:
 			c = Color(0.45, 0.85, 1.00)
 		draw_circle(Vector2(bx + 4.0, RADIUS + 12.0), 4.0, c)
 		bx += 11.0
+
+
+# Type d'arme dessinée, déduit du rôle / profil de la classe (data-driven).
+func _weapon_kind() -> String:
+	match str(data.get("role", "melee")):
+		"tank":
+			return "shield"
+		"healer":
+			return "staff"
+		"ranged":
+			if class_id in ["archer", "archere", "chasseur", "squelette_archer"]:
+				return "bow"
+			return "staff"
+		_:
+			return "spear" if int(data.attack_range) >= 2 else "sword"
+
+
+# Dessine l'arme tenue par le personnage (cosmétique, à droite sauf le bouclier).
+func _draw_weapon(kind: String, col: Color, dark: Color) -> void:
+	var steel := Color(0.78, 0.80, 0.86)
+	var steel_d := Color(0.45, 0.47, 0.54)
+	var wood := Color(0.45, 0.30, 0.16)
+	match kind:
+		"sword":
+			draw_line(Vector2(15, 8), Vector2(15, -15), steel, 3.0)
+			draw_line(Vector2(15, 8), Vector2(15, -15), Color(1, 1, 1, 0.5), 1.0)
+			draw_line(Vector2(9, -2), Vector2(21, -2), steel_d, 3.0)   # garde
+			draw_circle(Vector2(15, 10), 2.4, Color(0.85, 0.70, 0.25))  # pommeau
+		"spear":
+			draw_line(Vector2(16, 15), Vector2(16, -18), wood, 2.5)
+			draw_colored_polygon(PackedVector2Array([
+				Vector2(16, -25), Vector2(12, -16), Vector2(20, -16)]), steel)
+		"shield":
+			var sh := PackedVector2Array([
+				Vector2(-21, -9), Vector2(-8, -9), Vector2(-8, 3),
+				Vector2(-14, 12), Vector2(-21, 3)])
+			draw_colored_polygon(sh, steel)
+			var sh_o := PackedVector2Array(sh)
+			sh_o.append(sh[0])
+			draw_polyline(sh_o, steel_d, 1.5)
+			draw_circle(Vector2(-14, -2), 3.0, col)  # emblème (couleur de classe)
+		"bow":
+			draw_arc(Vector2(13, 0), 15.0, -1.15, 1.15, 16, wood, 2.5)
+			var top := Vector2(13, 0) + Vector2(cos(-1.15), sin(-1.15)) * 15.0
+			var bot := Vector2(13, 0) + Vector2(cos(1.15), sin(1.15)) * 15.0
+			draw_line(top, bot, Color(0.85, 0.85, 0.80, 0.85), 1.0)  # corde
+			draw_line(Vector2(2, 0), Vector2(21, 0), steel_d, 1.5)   # flèche
+		"staff":
+			draw_line(Vector2(16, 16), Vector2(16, -14), wood, 2.5)
+			draw_circle(Vector2(16, -16), 5.0, Color(col, 0.45))      # halo
+			draw_circle(Vector2(16, -16), 3.0, col.lightened(0.3))    # orbe
+
+
+# Dessine une ellipse pleine (pas de primitive native).
+func _draw_ellipse(center: Vector2, rx: float, ry: float, color: Color) -> void:
+	var pts := PackedVector2Array()
+	for i in 22:
+		var a := TAU * i / 22.0
+		pts.append(center + Vector2(cos(a) * rx, sin(a) * ry))
+	draw_colored_polygon(pts, color)
+
+
+# Dessine le contour d'une ellipse.
+func _draw_ellipse_outline(center: Vector2, rx: float, ry: float, color: Color, width: float) -> void:
+	var pts := PackedVector2Array()
+	for i in 23:
+		var a := TAU * i / 22.0
+		pts.append(center + Vector2(cos(a) * rx, sin(a) * ry))
+	draw_polyline(pts, color, width)

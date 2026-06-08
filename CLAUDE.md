@@ -174,6 +174,18 @@ Ordre de priorité (✅ = fait) :
     projectile qui traverse l'écran (tirs), coup de lame (mêlée), faisceau (tir
     perforant / drain), nova/explosion (zone), halo (buff/debuff), téléportation.
     100 % cosmétique (tween, auto-libéré), n'altère jamais l'état du combat.
+36. ✅ **Correctifs riposte** : un lanceur tué par la riposte du Duelliste ne
+    continue plus d'agir (cleave/piercing s'arrêtent, drain ne ressuscite plus,
+    retreat_shot ne recule plus un mort). `Unit.heal()` restaure la visibilité.
+37. ✅ **Vrais personnages** (`Unit._draw()`, 100 % vectoriel, 1 seul fichier) :
+    figurine (robe + tête + yeux) colorée par classe, **arme selon le profil**
+    (bouclier/épée/lance/arc/bâton via `_weapon_kind()`), **anneau de sol coloré
+    par camp** (bleu joueur / rouge IA, doré = tour actif), barre de vie
+    verte/jaune/rouge, lettre de classe sur le torse. Aucun asset externe.
+38. ✅ **Fix label de tour** : `TurnManager.turn_label` (export typé `Label`) ne
+    se résolvait pas depuis le `NodePath` du `.tscn` → le nom de l'unité ne
+    s'affichait jamais. Passé en `@export NodePath` résolu dans `_ready()`
+    (champ `label`).
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`

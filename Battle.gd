@@ -337,8 +337,8 @@ func _check_end() -> bool:
 				a = true
 	if not p or not a:
 		_finished = true
-		if turn_manager.turn_label:
-			turn_manager.turn_label.text = ""
+		if turn_manager.label:
+			turn_manager.label.text = ""
 		end_label.text = "VICTOIRE !" if p else "DÉFAITE..."
 		end_label.add_theme_color_override("font_color", Color(0.2, 0.9, 0.3) if p else Color(0.9, 0.2, 0.2))
 		end_label.add_theme_font_size_override("font_size", 64)
