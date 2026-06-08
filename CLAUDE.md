@@ -204,6 +204,11 @@ Ordre de priorité (✅ = fait) :
     (`Battle._update_terrain_hint` + `TerrainLabel`), **écran de fin avec stats**
     (tours joués, ennemis vaincus, alliés perdus, plus gros coup —
     `Battle._show_stats` + `StatsLabel`).
+43. ✅ **Décors de terrain vectoriels** (`Grid._draw_terrain_feature`) : la lettre
+    (F/R/M) est remplacée par un vrai obstacle dessiné — **sapin** (Forêt),
+    **colonne brisée + blocs** (Ruines), **flaque + bulles + roseaux** (Marécage).
+    Fond teinté conservé sous le décor (lisibilité de la zone d'effet). 100 %
+    vectoriel, aucun asset.
 42. ✅ **Correctifs IA** : `_removable_count` compte désormais TOUS les debuffs
     purifiables (racines, affaiblissement, vulnérabilité — avant : seulement DoT
     et ralentissement) → le Soigneur/Druide IA purifient correctement ; l'IA
