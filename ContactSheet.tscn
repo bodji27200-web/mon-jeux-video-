@@ -1,0 +1,4 @@
+[gd_scene load_steps=2 format=3 uid="uid://b1rpgcontactsheet"]
+[ext_resource type="Script" path="res://ContactSheet.gd" id="0_cs"]
+[node name="ContactSheet" type="Node2D"]
+script = ExtResource("0_cs")
