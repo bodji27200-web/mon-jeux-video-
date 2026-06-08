@@ -15,17 +15,19 @@ const TILE_H := 32.0
 # Décalage d'origine : pousse la grille pour que tout reste en coordonnées >= 0.
 const ISO_ORIGIN := Vector2(320.0, 40.0)
 
-const COLOR_CELL := Color(0.13, 0.13, 0.18)
-const COLOR_LINE := Color(0.30, 0.30, 0.40)
+const COLOR_CELL := Color(0.15, 0.15, 0.21)
+const COLOR_LINE := Color(0.42, 0.44, 0.56)          # contour des cases (plus lisible)
 const COLOR_MOVE := Color(0.30, 0.55, 0.95, 0.35)    # cases de déplacement
 const COLOR_TARGET := Color(0.90, 0.25, 0.25, 0.40)  # cibles attaquables
 const COLOR_HEAL := Color(0.30, 0.85, 0.40, 0.40)    # alliés soignables
 const COLOR_SKILL := Color(0.75, 0.35, 0.95, 0.45)   # cibles de compétence
+const COLOR_HOVER := Color(1.0, 1.0, 1.0, 0.85)      # case survolée par la souris
 
 var move_cells: Array = []
 var target_cells: Array = []
 var heal_cells: Array = []
 var skill_cells: Array = []
+var hover_cell := Vector2i(-1, -1)  # case sous la souris (surbrillance), -1 = aucune
 var terrain: Dictionary = {}  # Vector2i -> String (clé dans GameData.TERRAIN)
 
 
@@ -43,15 +45,23 @@ func _draw() -> void:
 			continue
 		_fill_cell(cell, GameData.TERRAIN[tid].color)
 		_draw_terrain_feature(cell, tid)
-	# Highlights navigation (posés à plat sur les losanges).
+	# Highlights navigation (remplissage + contour net pour bien lire les cases).
 	for cell in move_cells:
 		_fill_cell(cell, COLOR_MOVE)
+		_outline_cell(cell, Color(0.45, 0.70, 1.0, 0.9), 2.0)
 	for cell in target_cells:
 		_fill_cell(cell, COLOR_TARGET)
+		_outline_cell(cell, Color(1.0, 0.40, 0.40, 0.9), 2.0)
 	for cell in heal_cells:
 		_fill_cell(cell, COLOR_HEAL)
+		_outline_cell(cell, Color(0.40, 0.95, 0.55, 0.9), 2.0)
 	for cell in skill_cells:
 		_fill_cell(cell, COLOR_SKILL)
+		_outline_cell(cell, Color(0.85, 0.50, 1.0, 0.95), 2.0)
+	# Surbrillance de la case survolée (par-dessus tout, pour viser facilement).
+	if is_inside(hover_cell):
+		_fill_cell(hover_cell, Color(1.0, 1.0, 1.0, 0.10))
+		_outline_cell(hover_cell, COLOR_HOVER, 2.0)
 
 
 # Les 4 sommets du losange d'une case (haut, droite, bas, gauche).
@@ -77,14 +87,18 @@ func _outline_cell(cell: Vector2i, color: Color, width: float) -> void:
 # --- Décors de terrain (100 % vectoriel, aucun asset) ---
 # Dessine un obstacle reconnaissable au centre de la case selon son type.
 func _draw_terrain_feature(cell: Vector2i, tid: String) -> void:
-	var c := cell_to_local(cell)  # centre de la case
+	var base := cell_to_local(cell)  # centre de la case
+	# Décor "planté" sur la case : ombre de contact au sol + élément remonté pour
+	# qu'il tienne au centre du losange (cohérent avec les unités).
 	match tid:
 		"foret":
-			_draw_tree(c)
+			_fill_ellipse(base + Vector2(0, 6), 15.0, 6.0, Color(0, 0, 0, 0.22))
+			_draw_tree(base + Vector2(0, -7))
 		"ruines":
-			_draw_ruins(c)
+			_fill_ellipse(base + Vector2(0, 6), 16.0, 7.0, Color(0, 0, 0, 0.22))
+			_draw_ruins(base + Vector2(0, -6))
 		"marecage":
-			_draw_swamp(c)
+			_draw_swamp(base + Vector2(0, -2))
 
 
 # Sapin : tronc + trois étages de feuillage (relief clair/foncé).

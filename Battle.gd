@@ -257,9 +257,13 @@ func _enter_skill_phase() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Info terrain au survol (indépendant du tour en cours).
+	# Survol : surbrillance de la case + info terrain (indépendant du tour en cours).
 	if event is InputEventMouseMotion:
-		_update_terrain_hint(grid.local_to_cell(grid.to_local(get_global_mouse_position())))
+		var hc: Vector2i = grid.local_to_cell(grid.to_local(get_global_mouse_position()))
+		if hc != grid.hover_cell:
+			grid.hover_cell = hc
+			grid.queue_redraw()
+		_update_terrain_hint(hc)
 		return
 	if _finished or active_unit == null or not active_unit.is_player():
 		return
