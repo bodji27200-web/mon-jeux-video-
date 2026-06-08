@@ -17,14 +17,34 @@ const SKILL_FX := preload("res://SkillFX.gd")
 # la classe (jusqu'à 3). Les carrés sans compétence restent vides/désactivés.
 # Icône courte par type de compétence.
 const SKILL_SLOTS := 3
+
+# Symbole Unicode + couleur de fond par type de compétence.
 const SKILL_ICONS := {
-	"invoke": "Inv", "roots": "Rac", "war_heal": "Soin", "double_dot": "DoT",
-	"drain_strike": "Drain", "mark_shot": "Marq", "empower_ally": "Force",
-	"shield_ally": "Bouc", "purify": "Pur", "frost_nova": "Gel",
-	"teleport_strike": "Saut", "piercing_shot": "Perce", "traps": "Piège",
-	"heavy_strike": "Charge", "cleave": "Fauche", "self_buff": "Buff",
-	"apply_debuff": "Malus", "buff_ally": "Aura",
-	"team_buff": "Hymne", "team_debuff": "Discord", "retreat_shot": "Recul",
+	"invoke": "⬟", "roots": "❧", "war_heal": "✚", "double_dot": "☠",
+	"drain_strike": "⊛", "mark_shot": "★", "empower_ally": "✦",
+	"shield_ally": "⬡", "purify": "☩", "frost_nova": "❄",
+	"teleport_strike": "⇥", "piercing_shot": "→", "traps": "⚙",
+	"heavy_strike": "⚡", "cleave": "◎", "self_buff": "✦",
+	"apply_debuff": "☠", "buff_ally": "✦",
+	"team_buff": "♫", "team_debuff": "☁", "retreat_shot": "↩",
+}
+# Catégorie → couleur de fond du bouton.
+const SKILL_CATEGORY_COLOR := {
+	"attack":  Color(0.48, 0.08, 0.08),   # rouge sombre
+	"buff":    Color(0.08, 0.32, 0.12),   # vert sombre
+	"control": Color(0.26, 0.08, 0.42),   # violet sombre
+	"summon":  Color(0.38, 0.24, 0.04),   # orange sombre
+}
+# Type → catégorie.
+const SKILL_TYPE_CATEGORY := {
+	"heavy_strike": "attack", "cleave": "attack", "drain_strike": "attack",
+	"piercing_shot": "attack", "retreat_shot": "attack", "apply_debuff": "attack",
+	"teleport_strike": "attack", "mark_shot": "attack",
+	"shield_ally": "buff", "empower_ally": "buff", "buff_ally": "buff",
+	"self_buff": "buff", "team_buff": "buff", "war_heal": "buff", "purify": "buff",
+	"roots": "control", "frost_nova": "control", "double_dot": "control",
+	"team_debuff": "control", "traps": "control",
+	"invoke": "summon",
 }
 
 var active_unit: Node = null
@@ -32,7 +52,12 @@ var phase := "idle"  # "move", "attack" puis éventuellement "skill" (joueur)
 var _finished := false
 var skill_slots: Array = []  # boutons de la barre de compétences
 var selected_skill := -1  # index de la compétence sélectionnée (phase "skill")
+var _skill_return_phase := "attack"  # phase à restaurer si on annule une compétence
 var end_turn_btn: Button  # bouton "Fin de tour" (visible au tour du joueur)
+# Panneau d'info compétence (s'affiche instantanément au survol d'un bouton).
+var _skill_info_panel: PanelContainer
+var _skill_info_name: Label
+var _skill_info_desc: Label
 
 # Statistiques de partie (affichées sur l'écran de fin).
 var _turn_count := 0
@@ -72,13 +97,33 @@ func _on_end_turn_button() -> void:
 	_end_turn()
 
 
-# Construit la barre de 3 carrés (UI souris uniquement, pas de raccourci clavier).
+# Construit la barre de 3 boutons composites (icône + nom) et le panneau d'info.
 func _build_skill_bar() -> void:
-	var s := 52
-	var gap := 6
+	var s := 62
+	var gap := 8
 	var total := SKILL_SLOTS * s + (SKILL_SLOTS - 1) * gap
 	var x0 := 832 - total - 12
 	var y := 704 - s - 10
+
+	# Panneau d'info instantané (s'affiche au survol, pas de tooltip lent).
+	_skill_info_panel = PanelContainer.new()
+	_skill_info_panel.custom_minimum_size = Vector2(240, 0)
+	_skill_info_panel.position = Vector2(x0 - 10, y - 120)
+	_skill_info_panel.visible = false
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 4)
+	_skill_info_panel.add_child(vb)
+	_skill_info_name = Label.new()
+	_skill_info_name.add_theme_font_size_override("font_size", 14)
+	vb.add_child(_skill_info_name)
+	_skill_info_desc = Label.new()
+	_skill_info_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_skill_info_desc.custom_minimum_size = Vector2(236, 0)
+	_skill_info_desc.add_theme_font_size_override("font_size", 11)
+	_skill_info_desc.add_theme_color_override("font_color", Color(0.82, 0.82, 0.82))
+	vb.add_child(_skill_info_desc)
+	$UI.add_child(_skill_info_panel)
+
 	for i in SKILL_SLOTS:
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(s, s)
@@ -86,11 +131,53 @@ func _build_skill_bar() -> void:
 		b.position = Vector2(x0 + i * (s + gap), y)
 		b.focus_mode = Control.FOCUS_NONE
 		b.disabled = true
-		b.add_theme_font_size_override("font_size", 14)
+		b.clip_contents = true
+		# Contenu composite : icône grande + nom court.
+		var inner := VBoxContainer.new()
+		inner.set_anchors_preset(Control.PRESET_FULL_RECT)
+		inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		inner.alignment = BoxContainer.ALIGNMENT_CENTER
+		inner.add_theme_constant_override("separation", 1)
+		b.add_child(inner)
+		var icon_lbl := Label.new()
+		icon_lbl.name = "Icon"
+		icon_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		icon_lbl.add_theme_font_size_override("font_size", 22)
+		icon_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		inner.add_child(icon_lbl)
+		var cd_lbl := Label.new()
+		cd_lbl.name = "CD"
+		cd_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cd_lbl.add_theme_font_size_override("font_size", 10)
+		cd_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		inner.add_child(cd_lbl)
 		b.pressed.connect(_on_skill_slot.bind(i))
+		b.mouse_entered.connect(_on_skill_hover.bind(i))
+		b.mouse_exited.connect(func(): _skill_info_panel.visible = false)
 		$UI.add_child(b)
 		skill_slots.append(b)
 	_refresh_skill_bar()
+
+
+# Affiche le panneau d'info de la compétence survolée (instantané).
+func _on_skill_hover(index: int) -> void:
+	if active_unit == null or not active_unit.is_player():
+		return
+	var acts: Array = active_unit.get_actives()
+	if index >= acts.size():
+		return
+	var sk: Dictionary = acts[index]
+	var cd_val: int = active_unit.skill_cds[index] if index < active_unit.skill_cds.size() else 0
+	_skill_info_name.text = str(sk.name)
+	var extra := ""
+	if cd_val > 0:
+		extra = "\n⏳ En recharge : %d tour(s)" % cd_val
+	elif not active_unit.skill_ready(index):
+		extra = "\n⚑ Invocation max atteinte"
+	else:
+		extra = "\n↺ Recharge : %d tour(s)" % int(sk.get("cooldown", 0))
+	_skill_info_desc.text = str(sk.get("desc", "")) + extra
+	_skill_info_panel.visible = true
 
 
 func _on_replay() -> void:
@@ -170,35 +257,80 @@ func _refresh_skill_bar() -> void:
 		end_turn_btn.visible = show_bar
 	if not show_bar:
 		skill_hint.visible = false
+		if _skill_info_panel:
+			_skill_info_panel.visible = false
 		return
 	var acts: Array = active_unit.get_actives()
 	for i in SKILL_SLOTS:
 		var b: Button = skill_slots[i]
+		var icon_lbl: Label = b.get_node_or_null("VBoxContainer/Icon")
+		var cd_lbl: Label = b.get_node_or_null("VBoxContainer/CD")
 		if i < acts.size():
 			var sk: Dictionary = acts[i]
-			var icon: String = str(SKILL_ICONS.get(sk.type, "Comp"))
-			# Cooldown restant (ou "Max" pour une invocation au plafond) sous l'icône.
 			var cd: int = active_unit.skill_cds[i] if i < active_unit.skill_cds.size() else 0
-			if cd > 0:
-				b.text = "%s\nCD %d" % [icon, cd]
-			elif not active_unit.skill_ready(i):
-				b.text = "%s\nMax" % icon
-			else:
-				b.text = icon
-			b.tooltip_text = str(sk.name) + "\n" + str(sk.get("desc", ""))
-			var usable: bool = phase in ["attack", "skill"] and active_unit.skill_ready(i)
+			var usable: bool = phase in ["move", "attack", "skill"] and active_unit.skill_ready(i)
 			b.disabled = not usable
-			b.modulate = Color(1.0, 1.0, 0.4) if (phase == "skill" and selected_skill == i) else Color(1, 1, 1)
+			# Icône Unicode du type.
+			if icon_lbl:
+				icon_lbl.text = str(SKILL_ICONS.get(sk.type, "?"))
+			# Ligne du bas : cooldown ou nom court.
+			if cd_lbl:
+				if cd > 0:
+					cd_lbl.text = "CD %d" % cd
+					cd_lbl.add_theme_color_override("font_color", Color(1.0, 0.55, 0.20))
+				elif not active_unit.skill_ready(i):
+					cd_lbl.text = "Max"
+					cd_lbl.add_theme_color_override("font_color", Color(0.70, 0.40, 0.40))
+				else:
+					cd_lbl.text = _short_name(str(sk.name))
+					cd_lbl.add_theme_color_override("font_color", Color(0.88, 0.88, 0.88))
+			# Couleur de fond par catégorie + surbrillance si sélectionnée.
+			var is_selected: bool = phase == "skill" and selected_skill == i
+			var cat_col: Color = SKILL_CATEGORY_COLOR.get(
+					SKILL_TYPE_CATEGORY.get(sk.type, "attack"), SKILL_CATEGORY_COLOR.attack)
+			var bg_col: Color = Color(1.0, 0.95, 0.35) if is_selected else cat_col
+			_apply_button_bg(b, bg_col, is_selected)
+			b.modulate = Color(1, 1, 1) if usable else Color(0.50, 0.50, 0.52)
 		else:
-			b.text = ""
+			if icon_lbl: icon_lbl.text = ""
+			if cd_lbl: cd_lbl.text = ""
 			b.disabled = true
-			b.modulate = Color(0.45, 0.45, 0.5)
-	# Indication textuelle quand une compétence est sélectionnée.
+			b.modulate = Color(0.30, 0.30, 0.32)
+			_apply_button_bg(b, Color(0.12, 0.12, 0.14), false)
 	if phase == "skill" and selected_skill >= 0 and selected_skill < acts.size():
-		skill_hint.text = "Compétence : %s — clique une cible (ou reclique le carré pour annuler)" % str(acts[selected_skill].name)
+		skill_hint.text = "⚔  %s — clique une cible  (reclique pour annuler)" % str(acts[selected_skill].name)
 		skill_hint.visible = true
 	else:
 		skill_hint.visible = false
+
+
+func _short_name(full: String) -> String:
+	return full.left(7) + ("…" if full.length() > 7 else "")
+
+
+func _apply_button_bg(btn: Button, col: Color, highlighted: bool) -> void:
+	var s := StyleBoxFlat.new()
+	s.bg_color = col
+	s.corner_radius_top_left = 6
+	s.corner_radius_top_right = 6
+	s.corner_radius_bottom_left = 6
+	s.corner_radius_bottom_right = 6
+	s.border_width_top = 2
+	s.border_width_bottom = 2
+	s.border_width_left = 2
+	s.border_width_right = 2
+	s.border_color = col.lightened(0.5) if highlighted else col.lightened(0.2)
+	btn.add_theme_stylebox_override("normal", s)
+	var s2 := s.duplicate()
+	s2.bg_color = col.lightened(0.12)
+	btn.add_theme_stylebox_override("hover", s2)
+	var s3 := s.duplicate()
+	s3.bg_color = col.darkened(0.15)
+	btn.add_theme_stylebox_override("pressed", s3)
+	var s4 := s.duplicate()
+	s4.bg_color = col.darkened(0.35)
+	s4.border_color = col.darkened(0.1)
+	btn.add_theme_stylebox_override("disabled", s4)
 
 
 func _ai_take_turn(unit: Node) -> void:
@@ -218,26 +350,35 @@ func _ai_take_turn(unit: Node) -> void:
 	_end_turn()
 
 
-# Clic sur un carré : sélectionne la compétence correspondante (si elle existe).
-# Recliquer le carré déjà sélectionné annule (retour à l'attaque normale).
+# Clic sur un carré : sélectionne la compétence correspondante (si elle existe),
+# y compris dès le déplacement. Recliquer le carré sélectionné annule (retour à la
+# phase d'avant : déplacement ou attaque).
 func _on_skill_slot(index: int) -> void:
 	if active_unit == null or not active_unit.is_player():
 		return
 	if index >= active_unit.get_actives().size():
 		return  # carré vide
-	if phase == "attack":
-		selected_skill = index
-		_enter_skill_phase()
-	elif phase == "skill":
+	if phase == "skill":
 		if selected_skill == index:
-			_enter_action_phase()  # reclic -> annule
+			# Reclic -> annule, retour à la phase d'avant (déplacement ou attaque).
+			if _skill_return_phase == "move":
+				phase = "move"
+				_show_moves(active_unit)
+			else:
+				_enter_action_phase()
 		else:
 			selected_skill = index  # changer de compétence sélectionnée
 			_enter_skill_phase()
+	else:
+		# Sélection depuis "move" (sans avoir bougé) ou "attack".
+		_skill_return_phase = phase
+		selected_skill = index
+		_enter_skill_phase()
 
 
 func _enter_skill_phase() -> void:
 	phase = "skill"
+	grid.move_cells = []  # masque les cases de déplacement (utile si on vient de "move")
 	grid.target_cells = []
 	grid.heal_cells = []
 	grid.skill_cells = _skill_targets(active_unit, selected_skill)
@@ -246,9 +387,13 @@ func _enter_skill_phase() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Info terrain au survol (indépendant du tour en cours).
+	# Survol : surbrillance de la case + info terrain (indépendant du tour en cours).
 	if event is InputEventMouseMotion:
-		_update_terrain_hint(grid.local_to_cell(grid.to_local(get_global_mouse_position())))
+		var hc: Vector2i = grid.local_to_cell(grid.to_local(get_global_mouse_position()))
+		if hc != grid.hover_cell:
+			grid.hover_cell = hc
+			grid.queue_redraw()
+		_update_terrain_hint(hc)
 		return
 	if _finished or active_unit == null or not active_unit.is_player():
 		return

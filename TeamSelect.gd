@@ -26,10 +26,22 @@ var _taken := {}          # cid -> true : classes déjà draftées (pool partag�
 
 
 func _ready() -> void:
+	# Toute l'UI dans un ScrollContainer : le bouton COMBAT reste toujours
+	# atteignable même si le contenu dépasse la hauteur de l'écran.
+	var scroll := ScrollContainer.new()
+	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child(scroll)
+	var margin := MarginContainer.new()
+	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_top", 16)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_bottom", 16)
+	scroll.add_child(margin)
 	var root := VBoxContainer.new()
-	root.position = Vector2(40, 16)
 	root.add_theme_constant_override("separation", 6)
-	add_child(root)
+	margin.add_child(root)
 
 	var title := Label.new()
 	title.text = "RPG Tactique — Draft d'équipe"

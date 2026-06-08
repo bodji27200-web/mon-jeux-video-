@@ -325,21 +325,24 @@ func _draw() -> void:
 	var team_tint := Color(0.35, 0.6, 1.0) if is_player() else Color(1.0, 0.4, 0.35)
 
 	# --- Anneau de sol : couleur du camp (doré quand c'est son tour) ---
+	# Centré sur le losange de la case (l'unité "tient" sur sa case).
 	var ring_col: Color = Color(1.0, 0.9, 0.35) if _active else team_tint
-	_draw_ellipse(Vector2(0, 17), 16.0, 6.0, Color(ring_col, 0.20))
-	_draw_ellipse_outline(Vector2(0, 17), 17.0, 7.0, Color(ring_col, 0.95), 3.0 if _active else 2.0)
-	# Ombre portée
-	_draw_ellipse(Vector2(0, 18), 12.0, 4.5, Color(0, 0, 0, 0.28))
+	_draw_ellipse(Vector2(0, 4), 25.0, 12.0, Color(ring_col, 0.20))
+	_draw_ellipse_outline(Vector2(0, 4), 26.0, 12.5, Color(ring_col, 0.95), 3.0 if _active else 2.0)
+	# Ombre de contact sous les pieds.
+	_draw_ellipse(Vector2(0, 6), 16.0, 6.0, Color(0, 0, 0, 0.30))
 
 	# --- Personnage : sprite du pack si dispo, sinon figurine vectorielle ---
 	if SPRITES.has(class_id):
 		_draw_sprite()
 	else:
+		draw_set_transform(Vector2(0, -11))  # cale les pieds de la figurine sur l'anneau
 		_draw_vector_body(col, dark)
+		draw_set_transform(Vector2.ZERO)
 
 	# --- Barre de vie (verte / jaune / rouge selon les PV) ---
 	var ratio := clampf(float(hp) / float(data.max_hp), 0.0, 1.0)
-	var bar_y := -RADIUS - 10.0
+	var bar_y := -46.0
 	draw_rect(Rect2(-RADIUS, bar_y, RADIUS * 2.0, 5), Color(0.15, 0.0, 0.0))
 	var hp_col := Color(0.20, 0.85, 0.25)
 	if ratio < 0.3:
@@ -370,7 +373,7 @@ func _draw() -> void:
 			c = Color(0.95, 0.45, 0.20)
 		elif b.get("block_next", false):
 			c = Color(0.45, 0.85, 1.00)
-		var dot_pos := Vector2(bx + 4.0, RADIUS + 12.0)
+		var dot_pos := Vector2(bx + 4.0, 20.0)
 		draw_circle(dot_pos, 5.0, c)
 		# Durée restante de l'effet, au centre de la pastille.
 		var dur := int(b.get("duration", 0))
@@ -390,8 +393,8 @@ func _draw_sprite() -> void:
 	var scale: float = target_h / f0.size.y
 	var w: float = f0.size.x * scale
 	var h: float = f0.size.y * scale
-	# Centré horizontalement, pieds calés sur l'anneau de sol (y ~ 20).
-	var dest := Rect2(-w / 2.0, 20.0 - h, w, h)
+	# Centré horizontalement, pieds calés sur l'anneau de sol (centre de la case).
+	var dest := Rect2(-w / 2.0, 6.0 - h, w, h)
 	draw_texture_rect_region(TILESET, dest, src)
 
 
