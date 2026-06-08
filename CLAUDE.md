@@ -294,3 +294,33 @@ Compléter les 20 classes, compétences actives dédiées, animations, vrais spr
 > Priorités globales (ne jamais sacrifier une priorité haute pour une basse) :
 > 1. Gameplay tactique · 2. IA crédible · 3. Architecture robuste ·
 > 4. Équilibrage · 5. Graphismes.
+
+---
+
+## Contexte session précédente (à reprendre)
+
+### Sujet en cours : sprites
+- **État** : les sprites actuels viennent du pack CC0 "DungeonTileset II" by 0x72
+  (`assets/dungeon_tileset.png`). La copine de l'utilisateur aime ce style
+  (chunky pixel-art dark fantasy) **mais** les personnages ne correspondent pas
+  à leur classe (ex : Duelliste = lézard, Tank = mauvaise silhouette, etc.).
+- **Objectif validé** : trouver des sprites dans le MÊME style 0x72 (ou très
+  proche, dark fantasy chunky) qui collent vraiment aux rôles de chaque classe.
+  Le pack Eldiran (`assets/rpgchars.png`, CC0, 384×672, déjà téléchargé) a un
+  style différent (plus coloré/SNES) — à utiliser seulement si l'utilisateur
+  valide ce style.
+- **À faire** : proposer une sélection de sprites (re-mapping dans `Unit.SPRITES`)
+  AVANT de coder, attendre validation.
+
+### Ressenti de l'utilisateur
+L'utilisateur a exprimé un doute sur la qualité globale du jeu malgré des
+systèmes solides. Rappel objectif : le jeu est techniquement très avancé (20
+classes, IA difficultés multiples, draft, iso, animations, compétences actives,
+buffs/debuffs, terrain tactique). Le manque de cohérence visuelle sprite↔classe
+est la principale friction à corriger pour que l'ensemble "claque".
+
+### Prochaine étape suggérée
+1. Discuter / montrer les options de sprites (re-mapping 0x72 existant ou nouveau
+   pack dans le même style) → validation utilisateur
+2. Appliquer le re-mapping dans `Unit.SPRITES` (fichier : `Unit.gd`)
+3. Mettre à jour `assets/CREDITS.md` si nouveau pack
