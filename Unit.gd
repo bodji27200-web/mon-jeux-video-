@@ -23,7 +23,7 @@ const SPRITES := {
 	"archere":         Rect2(128, 16, 16, 16),   # elf_f
 	"mage":            Rect2(128, 170, 16, 22),  # wizzard_m
 	"soigneur":        Rect2(128, 132, 16, 28),  # wizzard_f
-	"assassin":        Rect2(368, 303, 16, 17),  # wogol
+	"assassin":        Rect2(128, 360, 16, 40),  # hero_11 (cape sombre, bien mieux que wogol)
 	"duelliste":       Rect2(128, 205, 16, 19),  # lizard_f
 	"berserker":       Rect2(368, 204, 16, 20),  # orc_warrior
 	"lancier":         Rect2(368, 172, 16, 20),  # masked_orc
@@ -31,12 +31,12 @@ const SPRITES := {
 	"mage_glace":      Rect2(368, 236, 16, 20),  # orc_shaman
 	"necromancien":    Rect2(366, 270, 16, 20),  # necromancer
 	"envouteur":       Rect2(368, 48, 16, 16),   # imp
-	"druide":          Rect2(432, 112, 16, 16),  # swampy
-	"alchimiste":      Rect2(368, 112, 16, 16),  # muddy
-	"chasseur":        Rect2(368, 37, 16, 11),   # goblin
+	"druide":          Rect2(128, 434, 16, 28),  # hero_12 : blonde en vert = nature parfaite
+	"alchimiste":      Rect2(128, 264, 16, 36),  # hero_9 : gnome/nain gris = inventeur
+	# chasseur : supprimé (goblin ne convient pas) → fallback vectoriel avec arc
 	"pretreguerrier":  Rect2(128, 237, 16, 19),  # lizard_m
 	"invocateur":      Rect2(16, 364, 32, 36),   # big_demon
-	"barde":           Rect2(368, 20, 16, 12),   # tiny_zombie
+	"barde":           Rect2(368, 360, 16, 20),  # hero nouveau : blonde/bleu (bien mieux que zombie)
 	"squelette_guerrier": Rect2(368, 80, 16, 16),  # skelet
 	"squelette_archer":   Rect2(368, 80, 16, 16),  # skelet
 	"golem_pierre":    Rect2(16, 320, 32, 32),   # ogre
