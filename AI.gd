@@ -107,6 +107,8 @@ static func _pick_enemy(unit: Node, enemies: Array) -> Node:
 		var s := -float(e.hp)
 		if float(e.hp) <= est:
 			s += 500.0                    # achevable ce tour-ci
+		if _has_buff(e, "parade"):
+			s -= 180.0                    # cible en parade : la prochaine attaque sera bloquée
 		if e.data.behavior == "heal":
 			s += 60.0                     # tuer le soigneur en priorité
 		elif e.data.behavior == "kite":
@@ -634,8 +636,13 @@ static func _has_buff(u: Node, id: String) -> bool:
 
 
 static func _removable_count(u: Node) -> int:
+	# Compte les effets négatifs purifiables (aligné sur Unit.purge_debuffs) :
+	# DoT, ralentissement, immobilisation, affaiblissement, vulnérabilité.
 	var n := 0
 	for b in u.buffs:
-		if b.has("dmg_per_turn") or b.has("move_penalty"):
+		if b.has("dmg_per_turn") or b.has("move_penalty") \
+				or b.get("immobilized", false) \
+				or (b.has("dmg_dealt_mult") and float(b.dmg_dealt_mult) < 1.0) \
+				or (b.has("dmg_taken_mult") and float(b.dmg_taken_mult) > 1.0):
 			n += 1
 	return n

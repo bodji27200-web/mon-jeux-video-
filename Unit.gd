@@ -370,8 +370,15 @@ func _draw() -> void:
 			c = Color(0.95, 0.45, 0.20)
 		elif b.get("block_next", false):
 			c = Color(0.45, 0.85, 1.00)
-		draw_circle(Vector2(bx + 4.0, RADIUS + 12.0), 4.0, c)
-		bx += 11.0
+		var dot_pos := Vector2(bx + 4.0, RADIUS + 12.0)
+		draw_circle(dot_pos, 5.0, c)
+		# Durée restante de l'effet, au centre de la pastille.
+		var dur := int(b.get("duration", 0))
+		if dur > 0:
+			var dfont := ThemeDB.fallback_font
+			draw_string(dfont, dot_pos + Vector2(-3.0, 3.5), str(dur),
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(0, 0, 0, 0.9))
+		bx += 13.0
 
 
 # Dessine le sprite du personnage (frame idle courante), mis à l'échelle pour

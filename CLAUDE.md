@@ -194,6 +194,21 @@ Ordre de priorité (✅ = fait) :
     sur l'anneau de sol), **animation idle 4 frames** (`_process`). Conserve
     anneau de camp / barre de vie / pastilles. Repli vectoriel
     (`_draw_vector_body`) pour toute classe non mappée.
+40. ✅ **Animations de mouvement** : glissement fluide vers la case (`Unit.move_to`
+    via tween) + petit élan d'attaque (`Unit.lunge`, appelé dans `Battle._attack`).
+    Bypass en headless (`DisplayServer.get_name() == "headless"`).
+41. ✅ **Confort & UI** : bouton **Fin de tour** visible (bas gauche), **cooldown
+    affiché** sur les carrés de compétence (`CD n` / `Max`), **cliquer sa propre
+    case** valide la position et passe à l'action, **durée restante** affichée sur
+    les pastilles de buff (`Unit._draw`), **effet du terrain au survol**
+    (`Battle._update_terrain_hint` + `TerrainLabel`), **écran de fin avec stats**
+    (tours joués, ennemis vaincus, alliés perdus, plus gros coup —
+    `Battle._show_stats` + `StatsLabel`).
+42. ✅ **Correctifs IA** : `_removable_count` compte désormais TOUS les debuffs
+    purifiables (racines, affaiblissement, vulnérabilité — avant : seulement DoT
+    et ralentissement) → le Soigneur/Druide IA purifient correctement ; l'IA
+    **déprioritise une cible en parade** (`block_next`) pour ne pas gâcher son
+    attaque (`AI._pick_enemy`).
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`

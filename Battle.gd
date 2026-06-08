@@ -5,8 +5,10 @@ extends Node2D
 @onready var grid: Node2D = $Grid
 @onready var turn_manager: Node = $TurnManager
 @onready var end_label: Label = $UI/EndLabel
+@onready var stats_label: Label = $UI/StatsLabel
 @onready var replay_button: Button = $UI/RejouerButton
 @onready var skill_hint: Label = $UI/SkillHint
+@onready var terrain_label: Label = $UI/TerrainLabel
 
 const UNIT_SCENE := preload("res://Unit.tscn")
 const SKILL_FX := preload("res://SkillFX.gd")
@@ -30,15 +32,44 @@ var phase := "idle"  # "move", "attack" puis éventuellement "skill" (joueur)
 var _finished := false
 var skill_slots: Array = []  # boutons de la barre de compétences
 var selected_skill := -1  # index de la compétence sélectionnée (phase "skill")
+var end_turn_btn: Button  # bouton "Fin de tour" (visible au tour du joueur)
+
+# Statistiques de partie (affichées sur l'écran de fin).
+var _turn_count := 0
+var _max_hit := 0
+var _start_player := 0
+var _start_ai := 0
 
 
 func _ready() -> void:
 	_build_skill_bar()
+	_build_end_turn_button()
 	_generate_terrain()
 	_spawn_units()
+	_start_player = GameData.player_team.size()
+	_start_ai = GameData.ai_team.size()
 	replay_button.pressed.connect(_on_replay)
 	turn_manager.turn_started.connect(_on_turn_started)
 	turn_manager.start()
+
+
+# Bouton "Fin de tour" (en bas à gauche), visible uniquement au tour du joueur.
+func _build_end_turn_button() -> void:
+	end_turn_btn = Button.new()
+	end_turn_btn.text = "Fin de tour"
+	end_turn_btn.custom_minimum_size = Vector2(140, 42)
+	end_turn_btn.size = Vector2(140, 42)
+	end_turn_btn.position = Vector2(12, 704 - 52)
+	end_turn_btn.focus_mode = Control.FOCUS_NONE
+	end_turn_btn.visible = false
+	end_turn_btn.pressed.connect(_on_end_turn_button)
+	$UI.add_child(end_turn_btn)
+
+
+func _on_end_turn_button() -> void:
+	if _finished or active_unit == null or not active_unit.is_player():
+		return
+	_end_turn()
 
 
 # Construit la barre de 3 carrés (UI souris uniquement, pas de raccourci clavier).
@@ -92,6 +123,7 @@ func _on_turn_started(unit: Node) -> void:
 		if not _check_end():
 			turn_manager.next_turn()
 		return
+	_turn_count += 1
 	if unit.is_player():
 		phase = "move"
 		_show_moves(unit)
@@ -103,6 +135,7 @@ func _show_moves(unit: Node) -> void:
 	var terrain_pen: int = grid.terrain_move_penalty_at(unit.grid_position)
 	var eff_range: int = max(0, unit.move_range() - terrain_pen)
 	grid.move_cells = grid.get_reachable_cells(unit.grid_position, eff_range, _occupied(unit))
+	grid.move_cells.append(unit.grid_position)  # cliquer sa propre case = rester et passer à l'action
 	grid.target_cells = []
 	grid.heal_cells = []
 	grid.skill_cells = []
@@ -133,6 +166,8 @@ func _refresh_skill_bar() -> void:
 			and phase in ["move", "attack", "skill"]
 	for b in skill_slots:
 		b.visible = show_bar
+	if end_turn_btn:
+		end_turn_btn.visible = show_bar
 	if not show_bar:
 		skill_hint.visible = false
 		return
@@ -141,7 +176,15 @@ func _refresh_skill_bar() -> void:
 		var b: Button = skill_slots[i]
 		if i < acts.size():
 			var sk: Dictionary = acts[i]
-			b.text = str(SKILL_ICONS.get(sk.type, "Comp"))
+			var icon: String = str(SKILL_ICONS.get(sk.type, "Comp"))
+			# Cooldown restant (ou "Max" pour une invocation au plafond) sous l'icône.
+			var cd: int = active_unit.skill_cds[i] if i < active_unit.skill_cds.size() else 0
+			if cd > 0:
+				b.text = "%s\nCD %d" % [icon, cd]
+			elif not active_unit.skill_ready(i):
+				b.text = "%s\nMax" % icon
+			else:
+				b.text = icon
 			b.tooltip_text = str(sk.name) + "\n" + str(sk.get("desc", ""))
 			var usable: bool = phase in ["attack", "skill"] and active_unit.skill_ready(i)
 			b.disabled = not usable
@@ -203,6 +246,10 @@ func _enter_skill_phase() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Info terrain au survol (indépendant du tour en cours).
+	if event is InputEventMouseMotion:
+		_update_terrain_hint(grid.local_to_cell(grid.to_local(get_global_mouse_position())))
+		return
 	if _finished or active_unit == null or not active_unit.is_player():
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
@@ -212,6 +259,26 @@ func _unhandled_input(event: InputEvent) -> void:
 			_enter_action_phase()  # passer le déplacement
 		else:
 			_end_turn()
+
+
+# Affiche l'effet du terrain survolé (data-driven), ou cache le label si aucun.
+func _update_terrain_hint(cell: Vector2i) -> void:
+	if _finished:
+		terrain_label.visible = false
+		return
+	var t: Dictionary = grid.terrain_at(cell)
+	if t.is_empty():
+		terrain_label.visible = false
+		return
+	var parts: Array = []
+	if t.has("ranged_dmg_mult"):
+		parts.append("dégâts à distance %d%%" % int((float(t.ranged_dmg_mult) - 1.0) * 100))
+	if t.has("dmg_taken_mult"):
+		parts.append("dégâts subis %d%%" % int((float(t.dmg_taken_mult) - 1.0) * 100))
+	if t.has("move_penalty"):
+		parts.append("-%d déplacement" % int(t.move_penalty))
+	terrain_label.text = "%s : %s" % [str(t.name), ", ".join(parts)]
+	terrain_label.visible = true
 
 
 func _handle_click(cell: Vector2i) -> void:
@@ -266,7 +333,9 @@ func _attack(unit: Node, target: Node, mult := 1.0, is_counter := false) -> void
 		if tt.has("ranged_dmg_mult") and int(unit.data.attack_range) > 1:
 			dmg *= float(tt.ranged_dmg_mult)
 	dmg *= _difficulty_damage_mult(unit)
-	target.take_damage(int(round(dmg)), is_crit)
+	var final_dmg: int = int(round(dmg))
+	_max_hit = max(_max_hit, final_dmg)
+	target.take_damage(final_dmg, is_crit)
 	if unit.data.has("on_hit") and target.is_alive():
 		target.add_buff(unit.data.on_hit)
 	# Chevalier noir : drain passif (25% des dégâts récupérés en PV)
@@ -340,13 +409,39 @@ func _check_end() -> bool:
 		_finished = true
 		if turn_manager.label:
 			turn_manager.label.text = ""
+		terrain_label.visible = false
 		end_label.text = "VICTOIRE !" if p else "DÉFAITE..."
 		end_label.add_theme_color_override("font_color", Color(0.2, 0.9, 0.3) if p else Color(0.9, 0.2, 0.2))
 		end_label.add_theme_font_size_override("font_size", 64)
 		end_label.visible = true
+		_show_stats()
 		replay_button.visible = true
 		return true
 	return false
+
+
+# Récapitulatif de fin de partie (tours, pertes de chaque camp, plus gros coup).
+func _show_stats() -> void:
+	var enemy_alive := 0
+	var ally_alive := 0
+	for u in turn_manager.units:
+		if u.is_alive():
+			if u.is_player():
+				ally_alive += 1
+			else:
+				enemy_alive += 1
+	var enemy_total := 0
+	var ally_total := 0
+	for u in turn_manager.units:
+		if u.is_player():
+			ally_total += 1
+		else:
+			enemy_total += 1
+	stats_label.text = "Tours joués : %d\nEnnemis vaincus : %d / %d\nAlliés perdus : %d / %d\nCoup le plus fort : %d" % [
+		_turn_count, enemy_total - enemy_alive, enemy_total,
+		ally_total - ally_alive, ally_total, _max_hit]
+	stats_label.add_theme_font_size_override("font_size", 22)
+	stats_label.visible = true
 
 
 # --- Compétences actives ---
