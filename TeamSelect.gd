@@ -6,6 +6,10 @@ extends Control
 
 const TEAM_SIZE := 3
 
+# Sprites des classes (réutilise le dico de Unit.gd et la spritesheet CC0).
+const UnitScript := preload("res://Unit.gd")
+const TILESET := preload("res://assets/dungeon_tileset.png")
+
 var _player: Array = []
 var _ai: Array = []
 var _difficulty := "normal"
@@ -14,6 +18,8 @@ var _ai_label: Label
 var _turn_label: Label
 var _start_btn: Button
 var _info_label: Label
+var _info_sprite: TextureRect
+var _info_name: Label
 var _diff_buttons := {}
 var _class_buttons := {}  # cid -> Button (pour les désactiver quand pris)
 var _taken := {}          # cid -> true : classes déjà draftées (pool partagé)
@@ -21,8 +27,8 @@ var _taken := {}          # cid -> true : classes déjà draftées (pool partag�
 
 func _ready() -> void:
 	var root := VBoxContainer.new()
-	root.position = Vector2(40, 30)
-	root.add_theme_constant_override("separation", 8)
+	root.position = Vector2(40, 16)
+	root.add_theme_constant_override("separation", 6)
 	add_child(root)
 
 	var title := Label.new()
@@ -39,34 +45,46 @@ func _ready() -> void:
 		diff_box.add_child(b)
 		_diff_buttons[d] = b
 
-	root.add_child(_section("Draft (toi, puis l'IA, en alternance — %d chacun). ★ = classe UNIQUE (1 seule par équipe) :" % TEAM_SIZE))
-	# Grille pour éviter que la rangée de classes déborde de la fenêtre.
+	root.add_child(_section("Draft (toi, puis l'IA, en alternance — %d chacun). ★ = UNIQUE (1 max). Clique une classe pour voir sa fiche :" % TEAM_SIZE))
+
+	# Zone centrale : grille de cartes (gauche) + fiche détaillée (droite).
+	var middle := HBoxContainer.new()
+	middle.add_theme_constant_override("separation", 16)
+	root.add_child(middle)
+
+	# Grille de cartes (visuel + nom) — une par classe visible.
 	var class_box := GridContainer.new()
 	class_box.columns = 5
-	root.add_child(class_box)
+	middle.add_child(class_box)
 	for cid in GameData.CLASSES:
 		if GameData.CLASSES[cid].get("hidden", false):
 			continue
-		var b := Button.new()
-		# Classe unique : badge ★ + libellé doré (max 1 par équipe).
-		if GameData.CLASSES[cid].get("unique", false):
-			b.text = "★ " + str(GameData.CLASSES[cid].name)
-			b.add_theme_color_override("font_color", Color(1.0, 0.84, 0.30))
-			b.add_theme_color_override("font_hover_color", Color(1.0, 0.92, 0.50))
-		else:
-			b.text = GameData.CLASSES[cid].name
-		b.pressed.connect(_on_pick_class.bind(cid))
-		b.mouse_entered.connect(_show_class_info.bind(cid))
-		b.focus_entered.connect(_show_class_info.bind(cid))
-		class_box.add_child(b)
-		_class_buttons[cid] = b
+		var card := _make_class_card(cid)
+		class_box.add_child(card)
+		_class_buttons[cid] = card
 
-	# Fiche détaillée de la classe survolée / cliquée (pour comparer avant de choisir).
-	root.add_child(_section("Fiche de la classe (survole un bouton) :"))
+	# Fiche détaillée : visuel agrandi + nom + stats + compétences.
+	var detail := VBoxContainer.new()
+	detail.custom_minimum_size = Vector2(320, 0)
+	detail.add_theme_constant_override("separation", 4)
+	middle.add_child(detail)
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 10)
+	detail.add_child(header)
+	_info_sprite = TextureRect.new()
+	_info_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_info_sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_info_sprite.custom_minimum_size = Vector2(72, 72)
+	header.add_child(_info_sprite)
+	_info_name = Label.new()
+	_info_name.add_theme_font_size_override("font_size", 22)
+	_info_name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	header.add_child(_info_name)
 	_info_label = Label.new()
 	_info_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_info_label.custom_minimum_size = Vector2(560, 180)
-	root.add_child(_info_label)
+	_info_label.custom_minimum_size = Vector2(320, 0)
+	_info_label.add_theme_font_size_override("font_size", 11)
+	detail.add_child(_info_label)
 
 	_turn_label = Label.new()
 	root.add_child(_turn_label)
@@ -94,6 +112,60 @@ func _section(text: String) -> Label:
 	var l := Label.new()
 	l.text = "\n" + text
 	return l
+
+
+# Carte cliquable d'une classe : sprite au-dessus, nom en dessous (★ si unique).
+func _make_class_card(cid: String) -> Button:
+	var c: Dictionary = GameData.CLASSES[cid]
+	var btn := Button.new()
+	btn.custom_minimum_size = Vector2(88, 72)
+	btn.focus_mode = Control.FOCUS_NONE
+	var vb := VBoxContainer.new()
+	vb.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_theme_constant_override("separation", 1)
+	btn.add_child(vb)
+	var tr := TextureRect.new()
+	tr.texture = _class_texture(cid)
+	tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(tr)
+	var lbl := Label.new()
+	lbl.text = ("★ " if c.get("unique", false) else "") + str(c.name)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.add_theme_font_size_override("font_size", 11)
+	if c.get("unique", false):
+		lbl.add_theme_color_override("font_color", Color(1.0, 0.84, 0.30))
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(lbl)
+	btn.pressed.connect(_on_pick_class.bind(cid))
+	btn.mouse_entered.connect(_show_class_info.bind(cid))
+	return btn
+
+
+# Texture du sprite (1re frame idle) d'une classe, depuis la spritesheet.
+func _class_texture(cid: String) -> Texture2D:
+	if not UnitScript.SPRITES.has(cid):
+		return null
+	var at := AtlasTexture.new()
+	at.atlas = TILESET
+	at.region = UnitScript.SPRITES[cid]
+	return at
+
+
+func _role_label(r: String) -> String:
+	match r:
+		"tank":
+			return "Tank (ligne de front)"
+		"ranged":
+			return "Distance"
+		"healer":
+			return "Soutien / Soin"
+		_:
+			return "Corps à corps"
 
 
 func _first_visible() -> String:
@@ -149,7 +221,10 @@ func _update_buttons() -> void:
 	for cid in _class_buttons:
 		var taken: bool = _taken.has(cid)
 		var unique_locked: bool = locked and GameData.CLASSES[cid].get("unique", false)
-		_class_buttons[cid].disabled = taken or unique_locked
+		var dis: bool = taken or unique_locked
+		_class_buttons[cid].disabled = dis
+		# Carte grisée quand elle n'est plus sélectionnable (prise ou verrouillée).
+		_class_buttons[cid].modulate = Color(0.45, 0.45, 0.5) if dis else Color(1, 1, 1)
 
 
 func _available() -> Array:
@@ -200,15 +275,25 @@ func _show_class_info(cid: String) -> void:
 	if _info_label == null:
 		return
 	var c: Dictionary = GameData.CLASSES[cid]
-	var badge := "★ CLASSE UNIQUE (1 par équipe)\n" if c.get("unique", false) else ""
-	var t := "%s%s\n%s\n\n" % [badge, c.name, c.get("description", "")]
-	t += "PV : %d    Dégâts : %d    Portée d'attaque : %d    Déplacement : %d\n" % [c.max_hp, c.attack, c.attack_range, c.move_range]
+	# En-tête : visuel agrandi + nom (doré si unique).
+	if _info_sprite:
+		_info_sprite.texture = _class_texture(cid)
+	if _info_name:
+		_info_name.text = ("★ " if c.get("unique", false) else "") + str(c.name)
+		_info_name.add_theme_color_override("font_color",
+				Color(1.0, 0.84, 0.30) if c.get("unique", false) else Color(1, 1, 1))
+	var t := ""
+	if c.get("unique", false):
+		t += "CLASSE UNIQUE — 1 seule par équipe\n"
+	t += "%s\n\n" % c.get("description", "")
+	t += "Rôle : %s\n" % _role_label(str(c.get("role", "melee")))
+	t += "PV %d    Dégâts %d    Portée %d    Déplacement %d\n" % [c.max_hp, c.attack, c.attack_range, c.move_range]
 	t += "Coups critiques : %d%%" % int(c.crit_chance * 100)
 	if c.has("on_hit"):
 		t += "    Sur chaque attaque : %s" % str(GameData.BUFFS.get(c.on_hit, {}).get("name", c.on_hit))
 	# Compétences actives (jusqu'à 3 ; les emplacements suivants sont à venir).
 	var acts: Array = c.get("actives", [c.active] if c.has("active") else [])
-	t += "\n\nCompétences (3 emplacements) :\n"
+	t += "\n\nCompétences :\n"
 	for i in 3:
 		if i < acts.size():
 			var s: Dictionary = acts[i]
