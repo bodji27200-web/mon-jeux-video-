@@ -105,6 +105,11 @@ func _ready() -> void:
 	_ai_label = Label.new()
 	root.add_child(_ai_label)
 
+	var menu_btn := Button.new()
+	menu_btn.text = "← Menu principal"
+	menu_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://Title.tscn"))
+	root.add_child(menu_btn)
+
 	var reset := Button.new()
 	reset.text = "Réinitialiser le draft"
 	reset.pressed.connect(_on_reset)

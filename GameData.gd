@@ -444,3 +444,39 @@ const TERRAIN := {
 var difficulty := "normal"
 var player_team: Array = ["tank"]
 var ai_team: Array = ["archer"]
+
+# --- Réglages audio (persistés dans user://settings.cfg) ---
+# Volumes 0.0 → 1.0 par bus, convertis en dB et appliqués à l'AudioServer.
+const SETTINGS_PATH := "user://settings.cfg"
+var volumes := {"Master": 0.9, "Music": 0.7, "SFX": 1.0}
+
+
+func _ready() -> void:
+	load_settings()
+	for bus in volumes:
+		apply_volume(bus, float(volumes[bus]))
+
+
+# Applique un volume linéaire (0..1) au bus nommé (mute total si <= 0).
+func apply_volume(bus_name: String, v: float) -> void:
+	volumes[bus_name] = v
+	var idx := AudioServer.get_bus_index(bus_name)
+	if idx < 0:
+		return
+	AudioServer.set_bus_mute(idx, v <= 0.001)
+	AudioServer.set_bus_volume_db(idx, linear_to_db(clampf(v, 0.0001, 1.0)))
+
+
+func save_settings() -> void:
+	var cfg := ConfigFile.new()
+	for bus in volumes:
+		cfg.set_value("audio", bus, volumes[bus])
+	cfg.save(SETTINGS_PATH)
+
+
+func load_settings() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(SETTINGS_PATH) != OK:
+		return
+	for bus in volumes:
+		volumes[bus] = float(cfg.get_value("audio", bus, volumes[bus]))
