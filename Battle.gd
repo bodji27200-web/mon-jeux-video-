@@ -76,6 +76,7 @@ func _ready() -> void:
 	replay_button.pressed.connect(_on_replay)
 	turn_manager.turn_started.connect(_on_turn_started)
 	turn_manager.start()
+	Audio.play_music("battle")
 
 
 # Bouton "Fin de tour" (en bas à gauche), visible uniquement au tour du joueur.
@@ -447,6 +448,7 @@ func _handle_click(cell: Vector2i) -> void:
 func _perform_action(unit: Node, target: Node) -> void:
 	if _is_healer(unit):
 		target.heal(int(unit.data.heal))
+		Audio.play_sfx("heal")
 		_fx("buff", target.grid_position, target.grid_position, Color(0.30, 0.90, 0.40))
 	else:
 		_attack(unit, target)
@@ -483,7 +485,12 @@ func _attack(unit: Node, target: Node, mult := 1.0, is_counter := false) -> void
 	dmg *= _difficulty_damage_mult(unit)
 	var final_dmg: int = int(round(dmg))
 	_max_hit = max(_max_hit, final_dmg)
+	Audio.play_sfx("hit_ranged" if int(unit.data.attack_range) > 1 else "hit_melee")
+	if is_crit:
+		Audio.play_sfx("crit")
 	target.take_damage(final_dmg, is_crit)
+	if not target.is_alive():
+		Audio.play_sfx("death")
 	if unit.data.has("on_hit") and target.is_alive():
 		target.add_buff(unit.data.on_hit)
 	# Chevalier noir : drain passif (25% des dégâts récupérés en PV)
@@ -555,6 +562,8 @@ func _check_end() -> bool:
 				a = true
 	if not p or not a:
 		_finished = true
+		Audio.stop_music()
+		Audio.play_sfx("victory" if p else "defeat")
 		if turn_manager.label:
 			turn_manager.label.text = ""
 		terrain_label.visible = false
@@ -641,6 +650,7 @@ func _use_skill(caster: Node, cell: Vector2i, index: int) -> void:
 	if index < 0 or index >= acts.size():
 		return
 	var sk: Dictionary = acts[index]
+	Audio.play_sfx("skill")
 	var success := true
 	match sk.type:
 		"shield_ally":

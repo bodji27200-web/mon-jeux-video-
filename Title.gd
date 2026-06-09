@@ -13,6 +13,7 @@ func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_build_menu()
 	_build_settings()
+	Audio.play_music("menu")
 
 
 # --- Fond dessiné (dégradé sombre + quelques runes) ---
@@ -66,7 +67,9 @@ func _menu_button(text: String, cb: Callable) -> Button:
 	b.custom_minimum_size = Vector2(300, 48)
 	b.focus_mode = Control.FOCUS_NONE
 	b.add_theme_font_size_override("font_size", 22)
-	b.pressed.connect(cb)
+	b.pressed.connect(func():
+		Audio.play_sfx("click")
+		cb.call())
 	return b
 
 

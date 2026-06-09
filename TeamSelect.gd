@@ -123,6 +123,7 @@ func _ready() -> void:
 	_on_difficulty("normal")
 	_refresh()
 	_show_class_info(_first_visible())
+	Audio.play_music("menu")
 
 
 func _section(text: String) -> Label:
