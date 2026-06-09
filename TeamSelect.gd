@@ -121,6 +121,7 @@ func _ready() -> void:
 	root.add_child(_start_btn)
 
 	_on_difficulty("normal")
+	_update_buttons()  # grise d'emblée les classes encore verrouillées
 	_refresh()
 	_show_class_info(_first_visible())
 	Audio.play_music("menu")
@@ -151,7 +152,8 @@ func _make_class_card(cid: String) -> Button:
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(tr)
 	var lbl := Label.new()
-	lbl.text = ("★ " if c.get("unique", false) else "") + str(c.name)
+	var locked: bool = not GameData.is_unlocked(cid)
+	lbl.text = ("🔒 " if locked else ("★ " if c.get("unique", false) else "")) + str(c.name)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lbl.add_theme_font_size_override("font_size", 11)
@@ -209,6 +211,9 @@ func _on_pick_class(cid: String) -> void:
 		return
 	if not _class_buttons.has(cid) or _taken.has(cid):
 		return
+	# Classe encore verrouillée : non sélectionnable (à débloquer en gagnant).
+	if not GameData.is_unlocked(cid):
+		return
 	# Règle : une seule classe unique par équipe.
 	if GameData.CLASSES[cid].get("unique", false) and _player_has_unique():
 		return
@@ -239,7 +244,8 @@ func _update_buttons() -> void:
 	for cid in _class_buttons:
 		var taken: bool = _taken.has(cid)
 		var unique_locked: bool = locked and GameData.CLASSES[cid].get("unique", false)
-		var dis: bool = taken or unique_locked
+		var not_unlocked: bool = not GameData.is_unlocked(cid)
+		var dis: bool = taken or unique_locked or not_unlocked
 		_class_buttons[cid].disabled = dis
 		# Carte grisée quand elle n'est plus sélectionnable (prise ou verrouillée).
 		_class_buttons[cid].modulate = Color(0.45, 0.45, 0.5) if dis else Color(1, 1, 1)
@@ -248,7 +254,7 @@ func _update_buttons() -> void:
 func _available() -> Array:
 	var pool: Array = []
 	for cid in _class_buttons:
-		if not _taken.has(cid):
+		if not _taken.has(cid) and GameData.is_unlocked(cid):
 			pool.append(cid)
 	return pool
 
@@ -301,6 +307,8 @@ func _show_class_info(cid: String) -> void:
 		_info_name.add_theme_color_override("font_color",
 				Color(1.0, 0.84, 0.30) if c.get("unique", false) else Color(1, 1, 1))
 	var t := ""
+	if not GameData.is_unlocked(cid):
+		t += "🔒 VERROUILLÉE — gagne des combats pour la débloquer\n"
 	if c.get("unique", false):
 		t += "CLASSE UNIQUE — 1 seule par équipe\n"
 	t += "%s\n\n" % c.get("description", "")

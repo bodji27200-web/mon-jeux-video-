@@ -468,11 +468,42 @@ var ai_team: Array = ["archer"]
 const SETTINGS_PATH := "user://settings.cfg"
 var volumes := {"Master": 0.9, "Music": 0.7, "SFX": 1.0}
 
+# --- Progression : classes débloquées au fil des victoires ---
+# Un noyau jouable d'emblée (tous les rôles couverts) ; chaque victoire débloque
+# la classe suivante de UNLOCK_ORDER (basiques → avancées → uniques en récompense).
+# Persisté dans user://settings.cfg (section [progress]).
+const STARTER_CLASSES := ["tank", "archer", "mage", "soigneur", "berserker", "paladin"]
+const UNLOCK_ORDER := [
+	"lancier", "mage_glace", "druide", "chasseur", "alchimiste", "envouteur",
+	"pretreguerrier", "chevaliernoir", "assassin", "duelliste", "archere",
+	"necromancien", "invocateur", "barde",
+]
+var unlocked: Array = STARTER_CLASSES.duplicate()
+var wins := 0
+
 
 func _ready() -> void:
 	load_settings()
 	for bus in volumes:
 		apply_volume(bus, float(volumes[bus]))
+
+
+# La classe est-elle débloquée (jouable / draftable) ?
+func is_unlocked(cid: String) -> bool:
+	return unlocked.has(cid)
+
+
+# Enregistre une victoire : débloque la prochaine classe de la file, si elle existe.
+# Renvoie le nom affichable de la classe nouvellement débloquée, ou "" si aucune.
+func register_win() -> String:
+	wins += 1
+	for cid in UNLOCK_ORDER:
+		if not unlocked.has(cid):
+			unlocked.append(cid)
+			save_settings()
+			return str(CLASSES.get(cid, {}).get("name", cid))
+	save_settings()
+	return ""
 
 
 # Applique un volume linéaire (0..1) au bus nommé (mute total si <= 0).
@@ -489,6 +520,8 @@ func save_settings() -> void:
 	var cfg := ConfigFile.new()
 	for bus in volumes:
 		cfg.set_value("audio", bus, volumes[bus])
+	cfg.set_value("progress", "unlocked", unlocked)
+	cfg.set_value("progress", "wins", wins)
 	cfg.save(SETTINGS_PATH)
 
 
@@ -498,3 +531,9 @@ func load_settings() -> void:
 		return
 	for bus in volumes:
 		volumes[bus] = float(cfg.get_value("audio", bus, volumes[bus]))
+	# Progression : on repart toujours du noyau de départ, complété par la sauvegarde.
+	unlocked = STARTER_CLASSES.duplicate()
+	for cid in cfg.get_value("progress", "unlocked", []):
+		if not unlocked.has(cid):
+			unlocked.append(cid)
+	wins = int(cfg.get_value("progress", "wins", 0))

@@ -291,6 +291,14 @@ Ordre de priorité (✅ = fait) :
     `Battle._generate_terrain` tire la carte, construit un sac pondéré
     (`_weighted_terrain_bag`) et applique densité + relief ; le nom s'affiche au
     début (réutilise `terrain_label`). 100 % data-driven, aucun nouveau nœud.
+53. ✅ **Déblocage de classes** (`GameData.STARTER_CLASSES`, `UNLOCK_ORDER`,
+    `unlocked`, `wins`) : 6 classes jouables d'emblée (tous rôles couverts) ;
+    **chaque victoire débloque la classe suivante** (basiques → avancées →
+    uniques en récompense). Persisté dans `user://settings.cfg` (section
+    `[progress]`). `is_unlocked()` filtre le draft (`TeamSelect` : cartes
+    verrouillées grisées + 🔒, non sélectionnables par le joueur **ni l'IA** —
+    pool partagé). `register_win()` appelé à la victoire (`Battle._check_end`),
+    classe débloquée annoncée sur l'écran de fin (`_show_stats`).
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`
