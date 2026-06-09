@@ -14,6 +14,8 @@ const TILE_W := 64.0
 const TILE_H := 32.0
 # Décalage d'origine : pousse la grille pour que tout reste en coordonnées >= 0.
 const ISO_ORIGIN := Vector2(320.0, 40.0)
+# Relief : remontée visuelle (px) par niveau de hauteur (plateau surélevé).
+const HEIGHT_RISE := 16.0
 
 const COLOR_CELL := Color(0.15, 0.15, 0.21)
 const COLOR_LINE := Color(0.42, 0.44, 0.56)          # contour des cases (plus lisible)
@@ -29,13 +31,17 @@ var heal_cells: Array = []
 var skill_cells: Array = []
 var hover_cell := Vector2i(-1, -1)  # case sous la souris (surbrillance), -1 = aucune
 var terrain: Dictionary = {}  # Vector2i -> String (clé dans GameData.TERRAIN)
+var heights: Dictionary = {}  # Vector2i -> int (niveau de hauteur, 0 = sol)
 
 
 func _draw() -> void:
 	# Sol : un losange par case (du fond vers l'avant pour un recouvrement propre).
+	# Les cases en hauteur sont dessinées en plateau (parois + sommet relevé).
 	for row in ROWS:
 		for col in COLUMNS:
 			var cell := Vector2i(col, row)
+			if height_at(cell) > 0:
+				_draw_elevation_walls(cell)
 			_fill_cell(cell, COLOR_CELL)
 			_outline_cell(cell, COLOR_LINE, 1.0)
 	# Terrain tactique : losange teinté (zone d'effet) + décor vectoriel debout.
@@ -64,14 +70,32 @@ func _draw() -> void:
 		_outline_cell(hover_cell, COLOR_HOVER, 2.0)
 
 
-# Les 4 sommets du losange d'une case (haut, droite, bas, gauche).
+# Les 4 sommets du losange d'une case (haut, droite, bas, gauche), au sommet du
+# plateau si la case est en hauteur (les clics et highlights suivent ce sommet).
 func _diamond_points(cell: Vector2i) -> PackedVector2Array:
-	var c := cell_to_local(cell)
+	var c := cell_to_local_raised(cell)
 	return PackedVector2Array([
 		c + Vector2(0.0, -TILE_H / 2.0),
 		c + Vector2(TILE_W / 2.0, 0.0),
 		c + Vector2(0.0, TILE_H / 2.0),
 		c + Vector2(-TILE_W / 2.0, 0.0)])
+
+
+# Parois latérales d'un plateau surélevé : deux faces (avant-gauche, avant-droite)
+# du sommet relevé jusqu'au niveau du sol, en pierre (face droite plus claire).
+func _draw_elevation_walls(cell: Vector2i) -> void:
+	var top := cell_to_local_raised(cell)
+	var rise := Vector2(0.0, height_at(cell) * HEIGHT_RISE)
+	var L := top + Vector2(-TILE_W / 2.0, 0.0)
+	var B := top + Vector2(0.0, TILE_H / 2.0)
+	var R := top + Vector2(TILE_W / 2.0, 0.0)
+	var stone_l := Color(0.26, 0.25, 0.30)
+	var stone_r := Color(0.34, 0.33, 0.39)
+	draw_colored_polygon(PackedVector2Array([L, B, B + rise, L + rise]), stone_l)
+	draw_colored_polygon(PackedVector2Array([B, R, R + rise, B + rise]), stone_r)
+	draw_line(L, L + rise, COLOR_LINE, 1.0)
+	draw_line(B, B + rise, COLOR_LINE, 1.0)
+	draw_line(R, R + rise, COLOR_LINE, 1.0)
 
 
 func _fill_cell(cell: Vector2i, color: Color) -> void:
@@ -87,7 +111,7 @@ func _outline_cell(cell: Vector2i, color: Color, width: float) -> void:
 # --- Décors de terrain (100 % vectoriel, aucun asset) ---
 # Dessine un obstacle reconnaissable au centre de la case selon son type.
 func _draw_terrain_feature(cell: Vector2i, tid: String) -> void:
-	var base := cell_to_local(cell)  # centre de la case
+	var base := cell_to_local_raised(cell)  # centre de la case (sommet du plateau)
 	# Décor "planté" sur la case : ombre de contact au sol + élément remonté pour
 	# qu'il tienne au centre du losange (cohérent avec les unités).
 	match tid:
@@ -156,12 +180,46 @@ func cell_to_local(cell: Vector2i) -> Vector2:
 		(cell.x + cell.y) * (TILE_H / 2.0))
 
 
+# Centre du SOMMET de la case (remonté selon sa hauteur). Utilisé pour poser les
+# unités, les décors et les highlights de façon cohérente avec le plateau.
+func cell_to_local_raised(cell: Vector2i) -> Vector2:
+	return cell_to_local(cell) - Vector2(0.0, height_at(cell) * HEIGHT_RISE)
+
+
+func height_at(cell: Vector2i) -> int:
+	return int(heights.get(cell, 0))
+
+
 # Inverse de la projection : retrouve la case sous un point local (clic souris).
+# Tient compte du relief : on teste d'abord les cases en hauteur (dont le sommet
+# est visuellement décalé), puis on retombe sur la projection plate.
 func local_to_cell(local_pos: Vector2) -> Vector2i:
+	# Cases surélevées : on prend la frontmost (la plus en avant / la plus haute)
+	# dont le losange-sommet contient le point.
+	var best := Vector2i(-99, -99)
+	var best_rank := -1
+	for cell in heights:
+		if int(heights[cell]) <= 0 or not is_inside(cell):
+			continue
+		if _point_in_top(local_pos, cell):
+			var rank: int = int(heights[cell]) * 1000 + cell.x + cell.y
+			if rank > best_rank:
+				best_rank = rank
+				best = cell
+	if best_rank >= 0:
+		return best
+	# Sinon : projection plate classique.
 	var p := local_pos - ISO_ORIGIN
 	var fx := p.x / (TILE_W / 2.0)   # = (cell.x - cell.y)
 	var fy := p.y / (TILE_H / 2.0)   # = (cell.x + cell.y)
 	return Vector2i(roundi((fx + fy) / 2.0), roundi((fy - fx) / 2.0))
+
+
+# Le point est-il dans le losange-sommet (relevé) de la case ?
+func _point_in_top(p: Vector2, cell: Vector2i) -> bool:
+	var c := cell_to_local_raised(cell)
+	var d := p - c
+	return abs(d.x) / (TILE_W / 2.0) + abs(d.y) / (TILE_H / 2.0) <= 1.0
 
 
 func is_inside(cell: Vector2i) -> bool:

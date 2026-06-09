@@ -17,6 +17,8 @@ const SKILL_FX := preload("res://SkillFX.gd")
 # la classe (jusqu'à 3). Les carrés sans compétence restent vides/désactivés.
 # Icône courte par type de compétence.
 const SKILL_SLOTS := 3
+# Bonus de dégâts en attaquant depuis une hauteur supérieure (relief tactique).
+const HIGH_GROUND_MULT := 1.25
 
 # Symbole Unicode + couleur de fond par type de compétence.
 const SKILL_ICONS := {
@@ -416,17 +418,25 @@ func _update_terrain_hint(cell: Vector2i) -> void:
 		terrain_label.visible = false
 		return
 	var t: Dictionary = grid.terrain_at(cell)
-	if t.is_empty():
+	var high: bool = grid.height_at(cell) > 0
+	if t.is_empty() and not high:
 		terrain_label.visible = false
 		return
-	var parts: Array = []
-	if t.has("ranged_dmg_mult"):
-		parts.append("dégâts à distance %d%%" % int((float(t.ranged_dmg_mult) - 1.0) * 100))
-	if t.has("dmg_taken_mult"):
-		parts.append("dégâts subis %d%%" % int((float(t.dmg_taken_mult) - 1.0) * 100))
-	if t.has("move_penalty"):
-		parts.append("-%d déplacement" % int(t.move_penalty))
-	terrain_label.text = "%s : %s" % [str(t.name), ", ".join(parts)]
+	var label := ""
+	if not t.is_empty():
+		var parts: Array = []
+		if t.has("ranged_dmg_mult"):
+			parts.append("dégâts à distance %d%%" % int((float(t.ranged_dmg_mult) - 1.0) * 100))
+		if t.has("dmg_taken_mult"):
+			parts.append("dégâts subis %d%%" % int((float(t.dmg_taken_mult) - 1.0) * 100))
+		if t.has("move_penalty"):
+			parts.append("-%d déplacement" % int(t.move_penalty))
+		label = "%s : %s" % [str(t.name), ", ".join(parts)]
+	if high:
+		if label != "":
+			label += "  •  "
+		label += "Hauteur : +%d%% dégâts en surplomb" % int((HIGH_GROUND_MULT - 1.0) * 100)
+	terrain_label.text = label
 	terrain_label.visible = true
 
 
@@ -483,6 +493,9 @@ func _attack(unit: Node, target: Node, mult := 1.0, is_counter := false) -> void
 		if tt.has("ranged_dmg_mult") and int(unit.data.attack_range) > 1:
 			dmg *= float(tt.ranged_dmg_mult)
 	dmg *= _difficulty_damage_mult(unit)
+	# Surplomb : attaquer depuis une case plus haute que la cible amplifie les dégâts.
+	if grid.height_at(unit.grid_position) > grid.height_at(target.grid_position):
+		dmg *= HIGH_GROUND_MULT
 	var final_dmg: int = int(round(dmg))
 	_max_hit = max(_max_hit, final_dmg)
 	Audio.play_sfx("hit_ranged" if int(unit.data.attack_range) > 1 else "hit_melee")
@@ -868,7 +881,24 @@ func _generate_terrain() -> void:
 		if not grid.terrain.has(cell):
 			grid.terrain[cell] = types[randi() % types.size()]
 			placed += 1
+	_generate_heights()
 	grid.queue_redraw()
+
+
+# Quelques plateaux surélevés au centre (relief tactique), hors zones de spawn.
+func _generate_heights() -> void:
+	var placed := 0
+	var attempts := 0
+	while placed < 5 and attempts < 60:
+		attempts += 1
+		var col: int = 2 + randi() % 8  # colonnes 2-9 (pas sur les lignes de départ)
+		var row: int = randi() % grid.ROWS
+		var cell := Vector2i(col, row)
+		# Pas de relief sous un marécage (incohérent) ni en double.
+		if grid.heights.has(cell) or grid.terrain.get(cell, "") == "marecage":
+			continue
+		grid.heights[cell] = 1
+		placed += 1
 
 
 func _target_has_buff(unit: Node, id: String) -> bool:

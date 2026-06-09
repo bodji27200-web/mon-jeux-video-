@@ -79,10 +79,20 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 
+# Position écran d'une case, en tenant compte du relief (sommet du plateau).
+func _cell_pos(cell: Vector2i) -> Vector2:
+	var grid := get_parent()
+	if grid and grid.has_method("cell_to_local_raised"):
+		return grid.cell_to_local_raised(cell)
+	if grid and grid.has_method("cell_to_local"):
+		return grid.cell_to_local(cell)
+	return position
+
+
 func _refresh_position() -> void:
 	var grid := get_parent()
 	if grid and grid.has_method("cell_to_local"):
-		position = grid.cell_to_local(grid_position)
+		position = _cell_pos(grid_position)
 
 
 func is_player() -> bool:
@@ -118,7 +128,7 @@ func move_to(cell: Vector2i) -> void:
 	var grid := get_parent()
 	if grid == null or not grid.has_method("cell_to_local"):
 		return
-	var target: Vector2 = grid.cell_to_local(cell)
+	var target: Vector2 = _cell_pos(cell)
 	# En headless (sim de test) : pas d'animation, on saute directement.
 	if DisplayServer.get_name() == "headless":
 		position = target
@@ -140,8 +150,8 @@ func lunge(toward_cell: Vector2i) -> void:
 		return
 	if _move_tween and _move_tween.is_valid():
 		_move_tween.kill()
-	var home: Vector2 = grid.cell_to_local(grid_position)
-	var tgt: Vector2 = grid.cell_to_local(toward_cell)
+	var home: Vector2 = _cell_pos(grid_position)
+	var tgt: Vector2 = _cell_pos(toward_cell)
 	var dir: Vector2 = (tgt - home).normalized() if tgt != home else Vector2.ZERO
 	position = home
 	var tw := create_tween()

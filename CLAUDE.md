@@ -262,6 +262,28 @@ Ordre de priorité (✅ = fait) :
     - **assassin** → hero_11 (cape sombre, y=360) — rôle furtif.
     - **barde** → x=368/y=360 (silhouette blonde/bleu distincte).
     - **chasseur** : supprimé du dict (goblin inadapté) → fallback vectoriel avec arc.
+49. ✅ **Écran-titre + réglages audio** (`Title.gd/.tscn`, scène de démarrage) :
+    titre stylisé, boutons Jouer / Réglages / Quitter (fond dessiné). Panneau
+    Réglages = 3 sliders de volume (Master/Musique/Effets) pilotés en direct via
+    l'`AudioServer`, persistés dans `user://settings.cfg` (GameData
+    `apply_volume`/`save_settings`/`load_settings`). Bus `default_bus_layout.tres`
+    (Master/Music/SFX). Flux : Title → TeamSelect → Combat. TeamSelect a un
+    bouton « ← Menu principal ».
+50. ✅ **Son** (`Audio.gd` autoload, `assets/audio/*.wav`) : audio **100 % généré**
+    par script procédural (sinus + bruit, CC0, aucun asset externe). 9 bruitages
+    (clic, coup mêlée/distance, critique, compétence, soin, mort, victoire,
+    défaite) + 2 musiques en boucle (menu, combat). `play_sfx`/`play_music`/
+    `stop_music` ; pool de voix SFX, musique en boucle (`LOOP_FORWARD`). Câblé
+    dans Title/TeamSelect/Battle.
+51. ✅ **Relief / hauteur tactique** (`Grid.heights`, `Grid.HEIGHT_RISE`) : des
+    plateaux surélevés (générés par `Battle._generate_heights`, 5/carte) dessinés
+    avec parois latérales + sommet relevé. **+25 % de dégâts en attaquant depuis
+    une case plus haute** (`Battle.HIGH_GROUND_MULT`, dans `_attack`). Unités
+    posées sur le sommet (`Unit._cell_pos` → `cell_to_local_raised`). `local_to_cell`
+    réécrit pour rester précis sur les hauteurs (test du losange-sommet, occlusion
+    correcte des cases derrière un plateau). IA recherche les hauteurs
+    (`AI._cell_score`, bonus accru pour les tireurs). Survol = info hauteur.
+    Limite v1 : déplacement non pénalisé pour grimper (climb gratuit), 1 niveau.
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`

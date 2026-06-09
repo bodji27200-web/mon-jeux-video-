@@ -221,6 +221,15 @@ static func _cell_score(unit: Node, cell: Vector2i, target: Node, enemies: Array
 	if in_range and float(target.hp) <= _est_damage(unit) * 1.3:
 		score += 600.0
 
+	# Surplomb : valoriser les hauteurs (bonus de dégâts en attaquant d'en haut).
+	# Les tireurs y tiennent davantage (ligne de tir dégagée + bonus).
+	if grid.has_method("height_at"):
+		var h: int = grid.height_at(cell)
+		if in_range and h > grid.height_at(target.grid_position):
+			score += 70.0 if kite else 45.0
+		elif h > 0:
+			score += 15.0  # tenir une hauteur reste un bon réflexe
+
 	# Pénalité de menace réduite : les unités saines s'engagent franchement.
 	var fragility := 1.0 - float(unit.hp) / float(unit.data.max_hp)
 	score -= _threat(cell, enemies, grid) * (1.5 + fragility * 8.0)
