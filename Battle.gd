@@ -868,28 +868,53 @@ func _free_adjacent(cell: Vector2i, caster: Node):
 	return null
 
 
-# Génère le terrain tactique au centre de la grille (évite les zones de spawn).
+# Génère le terrain selon la carte tirée (biome dominant + densité + relief).
+# La carte est choisie au hasard parmi GameData.MAPS et son nom est affiché.
 func _generate_terrain() -> void:
-	var types: Array = GameData.TERRAIN.keys()
+	var maps: Array = GameData.MAPS
+	GameData.current_map = randi() % maps.size()
+	var m: Dictionary = maps[GameData.current_map]
+	var bag: Array = _weighted_terrain_bag(m.get("weights", {}))
+	var n_terrain: int = int(m.get("terrain", 12))
 	var placed := 0
 	var attempts := 0
-	while placed < 12 and attempts < 80:
+	while placed < n_terrain and attempts < n_terrain * 8:
 		attempts += 1
 		var col: int = 2 + randi() % 8  # colonnes 2-9 (zones de spawn : 1 et 10)
 		var row: int = randi() % grid.ROWS
 		var cell := Vector2i(col, row)
 		if not grid.terrain.has(cell):
-			grid.terrain[cell] = types[randi() % types.size()]
+			grid.terrain[cell] = bag[randi() % bag.size()]
 			placed += 1
-	_generate_heights()
+	_generate_heights(int(m.get("heights", 5)))
+	_show_map_name(str(m.get("name", "")))
 	grid.queue_redraw()
 
 
-# Quelques plateaux surélevés au centre (relief tactique), hors zones de spawn.
-func _generate_heights() -> void:
+# Construit un "sac" pondéré d'identifiants de terrain selon les poids de la carte.
+func _weighted_terrain_bag(weights: Dictionary) -> Array:
+	var bag: Array = []
+	for tid in weights:
+		for _i in range(int(weights[tid])):
+			bag.append(tid)
+	if bag.is_empty():
+		bag = GameData.TERRAIN.keys()
+	return bag
+
+
+# Affiche le nom de la carte (réutilise le label de terrain, remplacé au survol).
+func _show_map_name(map_name: String) -> void:
+	if map_name == "" or terrain_label == null:
+		return
+	terrain_label.text = "Carte : %s" % map_name
+	terrain_label.visible = true
+
+
+# Plateaux surélevés (relief tactique), hors zones de spawn et hors marécage.
+func _generate_heights(count: int) -> void:
 	var placed := 0
 	var attempts := 0
-	while placed < 5 and attempts < 60:
+	while placed < count and attempts < count * 12:
 		attempts += 1
 		var col: int = 2 + randi() % 8  # colonnes 2-9 (pas sur les lignes de départ)
 		var row: int = randi() % grid.ROWS

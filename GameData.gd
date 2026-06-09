@@ -440,6 +440,24 @@ const TERRAIN := {
 	             "move_penalty": 2},
 }
 
+# --- Cartes / champs de bataille ---
+# Chaque carte = un biome avec sa propre dominante de terrain (weights),
+# sa densité d'obstacles (terrain) et son nombre de plateaux surélevés (heights).
+# Tirée au hasard au début du combat (current_map). Gameplay 100 % data-driven.
+const MAPS := [
+	{"name": "Plaine ouverte", "weights": {"foret": 1, "ruines": 1, "marecage": 1},
+	 "terrain": 6,  "heights": 3},
+	{"name": "Forêt ancienne", "weights": {"foret": 5, "ruines": 1, "marecage": 1},
+	 "terrain": 14, "heights": 2},
+	{"name": "Ruines maudites", "weights": {"foret": 1, "ruines": 5, "marecage": 1},
+	 "terrain": 13, "heights": 4},
+	{"name": "Marais brumeux", "weights": {"foret": 2, "ruines": 1, "marecage": 6},
+	 "terrain": 15, "heights": 1},
+	{"name": "Hauts plateaux", "weights": {"foret": 1, "ruines": 2, "marecage": 1},
+	 "terrain": 8,  "heights": 7},
+]
+var current_map := 0
+
 # Sélections courantes (définies à l'écran de préparation, étape 6).
 var difficulty := "normal"
 var player_team: Array = ["tank"]

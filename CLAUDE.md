@@ -284,6 +284,13 @@ Ordre de priorité (✅ = fait) :
     correcte des cases derrière un plateau). IA recherche les hauteurs
     (`AI._cell_score`, bonus accru pour les tireurs). Survol = info hauteur.
     Limite v1 : déplacement non pénalisé pour grimper (climb gratuit), 1 niveau.
+52. ✅ **Plusieurs cartes** (`GameData.MAPS`, `current_map`) : 5 biomes tirés au
+    hasard au début du combat (Plaine ouverte, Forêt ancienne, Ruines maudites,
+    Marais brumeux, Hauts plateaux). Chaque carte a sa **dominante de terrain**
+    (poids), sa **densité d'obstacles** et son **nombre de plateaux**.
+    `Battle._generate_terrain` tire la carte, construit un sac pondéré
+    (`_weighted_terrain_bag`) et applique densité + relief ; le nom s'affiche au
+    début (réutilise `terrain_label`). 100 % data-driven, aucun nouveau nœud.
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`
