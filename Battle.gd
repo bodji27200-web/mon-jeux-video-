@@ -66,6 +66,7 @@ var _turn_count := 0
 var _max_hit := 0
 var _start_player := 0
 var _start_ai := 0
+var _unlocked_msg := ""  # classe débloquée par la victoire (affichée sur l'écran de fin)
 
 
 func _ready() -> void:
@@ -584,6 +585,9 @@ func _check_end() -> bool:
 		end_label.add_theme_color_override("font_color", Color(0.2, 0.9, 0.3) if p else Color(0.9, 0.2, 0.2))
 		end_label.add_theme_font_size_override("font_size", 64)
 		end_label.visible = true
+		# Victoire : progression (débloque la classe suivante, persistée sur disque).
+		if p:
+			_unlocked_msg = GameData.register_win()
 		_show_stats()
 		replay_button.visible = true
 		return true
@@ -607,9 +611,12 @@ func _show_stats() -> void:
 			ally_total += 1
 		else:
 			enemy_total += 1
-	stats_label.text = "Tours joués : %d\nEnnemis vaincus : %d / %d\nAlliés perdus : %d / %d\nCoup le plus fort : %d" % [
+	var txt := "Tours joués : %d\nEnnemis vaincus : %d / %d\nAlliés perdus : %d / %d\nCoup le plus fort : %d" % [
 		_turn_count, enemy_total - enemy_alive, enemy_total,
 		ally_total - ally_alive, ally_total, _max_hit]
+	if _unlocked_msg != "":
+		txt += "\n\n🔓 Nouvelle classe débloquée : %s !" % _unlocked_msg
+	stats_label.text = txt
 	stats_label.add_theme_font_size_override("font_size", 22)
 	stats_label.visible = true
 
