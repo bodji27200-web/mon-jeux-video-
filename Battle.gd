@@ -454,9 +454,11 @@ func _handle_click(cell: Vector2i) -> void:
 		_end_turn()
 
 
-# Soin si soigneur, sinon attaque (avec coup critique éventuel).
+# Soin si soigneur ET cible alliée, sinon attaque (un soutien IA sans blessé
+# attaque l'ennemi au lieu de gaspiller son tour ; côté joueur rien ne change,
+# ses cibles de soin sont déjà filtrées sur les alliés blessés).
 func _perform_action(unit: Node, target: Node) -> void:
-	if _is_healer(unit):
+	if _is_healer(unit) and target.team == unit.team:
 		target.heal(int(unit.data.heal))
 		Audio.play_sfx("heal")
 		_fx("buff", target.grid_position, target.grid_position, Color(0.30, 0.90, 0.40))
