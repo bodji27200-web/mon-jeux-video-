@@ -30,12 +30,20 @@ func _draw() -> void:
 
 
 func _build_menu() -> void:
+	# Ancres centrées (et non une position absolue calculée sur `size`, qui n'est
+	# pas fiable au _ready quand la fenêtre démarre maximisée) : le moteur de
+	# layout recentre automatiquement, quelle que soit la résolution.
 	var center := VBoxContainer.new()
-	center.set_anchors_preset(Control.PRESET_CENTER)
+	center.anchor_left = 0.5
+	center.anchor_right = 0.5
+	center.anchor_top = 0.22
+	center.anchor_bottom = 0.22
+	center.offset_left = -160.0
+	center.offset_right = 160.0
+	center.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	center.grow_vertical = Control.GROW_DIRECTION_BOTH
 	center.alignment = BoxContainer.ALIGNMENT_CENTER
 	center.add_theme_constant_override("separation", 14)
-	center.position = Vector2(size.x * 0.5 - 150, size.y * 0.28)
-	center.custom_minimum_size = Vector2(300, 0)
 	add_child(center)
 
 	var title := Label.new()
@@ -76,9 +84,13 @@ func _menu_button(text: String, cb: Callable) -> Button:
 # --- Panneau de réglages (superposition, caché par défaut) ---
 func _build_settings() -> void:
 	_settings_panel = PanelContainer.new()
-	_settings_panel.set_anchors_preset(Control.PRESET_CENTER)
+	_settings_panel.anchor_left = 0.5
+	_settings_panel.anchor_right = 0.5
+	_settings_panel.anchor_top = 0.5
+	_settings_panel.anchor_bottom = 0.5
+	_settings_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_settings_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_settings_panel.custom_minimum_size = Vector2(420, 0)
-	_settings_panel.position = Vector2(size.x * 0.5 - 210, size.y * 0.30)
 	_settings_panel.visible = false
 	add_child(_settings_panel)
 
