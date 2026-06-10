@@ -143,10 +143,21 @@ func _top_color(cell: Vector2i) -> Color:
 # Bande d'occlusion sous l'arête + liseré de lumière sur le rebord du sommet.
 func _draw_block_sides(cell: Vector2i) -> void:
 	var top := cell_to_local_raised(cell)
+	var T := top + Vector2(0.0, -TILE_H / 2.0)
 	var L := top + Vector2(-TILE_W / 2.0, 0.0)
 	var B := top + Vector2(0.0, TILE_H / 2.0)
 	var R := top + Vector2(TILE_W / 2.0, 0.0)
 	var h := height_at(cell)
+	# Faces ARRIÈRE d'un plateau (arêtes haut-gauche / haut-droite) : comblent le
+	# losange laissé au-dessus d'un voisin arrière plus bas. Sans elles, le pas de
+	# demi-tuile laisse voir le fond (le « trou » qui semblait déborder sur 4 cases).
+	# Jamais de socle à l'arrière (pour garder la silhouette de la carte).
+	var d_bl := _step_down(h, cell + Vector2i(-1, 0))     # arête haut-gauche
+	if d_bl > 0.0:
+		draw_colored_polygon(PackedVector2Array([T, L, L + Vector2(0.0, d_bl), T + Vector2(0.0, d_bl)]), _wall_l)
+	var d_br := _step_down(h, cell + Vector2i(0, -1))     # arête haut-droite
+	if d_br > 0.0:
+		draw_colored_polygon(PackedVector2Array([T, R, R + Vector2(0.0, d_br), T + Vector2(0.0, d_br)]), _wall_r)
 	var d_left := _wall_depth(h, cell + Vector2i(0, 1))   # face avant-gauche
 	if d_left > 0.0:
 		var v := Vector2(0.0, d_left)
@@ -190,6 +201,14 @@ func _draw_top_rim(cell: Vector2i) -> void:
 func _wall_depth(h: int, neighbor: Vector2i) -> float:
 	if not is_inside(neighbor):
 		return h * HEIGHT_RISE + EDGE_DEPTH
+	return max(0.0, float(h - height_at(neighbor)) * HEIGHT_RISE)
+
+
+# Dénivelé (px) vers un voisin ARRIÈRE : uniquement si ce voisin est dans la
+# carte et plus bas (pas de socle à l'arrière, sinon ça dépasse la silhouette).
+func _step_down(h: int, neighbor: Vector2i) -> float:
+	if not is_inside(neighbor):
+		return 0.0
 	return max(0.0, float(h - height_at(neighbor)) * HEIGHT_RISE)
 
 
