@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://b1rpgfloatingtext"]
+[gd_scene format=3 uid="uid://bthyewfco7yw4"]
 
 [ext_resource type="Script" path="res://FloatingText.gd" id="1_float"]
 
