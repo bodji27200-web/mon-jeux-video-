@@ -306,6 +306,16 @@ Ordre de priorité (✅ = fait) :
     sommets de plateaux éclaircis (lecture de la hauteur). Cases agrandies
     (`TILE_W` 64→72, `HEIGHT_RISE` 16→18, `ISO_ORIGIN` recalée : bord droit
     60+320+432 = 812 ≤ 832). Gameplay et clics inchangés (mêmes formules).
+55. ✅ **Style SoC poussé** (`Grid.gd` + `GameData.MAPS.palette`) : **palette de
+    sol par biome** (herbe/Plaine, mousse/Forêt, pierre sable/Ruines, vase/Marais,
+    roche bleutée/Hauts plateaux — damier `top_a`/`top_b`, parois terre
+    `wall_l`/`wall_r`, repli sur les constantes si absente), **ombre portée**
+    sous la maquette (3 losanges, `_draw_drop_shadow`), **liseré de lumière**
+    sur les rebords avant (`_draw_top_rim`, après le fill sinon recouvert),
+    **bande d'occlusion** sous les arêtes, **joints discrets** (`COLOR_SEAM`
+    remplace la grille bleue), **micro-variation de teinte par case**
+    (déterministe, `_top_color`). Palette chargée à chaque `_draw`
+    (`_load_palette`). Rendu seul, gameplay/clics inchangés.
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`

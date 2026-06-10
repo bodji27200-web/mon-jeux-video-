@@ -442,19 +442,30 @@ const TERRAIN := {
 
 # --- Cartes / champs de bataille ---
 # Chaque carte = un biome avec sa propre dominante de terrain (weights),
-# sa densité d'obstacles (terrain) et son nombre de plateaux surélevés (heights).
+# sa densité d'obstacles (terrain), son nombre de plateaux surélevés (heights)
+# et sa palette de sol (palette : damier top_a/top_b + parois wall_l/wall_r).
 # Tirée au hasard au début du combat (current_map). Gameplay 100 % data-driven.
 const MAPS := [
 	{"name": "Plaine ouverte", "weights": {"foret": 1, "ruines": 1, "marecage": 1},
-	 "terrain": 6,  "heights": 3},
+	 "terrain": 6,  "heights": 3,
+	 "palette": {"top_a": Color(0.318, 0.420, 0.235), "top_b": Color(0.270, 0.368, 0.200),
+	             "wall_l": Color(0.184, 0.130, 0.092), "wall_r": Color(0.262, 0.188, 0.130)}},
 	{"name": "Forêt ancienne", "weights": {"foret": 5, "ruines": 1, "marecage": 1},
-	 "terrain": 14, "heights": 2},
+	 "terrain": 14, "heights": 2,
+	 "palette": {"top_a": Color(0.196, 0.310, 0.176), "top_b": Color(0.160, 0.265, 0.148),
+	             "wall_l": Color(0.130, 0.105, 0.078), "wall_r": Color(0.190, 0.150, 0.108)}},
 	{"name": "Ruines maudites", "weights": {"foret": 1, "ruines": 5, "marecage": 1},
-	 "terrain": 13, "heights": 4},
+	 "terrain": 13, "heights": 4,
+	 "palette": {"top_a": Color(0.412, 0.376, 0.298), "top_b": Color(0.354, 0.320, 0.250),
+	             "wall_l": Color(0.220, 0.190, 0.150), "wall_r": Color(0.300, 0.258, 0.204)}},
 	{"name": "Marais brumeux", "weights": {"foret": 2, "ruines": 1, "marecage": 6},
-	 "terrain": 15, "heights": 1},
+	 "terrain": 15, "heights": 1,
+	 "palette": {"top_a": Color(0.240, 0.296, 0.196), "top_b": Color(0.198, 0.252, 0.165),
+	             "wall_l": Color(0.140, 0.130, 0.090), "wall_r": Color(0.196, 0.180, 0.120)}},
 	{"name": "Hauts plateaux", "weights": {"foret": 1, "ruines": 2, "marecage": 1},
-	 "terrain": 8,  "heights": 7},
+	 "terrain": 8,  "heights": 7,
+	 "palette": {"top_a": Color(0.302, 0.320, 0.380), "top_b": Color(0.252, 0.270, 0.330),
+	             "wall_l": Color(0.150, 0.150, 0.190), "wall_r": Color(0.210, 0.212, 0.262)}},
 ]
 var current_map := 0
 

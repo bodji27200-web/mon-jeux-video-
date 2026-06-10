@@ -21,12 +21,19 @@ const HEIGHT_RISE := 18.0
 # Épaisseur du socle du diorama (faces sous les bords de la carte).
 const EDGE_DEPTH := 26.0
 
-# Damier de sol (deux tons proches, comme SoC) + faces latérales en terre/pierre.
+# Damier de sol par défaut (si la carte n'a pas de palette) + parois.
 const COLOR_TOP_A := Color(0.190, 0.190, 0.265)
 const COLOR_TOP_B := Color(0.150, 0.150, 0.215)
 const COLOR_WALL_L := Color(0.105, 0.095, 0.135)     # face avant-gauche (ombre)
 const COLOR_WALL_R := Color(0.150, 0.135, 0.185)     # face avant-droite
-const COLOR_LINE := Color(0.42, 0.44, 0.56)          # contour des cases (plus lisible)
+const COLOR_SEAM := Color(0.0, 0.0, 0.0, 0.16)       # joint discret entre cases (style SoC)
+const COLOR_LINE := Color(0.42, 0.44, 0.56)          # (conservé pour compat)
+
+# Palette de la carte en cours (assignée au début de chaque _draw).
+var _top_a := COLOR_TOP_A
+var _top_b := COLOR_TOP_B
+var _wall_l := COLOR_WALL_L
+var _wall_r := COLOR_WALL_R
 const COLOR_MOVE := Color(0.30, 0.55, 0.95, 0.35)    # cases de déplacement
 const COLOR_TARGET := Color(0.90, 0.25, 0.25, 0.40)  # cibles attaquables
 const COLOR_HEAL := Color(0.30, 0.85, 0.40, 0.40)    # alliés soignables
@@ -43,6 +50,8 @@ var heights: Dictionary = {}  # Vector2i -> int (niveau de hauteur, 0 = sol)
 
 
 func _draw() -> void:
+	_load_palette()
+	_draw_drop_shadow()
 	# Sol : un BLOC par case (du fond vers l'avant pour un recouvrement propre) :
 	# faces latérales (bords de carte + dénivelés) puis sommet en damier.
 	for row in ROWS:
@@ -50,7 +59,8 @@ func _draw() -> void:
 			var cell := Vector2i(col, row)
 			_draw_block_sides(cell)
 			_fill_cell(cell, _top_color(cell))
-			_outline_cell(cell, COLOR_LINE, 1.0)
+			_outline_cell(cell, COLOR_SEAM, 1.0)
+			_draw_top_rim(cell)
 	# Terrain tactique : losange teinté (zone d'effet) + décor vectoriel debout.
 	for cell in terrain:
 		var tid: String = terrain[cell]
@@ -88,10 +98,40 @@ func _diamond_points(cell: Vector2i) -> PackedVector2Array:
 		c + Vector2(-TILE_W / 2.0, 0.0)])
 
 
-# Damier du sol : deux tons alternés (lecture des cases sans grosse grille).
-# Les sommets des plateaux sont éclaircis : la hauteur se repère d'un coup d'œil.
+# Palette de sol de la carte tirée (GameData.MAPS), avec repli sur les défauts.
+func _load_palette() -> void:
+	var maps: Array = GameData.MAPS
+	var idx: int = clampi(GameData.current_map, 0, maps.size() - 1)
+	var pal: Dictionary = maps[idx].get("palette", {})
+	_top_a = pal.get("top_a", COLOR_TOP_A)
+	_top_b = pal.get("top_b", COLOR_TOP_B)
+	_wall_l = pal.get("wall_l", COLOR_WALL_L)
+	_wall_r = pal.get("wall_r", COLOR_WALL_R)
+
+
+# Ombre portée sous la maquette : la carte « flotte » au-dessus du vide (SoC).
+# Trois losanges sombres de plus en plus larges = bord doux sans flou coûteux.
+func _draw_drop_shadow() -> void:
+	var n := cell_to_local(Vector2i(0, 0)) + Vector2(0.0, -TILE_H / 2.0)
+	var e := cell_to_local(Vector2i(COLUMNS - 1, 0)) + Vector2(TILE_W / 2.0, 0.0)
+	var s := cell_to_local(Vector2i(COLUMNS - 1, ROWS - 1)) + Vector2(0.0, TILE_H / 2.0)
+	var w := cell_to_local(Vector2i(0, ROWS - 1)) + Vector2(-TILE_W / 2.0, 0.0)
+	var off := Vector2(0.0, EDGE_DEPTH + 16.0)
+	var center := (n + e + s + w) / 4.0 + off
+	for layer in [[1.07, 0.08], [1.03, 0.10], [1.0, 0.14]]:
+		var pts := PackedVector2Array()
+		for p in [n, e, s, w]:
+			pts.append(center + (p + off - center) * float(layer[0]))
+		draw_colored_polygon(pts, Color(0.0, 0.0, 0.0, float(layer[1])))
+
+
+# Damier du sol : deux tons alternés + micro-variation déterministe par case
+# (rend le sol « peint à la main » au lieu d'un aplat). Les sommets des
+# plateaux sont éclaircis : la hauteur se repère d'un coup d'œil.
 func _top_color(cell: Vector2i) -> Color:
-	var c := COLOR_TOP_A if (cell.x + cell.y) % 2 == 0 else COLOR_TOP_B
+	var c := _top_a if (cell.x + cell.y) % 2 == 0 else _top_b
+	var jitter := float((cell.x * 7 + cell.y * 13) % 5 - 2) * 0.010
+	c = Color(c.r + jitter, c.g + jitter, c.b + jitter)
 	if height_at(cell) > 0:
 		c = c.lightened(0.16)
 	return c
@@ -100,6 +140,7 @@ func _top_color(cell: Vector2i) -> Color:
 # Faces latérales du bloc d'une case (style diorama) : une face est visible
 # quand le voisin de devant (avant-gauche = row+1, avant-droite = col+1) est
 # hors carte (socle du diorama) ou plus bas (dénivelé d'un plateau).
+# Bande d'occlusion sous l'arête + liseré de lumière sur le rebord du sommet.
 func _draw_block_sides(cell: Vector2i) -> void:
 	var top := cell_to_local_raised(cell)
 	var L := top + Vector2(-TILE_W / 2.0, 0.0)
@@ -109,16 +150,39 @@ func _draw_block_sides(cell: Vector2i) -> void:
 	var d_left := _wall_depth(h, cell + Vector2i(0, 1))   # face avant-gauche
 	if d_left > 0.0:
 		var v := Vector2(0.0, d_left)
-		draw_colored_polygon(PackedVector2Array([L, B, B + v, L + v]), COLOR_WALL_L)
+		var ao_l := Vector2(0.0, min(4.0, d_left))
+		draw_colored_polygon(PackedVector2Array([L, B, B + v, L + v]), _wall_l)
+		draw_colored_polygon(PackedVector2Array([L, B, B + ao_l, L + ao_l]), Color(0.0, 0.0, 0.0, 0.22))
 		draw_line(L + v, B + v, Color(0.0, 0.0, 0.0, 0.55), 1.5)
 	var d_right := _wall_depth(h, cell + Vector2i(1, 0))  # face avant-droite
 	if d_right > 0.0:
 		var v := Vector2(0.0, d_right)
-		draw_colored_polygon(PackedVector2Array([B, R, R + v, B + v]), COLOR_WALL_R)
+		var ao_r := Vector2(0.0, min(4.0, d_right))
+		draw_colored_polygon(PackedVector2Array([B, R, R + v, B + v]), _wall_r)
+		draw_colored_polygon(PackedVector2Array([B, R, R + ao_r, B + ao_r]), Color(0.0, 0.0, 0.0, 0.22))
 		draw_line(B + v, R + v, Color(0.0, 0.0, 0.0, 0.55), 1.5)
 	if d_left > 0.0 or d_right > 0.0:
 		# Arête verticale avant (jonction des deux faces), pour marquer le bloc.
 		draw_line(B, B + Vector2(0.0, max(d_left, d_right)), Color(0.0, 0.0, 0.0, 0.40), 1.0)
+
+
+# Liseré de lumière sur le rebord avant du sommet (dessiné APRÈS le remplissage
+# du dessus, sinon il serait recouvert) : l'arête « accroche la lumière » (SoC).
+func _draw_top_rim(cell: Vector2i) -> void:
+	var h := height_at(cell)
+	var d_left := _wall_depth(h, cell + Vector2i(0, 1))
+	var d_right := _wall_depth(h, cell + Vector2i(1, 0))
+	if d_left <= 0.0 and d_right <= 0.0:
+		return
+	var top := cell_to_local_raised(cell)
+	var L := top + Vector2(-TILE_W / 2.0, 0.0)
+	var B := top + Vector2(0.0, TILE_H / 2.0)
+	var R := top + Vector2(TILE_W / 2.0, 0.0)
+	var rim := _top_color(cell).lightened(0.30)
+	if d_left > 0.0:
+		draw_line(L, B, rim, 1.5)
+	if d_right > 0.0:
+		draw_line(B, R, rim, 1.5)
 
 
 # Profondeur (px) de la face vers le voisin donné : socle complet hors carte,
