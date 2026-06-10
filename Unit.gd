@@ -36,7 +36,9 @@ const SPRITES := {
 	"chasseur":        Rect2(128, 325, 16, 26),  # guerrier vert = rôle chasseur/rôdeur
 	"pretreguerrier":  Rect2(128, 237, 16, 19),  # lizard_m
 	"invocateur":      Rect2(16, 364, 32, 36),   # big_demon
-	"barde":           Rect2(128, 372, 16, 28),  # hero dernier slot (tight bounds)
+	# barde : pas de sprite — cette zone de la sheet n'est pas une vraie strip
+	# idle 4-frames (frames incohérentes → figurine "coupée"). Repli vectoriel
+	# (figurine dorée en robe + bâton), cohérent avec son rôle de soutien.
 	"squelette_guerrier": Rect2(368, 80, 16, 16),  # skelet
 	"squelette_archer":   Rect2(368, 80, 16, 16),  # skelet
 	"golem_pierre":    Rect2(16, 320, 32, 32),   # ogre
