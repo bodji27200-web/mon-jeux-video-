@@ -299,6 +299,13 @@ Ordre de priorité (✅ = fait) :
     verrouillées grisées + 🔒, non sélectionnables par le joueur **ni l'IA** —
     pool partagé). `register_win()` appelé à la victoire (`Battle._check_end`),
     classe débloquée annoncée sur l'écran de fin (`_show_stats`).
+54. ✅ **Vue diorama type Sword of Convallaria** (`Grid.gd`, rendu seul) : chaque
+    case est un **bloc 3D** — faces latérales dessinées sur les bords de la carte
+    (socle `EDGE_DEPTH`) et les dénivelés (`_draw_block_sides`/`_wall_depth`) →
+    la carte ressemble à une maquette flottante. **Damier** 2 tons (`_top_color`),
+    sommets de plateaux éclaircis (lecture de la hauteur). Cases agrandies
+    (`TILE_W` 64→72, `HEIGHT_RISE` 16→18, `ISO_ORIGIN` recalée : bord droit
+    60+320+432 = 812 ≤ 832). Gameplay et clics inchangés (mêmes formules).
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`
