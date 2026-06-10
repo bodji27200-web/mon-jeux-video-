@@ -121,7 +121,6 @@ func _ready() -> void:
 	root.add_child(_start_btn)
 
 	_on_difficulty("normal")
-	_update_buttons()  # grise d'emblée les classes encore verrouillées
 	_refresh()
 	_show_class_info(_first_visible())
 	Audio.play_music("menu")
@@ -152,8 +151,7 @@ func _make_class_card(cid: String) -> Button:
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(tr)
 	var lbl := Label.new()
-	var locked: bool = not GameData.is_unlocked(cid)
-	lbl.text = ("🔒 " if locked else ("★ " if c.get("unique", false) else "")) + str(c.name)
+	lbl.text = ("★ " if c.get("unique", false) else "") + str(c.name)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lbl.add_theme_font_size_override("font_size", 11)
@@ -205,14 +203,17 @@ func _on_difficulty(d: String) -> void:
 
 
 # Le joueur choisit une classe : elle quitte le pool, puis l'IA réplique.
+# Reclic sur une de SES classes = on la retire (déselection).
 func _on_pick_class(cid: String) -> void:
 	_show_class_info(cid)
+	# Déjà draftée par le joueur → on la retire (et la réponse IA du même tour).
+	var idx: int = _player.find(cid)
+	if idx != -1:
+		_undraft(idx)
+		return
 	if _player.size() >= TEAM_SIZE:
 		return
 	if not _class_buttons.has(cid) or _taken.has(cid):
-		return
-	# Classe encore verrouillée : non sélectionnable (à débloquer en gagnant).
-	if not GameData.is_unlocked(cid):
 		return
 	# Règle : une seule classe unique par équipe.
 	if GameData.CLASSES[cid].get("unique", false) and _player_has_unique():
@@ -230,6 +231,24 @@ func _on_pick_class(cid: String) -> void:
 	_refresh()
 
 
+# Retire la classe joueur à l'index donné + la réponse IA du même tour.
+# (Draft alterné : _player[i] et _ai[i] sont le même tour, picks en lockstep.)
+func _undraft(idx: int) -> void:
+	var pcid: String = _player[idx]
+	_player.remove_at(idx)
+	_taken.erase(pcid)
+	if idx < _ai.size():
+		var acid: String = _ai[idx]
+		_ai.remove_at(idx)
+		_taken.erase(acid)
+	# Draft revenu à vide → on redéverrouille la difficulté.
+	if _player.is_empty() and _ai.is_empty():
+		for key in _diff_buttons:
+			_diff_buttons[key].disabled = (key == _difficulty)
+	_update_buttons()
+	_refresh()
+
+
 # Le joueur possède-t-il déjà une classe unique ?
 func _player_has_unique() -> bool:
 	for c in _player:
@@ -238,23 +257,28 @@ func _player_has_unique() -> bool:
 	return false
 
 
-# Met à jour l'état grisé des boutons : pris (pool) OU unique verrouillé pour le joueur.
+# Met à jour l'état des boutons. Tes propres classes restent CLIQUABLES (pour
+# pouvoir les retirer) et teintées en vert ; les classes prises par l'IA ou
+# verrouillées (unique) sont grisées et désactivées.
 func _update_buttons() -> void:
 	var locked: bool = _player_has_unique() or _player.size() >= TEAM_SIZE
 	for cid in _class_buttons:
-		var taken: bool = _taken.has(cid)
-		var unique_locked: bool = locked and GameData.CLASSES[cid].get("unique", false)
-		var not_unlocked: bool = not GameData.is_unlocked(cid)
-		var dis: bool = taken or unique_locked or not_unlocked
+		var mine: bool = cid in _player
+		var taken: bool = _taken.has(cid) and not mine
+		var unique_locked: bool = locked and GameData.CLASSES[cid].get("unique", false) and not mine
+		var dis: bool = taken or unique_locked
 		_class_buttons[cid].disabled = dis
-		# Carte grisée quand elle n'est plus sélectionnable (prise ou verrouillée).
-		_class_buttons[cid].modulate = Color(0.45, 0.45, 0.5) if dis else Color(1, 1, 1)
+		if mine:
+			# Sélectionnée par toi : verte, cliquable pour la retirer.
+			_class_buttons[cid].modulate = Color(0.55, 1.0, 0.55)
+		else:
+			_class_buttons[cid].modulate = Color(0.45, 0.45, 0.5) if dis else Color(1, 1, 1)
 
 
 func _available() -> Array:
 	var pool: Array = []
 	for cid in _class_buttons:
-		if not _taken.has(cid) and GameData.is_unlocked(cid):
+		if not _taken.has(cid):
 			pool.append(cid)
 	return pool
 
@@ -307,8 +331,6 @@ func _show_class_info(cid: String) -> void:
 		_info_name.add_theme_color_override("font_color",
 				Color(1.0, 0.84, 0.30) if c.get("unique", false) else Color(1, 1, 1))
 	var t := ""
-	if not GameData.is_unlocked(cid):
-		t += "🔒 VERROUILLÉE — gagne des combats pour la débloquer\n"
 	if c.get("unique", false):
 		t += "CLASSE UNIQUE — 1 seule par équipe\n"
 	t += "%s\n\n" % c.get("description", "")
