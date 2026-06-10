@@ -316,6 +316,20 @@ Ordre de priorité (✅ = fait) :
     remplace la grille bleue), **micro-variation de teinte par case**
     (déterministe, `_top_color`). Palette chargée à chaque `_draw`
     (`_load_palette`). Rendu seul, gameplay/clics inchangés.
+56. ✅ **Mode histoire — phase 1 : exploration libre** (`Overworld.gd/.tscn`) :
+    bouton **Campagne** au menu titre (la Partie rapide reste intacte). Région 1
+    « Vallée de Bruyère » en diorama iso : déplacement **continu** ZQSD/WASD/flèches
+    (aucune case hors combat), hameau + prairie + étang + **Bois des Murmures**
+    (zone des ennemis à l'est : plus on s'enfonce, plus c'est fort — 3 rôdeurs).
+    Visuels d'exploration **dédiés** (vectoriels animés : marche, cape, yeux
+    luisants, « ! » de poursuite), distincts du combat. Contact ennemi =
+    transition « dimension de combat » (fondu violet + zoom) vers la scène de
+    combat **inchangée** ; victoire → retour au monde, ennemi disparu à jamais ;
+    défaite → menu. Équipe campagne v1 fixe (tank/archer/soigneur). Position +
+    vaincus persistés (`GameData.campaign_*`, section `[campaign]`). Hooks
+    minimaux : `Battle._campaign_won` (fin de combat) + `Title._on_campaign`.
+    Phases suivantes prévues (une à la fois, sur demande) : dialogues à
+    conséquences, compagnons, réputation, boss à mécaniques, autres mondes.
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`
