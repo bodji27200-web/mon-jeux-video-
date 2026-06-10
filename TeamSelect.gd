@@ -165,13 +165,29 @@ func _make_class_card(cid: String) -> Button:
 
 
 # Texture du sprite (1re frame idle) d'une classe, depuis la spritesheet.
+# Classes sans sprite (barde, chasseur — rendues en vectoriel au combat) :
+# pastille-figurine colorée pour que leur carte reste visible dans le draft.
 func _class_texture(cid: String) -> Texture2D:
 	if not UnitScript.SPRITES.has(cid):
-		return null
+		return _fallback_texture(cid)
 	var at := AtlasTexture.new()
 	at.atlas = TILESET
 	at.region = UnitScript.SPRITES[cid]
 	return at
+
+
+# Mini-figurine (tête + corps) de la couleur de la classe, générée en mémoire.
+func _fallback_texture(cid: String) -> Texture2D:
+	var col: Color = GameData.CLASSES[cid].color
+	var img := Image.create(16, 16, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	for y in range(2, 6):
+		for x in range(6, 10):
+			img.set_pixel(x, y, col.lightened(0.25))   # tête
+	for y in range(6, 14):
+		for x in range(4, 12):
+			img.set_pixel(x, y, col)                   # corps
+	return ImageTexture.create_from_image(img)
 
 
 func _role_label(r: String) -> String:

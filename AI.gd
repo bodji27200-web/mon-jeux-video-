@@ -167,6 +167,12 @@ static func _pick_enemy(unit: Node, enemies: Array) -> Node:
 	var hard: bool = GameData.difficulty in ["difficile", "hardcore"]
 	for e in enemies:
 		var s := -float(e.hp)
+		# Pénalité de distance : préférer une cible atteignable plutôt que de
+		# traverser la carte (et se faire tirer dessus en chemin) pour une proie
+		# lointaine à peine plus tentante.
+		var dist: int = abs(unit.grid_position.x - e.grid_position.x) \
+				+ abs(unit.grid_position.y - e.grid_position.y)
+		s -= float(dist) * (6.0 if hard else 4.0)
 		if float(e.hp) <= est:
 			s += 800.0                    # achevable ce tour-ci : priorité absolue
 		elif float(e.hp) <= est * 1.5:
