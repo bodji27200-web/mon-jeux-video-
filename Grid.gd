@@ -6,18 +6,26 @@ const COLUMNS := 12
 const ROWS := 10
 const CELL_SIZE := 64  # conservé pour les rayons d'effets visuels (SkillFX)
 
-# --- Projection isométrique (vue inclinée type Into the Breach / XCOM) ---
-# Une case = un losange de TILE_W de large et TILE_H de haut (ratio 2:1).
-# Le gameplay reste sur des coordonnées de grille entières ; seule la conversion
-# case <-> écran change (cell_to_local / local_to_cell).
-const TILE_W := 64.0
-const TILE_H := 32.0
-# Décalage d'origine : pousse la grille pour que tout reste en coordonnées >= 0.
+# --- Projection isométrique « diorama » (type Sword of Convallaria) ---
+# Une case = un BLOC : losange-sommet (TILE_W × TILE_H, ratio 2:1) + faces
+# latérales visibles sur les bords de la carte et les dénivelés, comme une
+# maquette flottante. Le gameplay reste sur des coordonnées de grille entières ;
+# seule la conversion case <-> écran change (cell_to_local / local_to_cell).
+const TILE_W := 72.0
+const TILE_H := 36.0
+# Décalage d'origine : pousse la grille pour que tout reste en coordonnées >= 0
+# (le nœud Grid est lui-même à (60,130) dans Main.tscn : bord droit = 60+320+432 = 812 ≤ 832).
 const ISO_ORIGIN := Vector2(320.0, 40.0)
 # Relief : remontée visuelle (px) par niveau de hauteur (plateau surélevé).
-const HEIGHT_RISE := 16.0
+const HEIGHT_RISE := 18.0
+# Épaisseur du socle du diorama (faces sous les bords de la carte).
+const EDGE_DEPTH := 26.0
 
-const COLOR_CELL := Color(0.15, 0.15, 0.21)
+# Damier de sol (deux tons proches, comme SoC) + faces latérales en terre/pierre.
+const COLOR_TOP_A := Color(0.190, 0.190, 0.265)
+const COLOR_TOP_B := Color(0.150, 0.150, 0.215)
+const COLOR_WALL_L := Color(0.105, 0.095, 0.135)     # face avant-gauche (ombre)
+const COLOR_WALL_R := Color(0.150, 0.135, 0.185)     # face avant-droite
 const COLOR_LINE := Color(0.42, 0.44, 0.56)          # contour des cases (plus lisible)
 const COLOR_MOVE := Color(0.30, 0.55, 0.95, 0.35)    # cases de déplacement
 const COLOR_TARGET := Color(0.90, 0.25, 0.25, 0.40)  # cibles attaquables
@@ -35,14 +43,13 @@ var heights: Dictionary = {}  # Vector2i -> int (niveau de hauteur, 0 = sol)
 
 
 func _draw() -> void:
-	# Sol : un losange par case (du fond vers l'avant pour un recouvrement propre).
-	# Les cases en hauteur sont dessinées en plateau (parois + sommet relevé).
+	# Sol : un BLOC par case (du fond vers l'avant pour un recouvrement propre) :
+	# faces latérales (bords de carte + dénivelés) puis sommet en damier.
 	for row in ROWS:
 		for col in COLUMNS:
 			var cell := Vector2i(col, row)
-			if height_at(cell) > 0:
-				_draw_elevation_walls(cell)
-			_fill_cell(cell, COLOR_CELL)
+			_draw_block_sides(cell)
+			_fill_cell(cell, _top_color(cell))
 			_outline_cell(cell, COLOR_LINE, 1.0)
 	# Terrain tactique : losange teinté (zone d'effet) + décor vectoriel debout.
 	for cell in terrain:
@@ -81,21 +88,45 @@ func _diamond_points(cell: Vector2i) -> PackedVector2Array:
 		c + Vector2(-TILE_W / 2.0, 0.0)])
 
 
-# Parois latérales d'un plateau surélevé : deux faces (avant-gauche, avant-droite)
-# du sommet relevé jusqu'au niveau du sol, en pierre (face droite plus claire).
-func _draw_elevation_walls(cell: Vector2i) -> void:
+# Damier du sol : deux tons alternés (lecture des cases sans grosse grille).
+# Les sommets des plateaux sont éclaircis : la hauteur se repère d'un coup d'œil.
+func _top_color(cell: Vector2i) -> Color:
+	var c := COLOR_TOP_A if (cell.x + cell.y) % 2 == 0 else COLOR_TOP_B
+	if height_at(cell) > 0:
+		c = c.lightened(0.16)
+	return c
+
+
+# Faces latérales du bloc d'une case (style diorama) : une face est visible
+# quand le voisin de devant (avant-gauche = row+1, avant-droite = col+1) est
+# hors carte (socle du diorama) ou plus bas (dénivelé d'un plateau).
+func _draw_block_sides(cell: Vector2i) -> void:
 	var top := cell_to_local_raised(cell)
-	var rise := Vector2(0.0, height_at(cell) * HEIGHT_RISE)
 	var L := top + Vector2(-TILE_W / 2.0, 0.0)
 	var B := top + Vector2(0.0, TILE_H / 2.0)
 	var R := top + Vector2(TILE_W / 2.0, 0.0)
-	var stone_l := Color(0.26, 0.25, 0.30)
-	var stone_r := Color(0.34, 0.33, 0.39)
-	draw_colored_polygon(PackedVector2Array([L, B, B + rise, L + rise]), stone_l)
-	draw_colored_polygon(PackedVector2Array([B, R, R + rise, B + rise]), stone_r)
-	draw_line(L, L + rise, COLOR_LINE, 1.0)
-	draw_line(B, B + rise, COLOR_LINE, 1.0)
-	draw_line(R, R + rise, COLOR_LINE, 1.0)
+	var h := height_at(cell)
+	var d_left := _wall_depth(h, cell + Vector2i(0, 1))   # face avant-gauche
+	if d_left > 0.0:
+		var v := Vector2(0.0, d_left)
+		draw_colored_polygon(PackedVector2Array([L, B, B + v, L + v]), COLOR_WALL_L)
+		draw_line(L + v, B + v, Color(0.0, 0.0, 0.0, 0.55), 1.5)
+	var d_right := _wall_depth(h, cell + Vector2i(1, 0))  # face avant-droite
+	if d_right > 0.0:
+		var v := Vector2(0.0, d_right)
+		draw_colored_polygon(PackedVector2Array([B, R, R + v, B + v]), COLOR_WALL_R)
+		draw_line(B + v, R + v, Color(0.0, 0.0, 0.0, 0.55), 1.5)
+	if d_left > 0.0 or d_right > 0.0:
+		# Arête verticale avant (jonction des deux faces), pour marquer le bloc.
+		draw_line(B, B + Vector2(0.0, max(d_left, d_right)), Color(0.0, 0.0, 0.0, 0.40), 1.0)
+
+
+# Profondeur (px) de la face vers le voisin donné : socle complet hors carte,
+# dénivelé si le voisin est plus bas, rien sinon (face cachée).
+func _wall_depth(h: int, neighbor: Vector2i) -> float:
+	if not is_inside(neighbor):
+		return h * HEIGHT_RISE + EDGE_DEPTH
+	return max(0.0, float(h - height_at(neighbor)) * HEIGHT_RISE)
 
 
 func _fill_cell(cell: Vector2i, color: Color) -> void:
