@@ -64,7 +64,8 @@ func _build_menu() -> void:
 	spacer.custom_minimum_size = Vector2(0, 24)
 	center.add_child(spacer)
 
-	center.add_child(_menu_button("⚔  Jouer", _on_play))
+	center.add_child(_menu_button("⚜  Campagne", _on_campaign))
+	center.add_child(_menu_button("⚔  Partie rapide", _on_play))
 	center.add_child(_menu_button("⚙  Réglages", _on_settings))
 	center.add_child(_menu_button("✕  Quitter", _on_quit))
 
@@ -145,6 +146,10 @@ func _volume_row(bus: String) -> HBoxContainer:
 	row.add_child(slider)
 	row.add_child(pct)
 	return row
+
+
+func _on_campaign() -> void:
+	get_tree().change_scene_to_file("res://Overworld.tscn")
 
 
 func _on_play() -> void:

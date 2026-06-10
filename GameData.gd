@@ -492,6 +492,13 @@ const UNLOCK_ORDER := [
 var unlocked: Array = STARTER_CLASSES.duplicate()
 var wins := 0
 
+# --- Campagne (mode histoire) : état persistant de l'exploration ---
+# Persisté dans user://settings.cfg (section [campaign]).
+var campaign_battle := false         # le combat en cours vient de la campagne
+var campaign_enemy_id := ""          # ennemi d'overworld affronté
+var campaign_pos := Vector2(-1, -1)  # position du joueur (en tuiles), -1 = départ
+var campaign_defeated: Array = []    # ids des ennemis d'overworld vaincus
+
 
 func _ready() -> void:
 	load_settings()
@@ -533,6 +540,8 @@ func save_settings() -> void:
 		cfg.set_value("audio", bus, volumes[bus])
 	cfg.set_value("progress", "unlocked", unlocked)
 	cfg.set_value("progress", "wins", wins)
+	cfg.set_value("campaign", "pos", campaign_pos)
+	cfg.set_value("campaign", "defeated", campaign_defeated)
 	cfg.save(SETTINGS_PATH)
 
 
@@ -548,3 +557,5 @@ func load_settings() -> void:
 		if not unlocked.has(cid):
 			unlocked.append(cid)
 	wins = int(cfg.get_value("progress", "wins", 0))
+	campaign_pos = cfg.get_value("campaign", "pos", Vector2(-1, -1))
+	campaign_defeated = cfg.get_value("campaign", "defeated", [])
