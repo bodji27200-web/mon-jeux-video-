@@ -71,8 +71,9 @@ static func decide(unit: Node, grid: Node, units: Array) -> Dictionary:
 				best_score = s
 				best = cell
 	else:
-		# Soigneur sans blessé : rester en sécurité loin des ennemis.
-		best = _safest_cell(candidates, enemies, grid)
+		# Soigneur sans blessé : escorter l'équipe (prêt à soigner au prochain
+		# tour) au lieu de fuir à l'autre bout de la carte sans rien faire.
+		best = _escort_cell(candidates, allies, enemies, grid)
 
 	# Compétences actives.
 	var skill_cell = null
@@ -107,6 +108,16 @@ static func decide(unit: Node, grid: Node, units: Array) -> Dictionary:
 				if ratio < best_ratio and ratio < 1.0:
 					best_ratio = ratio
 					tgt = a
+		# Rien à soigner : le soutien attaque un ennemi à portée plutôt que de
+		# gaspiller son tour (Battle._perform_action attaque les cibles ennemies).
+		if tgt == null:
+			var best_h := -INF
+			for e in enemies:
+				if grid.manhattan(best, e.grid_position) <= rng:
+					var sh := _attack_score(unit, e)
+					if sh > best_h:
+						best_h = sh
+						tgt = e
 	else:
 		var best_atk := -INF
 		for e in enemies:
@@ -142,6 +153,10 @@ static func _attack_score(unit: Node, e: Node) -> float:
 		s += 40.0
 	if e.get("is_summon"):
 		s -= 60.0
+	# Difficile/Hardcore : focus fire — concentrer les coups sur les cibles déjà
+	# entamées au lieu de disperser les dégâts sur toute l'équipe adverse.
+	if GameData.difficulty in ["difficile", "hardcore"]:
+		s += (1.0 - float(e.hp) / float(e.data.max_hp)) * 90.0
 	return s
 
 
@@ -167,6 +182,8 @@ static func _pick_enemy(unit: Node, enemies: Array) -> Node:
 		if hard:
 			# Difficile/Hardcore : focus la cible la plus dangereuse parmi les faibles
 			s += float(e.data.attack) * 0.8
+			# ... et focus fire : finir les cibles déjà entamées par les alliés.
+			s += (1.0 - float(e.hp) / float(e.data.max_hp)) * 90.0
 		if s > best_score:
 			best_score = s
 			best = e
@@ -262,6 +279,29 @@ static func _safest_cell(candidates: Array, enemies: Array, grid: Node) -> Vecto
 		var d := _nearest(cell, enemies, grid)
 		if d > best_d:
 			best_d = d
+			best = cell
+	return best
+
+
+# Case d'escorte pour un soutien sans blessé : coller à l'équipe (prêt à soigner
+# au prochain tour) en gardant les ennemis hors de contact. Sans allié vivant,
+# repli sur la case la plus sûre.
+static func _escort_cell(candidates: Array, allies: Array, enemies: Array, grid: Node) -> Vector2i:
+	if allies.is_empty():
+		return _safest_cell(candidates, enemies, grid)
+	var best: Vector2i = candidates[0]
+	var best_s := -INF
+	for cell in candidates:
+		var da := 9999
+		for a in allies:
+			da = mini(da, grid.manhattan(cell, a.grid_position))
+		var s := -float(da) * 10.0                      # rester près des alliés
+		var near := _nearest(cell, enemies, grid)
+		if near <= 2:
+			s -= float(3 - near) * 60.0                 # mais jamais au contact
+		s -= float(_threat(cell, enemies, grid)) * 6.0  # éviter les cases exposées
+		if s > best_s:
+			best_s = s
 			best = cell
 	return best
 
