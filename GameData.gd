@@ -583,6 +583,10 @@ func has_campaign() -> bool:
 
 
 func _ready() -> void:
+	# Web (Xbox/TV) : 30 i/s suffisent largement pour un tactique et divisent
+	# par deux la charge GPU/CPU du navigateur (stabilité avant tout).
+	if OS.has_feature("web"):
+		Engine.max_fps = 30
 	load_settings()
 	for bus in volumes:
 		apply_volume(bus, float(volumes[bus]))
