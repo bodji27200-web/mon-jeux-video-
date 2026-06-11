@@ -227,6 +227,13 @@ var _dlg_choices: VBoxContainer
 var _sheet_open := false
 var _sheet_panel: PanelContainer
 var _sheet_box: HBoxContainer  # colonnes côte à côte (façon BG3 : 1 par perso)
+# Montées de niveau (après victoire) : file de choix bonus/compétence par membre.
+var _leveling := false
+var _lvl_queue: Array = []
+var _lvl_panel: PanelContainer
+var _lvl_title: Label
+var _lvl_sub: Label
+var _lvl_choices: VBoxContainer
 
 
 func _ready() -> void:
@@ -244,6 +251,8 @@ func _ready() -> void:
 	# Fondu d'arrivée dans le monde.
 	_fade.color = Color(0.0, 0.0, 0.0, 1.0)
 	create_tween().tween_property(_fade, "color:a", 0.0, 0.7)
+	# Montées de niveau gagnées au dernier combat : on choisit maintenant.
+	_check_levelups()
 
 
 # --- Génération du monde (déterministe : le même à chaque visite) ---
@@ -516,6 +525,29 @@ func _build_ui() -> void:
 	_sheet_box.add_theme_constant_override("separation", 10)
 	sheet_root.add_child(_sheet_box)
 
+	# Panneau de montée de niveau (après victoire) : un choix à la fois.
+	_lvl_panel = PanelContainer.new()
+	_lvl_panel.position = Vector2(166, 180)
+	_lvl_panel.custom_minimum_size = Vector2(500, 0)
+	_lvl_panel.visible = false
+	layer.add_child(_lvl_panel)
+	var lvl_box := VBoxContainer.new()
+	lvl_box.add_theme_constant_override("separation", 8)
+	_lvl_panel.add_child(lvl_box)
+	_lvl_title = Label.new()
+	_lvl_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_lvl_title.add_theme_font_size_override("font_size", 22)
+	_lvl_title.add_theme_color_override("font_color", Color(0.98, 0.85, 0.40))
+	lvl_box.add_child(_lvl_title)
+	_lvl_sub = Label.new()
+	_lvl_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_lvl_sub.add_theme_font_size_override("font_size", 15)
+	_lvl_sub.add_theme_color_override("font_color", Color(0.82, 0.80, 0.74))
+	lvl_box.add_child(_lvl_sub)
+	_lvl_choices = VBoxContainer.new()
+	_lvl_choices.add_theme_constant_override("separation", 6)
+	lvl_box.add_child(_lvl_choices)
+
 	_fade = ColorRect.new()
 	_fade.position = Vector2.ZERO
 	_fade.size = Vector2(832, 704)
@@ -529,7 +561,7 @@ func _build_ui() -> void:
 func _process(delta: float) -> void:
 	if _grace > 0.0:
 		_grace -= delta
-	if not _locked and not _talking and not _sheet_open:
+	if not _locked and not _talking and not _sheet_open and not _leveling:
 		_move_player(delta)
 		_update_foes(delta)
 		_update_npcs()
@@ -563,12 +595,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		GameData.save_campaign()
 		get_tree().change_scene_to_file("res://Title.tscn")
 	# E : parler au PNJ à portée (les choix se font à la souris).
-	if event.physical_keycode == KEY_E and not _talking and not _sheet_open:
+	if event.physical_keycode == KEY_E and not _talking and not _sheet_open and not _leveling:
 		var npc := _nearest_npc()
 		if npc:
 			_open_dialogue(npc)
 	# C : fiche d'équipe (héros + compagnons), monde en pause pendant la lecture.
-	if event.physical_keycode == KEY_C and not _talking:
+	if event.physical_keycode == KEY_C and not _talking and not _leveling:
 		if _sheet_open:
 			_close_sheet()
 		else:
@@ -738,12 +770,12 @@ func _open_sheet() -> void:
 	Audio.play_sfx("click")
 	for c in _sheet_box.get_children():
 		c.queue_free()
-	_add_sheet_column(str(GameData.campaign_hero.get("name", "Héros")),
+	_add_sheet_column("hero", str(GameData.campaign_hero.get("name", "Héros")),
 			str(GameData.campaign_hero.get("class", "tank")), true, "")
 	for comp_id in GameData.campaign_party:
 		var c: Dictionary = GameData.COMPANIONS.get(comp_id, {})
 		if not c.is_empty():
-			_add_sheet_column(str(c.name), str(c["class"]), false, str(c.figure))
+			_add_sheet_column(str(comp_id), str(c.name), str(c["class"]), false, str(c.figure))
 	_sheet_panel.visible = true
 
 
@@ -752,12 +784,110 @@ func _close_sheet() -> void:
 	_sheet_panel.visible = false
 
 
+# --- Montées de niveau (après victoire) ---
+# File d'étapes : chaque niveau = un bonus à choisir ; niveau PAIR = en plus,
+# 1 compétence parmi 2 dans l'arbre du rôle. Monde en pause pendant les choix.
+
+func _member_display(mid: String) -> String:
+	if mid == "hero":
+		return str(GameData.campaign_hero.get("name", "Héros"))
+	return str(GameData.COMPANIONS.get(mid, {}).get("name", mid))
+
+
+func _member_role(mid: String) -> String:
+	var cid := str(GameData.campaign_hero.get("class", "tank")) if mid == "hero" \
+			else str(GameData.COMPANIONS.get(mid, {}).get("class", "tank"))
+	return str(GameData.CLASSES.get(cid, {}).get("role", "melee"))
+
+
+func _check_levelups() -> void:
+	_lvl_queue.clear()
+	var members: Array = ["hero"]
+	for comp_id in GameData.campaign_party:
+		members.append(str(comp_id))
+	for mid in members:
+		var p: Dictionary = GameData.member_progress(str(mid))
+		var lvl: int = int(p.level)
+		var pend: int = int(p.pending)
+		while pend > 0 and lvl < GameData.MAX_LEVEL:
+			lvl += 1
+			pend -= 1
+			_lvl_queue.append({"id": mid, "kind": "bonus", "level": lvl})
+			if lvl % 2 == 0:
+				_lvl_queue.append({"id": mid, "kind": "skill", "level": lvl,
+						"row": lvl / 2 - 1})
+	if not _lvl_queue.is_empty():
+		_leveling = true
+		_show_levelup_step()
+
+
+func _show_levelup_step() -> void:
+	if _lvl_queue.is_empty():
+		_leveling = false
+		_lvl_panel.visible = false
+		GameData.campaign_pos = _player.mpos
+		GameData.save_campaign()
+		return
+	var step: Dictionary = _lvl_queue[0]
+	var mid := str(step.id)
+	_lvl_title.text = "★  %s passe niveau %d !" % [_member_display(mid), int(step.level)]
+	for c in _lvl_choices.get_children():
+		c.queue_free()
+	if str(step.kind) == "bonus":
+		_lvl_sub.text = "Choisis un bonus permanent :"
+		for b in GameData.LEVEL_BONUSES:
+			var bonus: Dictionary = b
+			_lvl_choices.add_child(_lvl_button(str(bonus.label), "", func():
+				_apply_bonus_choice(step, bonus)))
+	else:
+		_lvl_sub.text = "Choisis une NOUVELLE compétence (définitif) :"
+		var row: Array = GameData.TREE[_member_role(mid)][int(step.row)]
+		for opt in row:
+			var skill: Dictionary = opt
+			_lvl_choices.add_child(_lvl_button(str(skill.name), str(skill.desc), func():
+				_apply_skill_choice(step, skill)))
+	_lvl_panel.visible = true
+
+
+func _lvl_button(title: String, desc: String, cb: Callable) -> Button:
+	var b := Button.new()
+	b.text = title if desc == "" else "%s\n%s" % [title, desc]
+	b.custom_minimum_size = Vector2(0, 44 if desc == "" else 58)
+	b.focus_mode = Control.FOCUS_NONE
+	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	b.pressed.connect(func():
+		Audio.play_sfx("click")
+		cb.call())
+	return b
+
+
+func _apply_bonus_choice(step: Dictionary, bonus: Dictionary) -> void:
+	var p: Dictionary = GameData.member_progress(str(step.id))
+	p.level = int(step.level)
+	p.pending = maxi(0, int(p.pending) - 1)
+	p.hp_pct = float(p.hp_pct) + float(bonus.get("hp_pct", 0.0))
+	p.atk = int(p.atk) + int(bonus.get("atk", 0))
+	p.crit = float(p.crit) + float(bonus.get("crit", 0.0))
+	GameData.save_campaign()
+	_lvl_queue.pop_front()
+	_show_levelup_step()
+
+
+func _apply_skill_choice(step: Dictionary, skill: Dictionary) -> void:
+	var p: Dictionary = GameData.member_progress(str(step.id))
+	p.skills.append(skill.duplicate())
+	GameData.save_campaign()
+	_lvl_queue.pop_front()
+	_show_levelup_step()
+
+
 # Une colonne de personnage (façon BG3) : portrait dessiné en grand, identité,
 # stats, compétences, et la sacoche (structure de l'inventaire à venir).
-func _add_sheet_column(member_name: String, cid: String, is_hero: bool, fig: String) -> void:
+func _add_sheet_column(mid: String, member_name: String, cid: String, is_hero: bool, fig: String) -> void:
 	var d: Dictionary = GameData.CLASSES.get(cid, {})
 	if d.is_empty():
 		return
+	var p: Dictionary = GameData.member_progress(mid)
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(258, 0)
 	var col := VBoxContainer.new()
@@ -777,14 +907,18 @@ func _add_sheet_column(member_name: String, cid: String, is_hero: bool, fig: Str
 			Color(0.95, 0.82, 0.45) if is_hero else Color(0.75, 0.88, 0.80))
 	col.add_child(head)
 	var sub := Label.new()
-	sub.text = "%s · %s" % [str(d.name), str(ROLE_NAMES.get(str(d.get("role", "")), ""))]
+	sub.text = "%s · %s · niveau %d / %d" % [str(d.name),
+			str(ROLE_NAMES.get(str(d.get("role", "")), "")),
+			int(p.level), GameData.MAX_LEVEL]
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.add_theme_font_size_override("font_size", 13)
 	sub.add_theme_color_override("font_color", Color(0.70, 0.72, 0.68))
 	col.add_child(sub)
 	var stats := Label.new()
 	stats.text = "PV %d  ·  ATK %d  ·  Crit %d%%\nPortée %d  ·  Déplacement %d" % [
-			int(d.max_hp), int(d.attack), int(float(d.crit_chance) * 100.0),
+			int(round(float(d.max_hp) * (1.0 + float(p.hp_pct)))),
+			int(d.attack) + int(p.atk),
+			int((float(d.crit_chance) + float(p.crit)) * 100.0),
 			int(d.attack_range), int(d.move_range)]
 	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	stats.add_theme_font_size_override("font_size", 13)
@@ -796,7 +930,16 @@ func _add_sheet_column(member_name: String, cid: String, is_hero: bool, fig: Str
 	sk_head.add_theme_font_size_override("font_size", 13)
 	sk_head.add_theme_color_override("font_color", Color(0.80, 0.65, 0.85))
 	col.add_child(sk_head)
-	for a in d.get("actives", []):
+	# En campagne, les compétences viennent de l'ARBRE (choisies en montant
+	# de niveau) — pas du kit JcJ de la classe.
+	if p.skills.is_empty():
+		var none := Label.new()
+		none.text = "(aucune — gagne des niveaux !)"
+		none.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		none.add_theme_font_size_override("font_size", 12)
+		none.add_theme_color_override("font_color", Color(0.55, 0.55, 0.50))
+		col.add_child(none)
+	for a in p.skills:
 		var sk := Label.new()
 		sk.text = "• " + str(a.name)
 		sk.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -964,14 +1107,17 @@ func _start_battle(foe: Walker) -> void:
 	# Équipe = le héros + ses compagnons recrutés (noms affichés en combat).
 	var team: Array = [str(GameData.campaign_hero.get("class", "tank"))]
 	var names: Array = [str(GameData.campaign_hero.get("name", "Héros"))]
+	var ids: Array = ["hero"]
 	for comp_id in GameData.campaign_party:
 		var c: Dictionary = GameData.COMPANIONS.get(comp_id, {})
 		if c.is_empty():
 			continue
 		team.append(str(c["class"]))
 		names.append(str(c.name))
+		ids.append(str(comp_id))
 	GameData.player_team = team
 	GameData.campaign_battle_names = names
+	GameData.campaign_battle_ids = ids
 	GameData.ai_team = foe.team.duplicate()
 	GameData.difficulty = GameData.campaign_difficulty
 	GameData.save_campaign()

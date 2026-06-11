@@ -16,7 +16,7 @@ const SKILL_FX := preload("res://SkillFX.gd")
 # Barre de compétences : 3 carrés en bas à droite, un par compétence active de
 # la classe (jusqu'à 3). Les carrés sans compétence restent vides/désactivés.
 # Icône courte par type de compétence.
-const SKILL_SLOTS := 3
+const SKILL_SLOTS := 6  # 6 carrés (arbres de campagne) ; le JcJ en remplit 3
 # Bonus de dégâts en attaquant depuis une hauteur supérieure (relief tactique).
 const HIGH_GROUND_MULT := 1.25
 
@@ -90,6 +90,10 @@ func _ready() -> void:
 		for u in get_tree().get_nodes_in_group("units"):
 			if u.is_player() and ni < GameData.campaign_battle_names.size():
 				u.display_name = str(GameData.campaign_battle_names[ni])
+				# Progression de campagne : niveaux, bonus et compétences d'arbre.
+				if ni < GameData.campaign_battle_ids.size():
+					u.apply_growth(GameData.member_progress(
+							str(GameData.campaign_battle_ids[ni])))
 				ni += 1
 	_start_player = GameData.player_team.size()
 	_start_ai = GameData.ai_team.size()
@@ -692,7 +696,17 @@ func _check_end() -> bool:
 			replay_button.text = "Continuer l'aventure" if p else "Retour au menu"
 			if p and not GameData.campaign_defeated.has(GameData.campaign_enemy_id):
 				GameData.campaign_defeated.append(GameData.campaign_enemy_id)
+				# Victoire = +1 niveau pour chaque membre présent (+2 si boss).
+				var gain := 1
+				for cid2 in GameData.ai_team:
+					if GameData.CLASSES.get(cid2, {}).get("boss", false):
+						gain = 2
+				for mid in GameData.campaign_battle_ids:
+					var prog: Dictionary = GameData.member_progress(str(mid))
+					prog.pending = mini(int(prog.pending) + gain,
+							GameData.MAX_LEVEL - int(prog.level))
 				GameData.save_campaign()
+				stats_label.text += "\n\n★ Niveau supérieur ! (choix au retour dans le monde)"
 			elif not p and GameData.campaign_difficulty == "hardcore":
 				# Hardcore : la mort de l'équipe efface la campagne (mort permanente).
 				GameData.clear_campaign()

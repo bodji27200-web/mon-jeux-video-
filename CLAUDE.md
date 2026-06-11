@@ -479,6 +479,22 @@ Ordre de priorité (✅ = fait) :
       nom/classe/rôle, stats, compétences, sacoche 4 emplacements (structure
       d'inventaire, objets à venir). Figures PNJ extraites en
       `Overworld.draw_npc_figure()` statique (partagées monde/portraits).
+71. ✅ **Niveaux + ARBRES DE COMPÉTENCES (campagne uniquement)** : victoire =
+    +1 niveau par membre présent (+2 contre un boss), **max 12**
+    (`GameData.MAX_LEVEL`, progression par membre dans `campaign_levels`
+    persisté `[campaign] levels`, ids `campaign_battle_ids`). Chaque niveau =
+    **choix d'un bonus** (`LEVEL_BONUSES` : +6% PV / +1 ATK / +3% crit) ;
+    chaque niveau PAIR = **1 compétence parmi 2** (`GameData.TREE` : 4 rôles ×
+    6 rangées × 2 choix, types 100 % existants → zéro nouveau code moteur).
+    En campagne on démarre **SANS compétence** (le build se construit en
+    jouant) : `Unit.apply_growth()` duplique `data`, booste les stats et
+    remplace `actives` par les choix de l'arbre. Choix faits au retour dans le
+    monde (`Overworld._check_levelups`, monde en pause, file d'étapes).
+    **Compagnons = classes propres à la campagne** (`sera_pisteuse`,
+    `garin_bucheron`, hidden, dessinées via `figure_npc` → le JcJ reste un
+    mode à part, kits intacts). Barre de compétences passée à **6 carrés**
+    (`SKILL_SLOTS`). Fiche d'équipe : niveau X/12, stats boostées, compétences
+    d'arbre.
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`
