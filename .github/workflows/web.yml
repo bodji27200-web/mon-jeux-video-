@@ -1,0 +1,84 @@
+# Construit la version Web (HTML5) du jeu et la publie sur GitHub Pages.
+# Déclenché à chaque mise à jour de main (ou à la main via "Run workflow").
+# URL une fois le dépôt public : https://bodji27200-web.github.io/mon-jeux-video-/
+name: Web (build + Pages)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache des templates d'export Godot
+        id: cache-tpl
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/godot/export_templates/4.3.stable
+          key: godot-4.3-stable-export-templates
+
+      - name: Télécharger Godot 4.3
+        run: |
+          curl -sSL -o godot.zip https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
+          unzip -q godot.zip
+          chmod +x Godot_v4.3-stable_linux.x86_64
+
+      - name: Télécharger les templates d'export
+        if: steps.cache-tpl.outputs.cache-hit != 'true'
+        run: |
+          curl -sSL -o templates.tpz https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz
+          mkdir -p ~/.local/share/godot/export_templates
+          unzip -q templates.tpz -d /tmp/tpl
+          mv /tmp/tpl/templates ~/.local/share/godot/export_templates/4.3.stable
+
+      - name: Import des ressources
+        run: ./Godot_v4.3-stable_linux.x86_64 --headless --editor --quit --path . 2>/dev/null || true
+
+      - name: Export Web
+        run: |
+          mkdir -p build/web
+          ./Godot_v4.3-stable_linux.x86_64 --headless --path . --export-release "Web" "$PWD/build/web/index.html"
+          ls -la build/web
+
+      - name: Artefact zip (pour itch.io si besoin)
+        uses: actions/upload-artifact@v4
+        with:
+          name: jeu-web-itchio
+          path: build/web
+
+      - name: Artefact Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    # Ne casse pas le build si Pages n'est pas dispo (dépôt privé sans plan Pro).
+    continue-on-error: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Activer GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+        continue-on-error: true
+
+      - name: Déployer sur GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
