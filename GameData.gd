@@ -419,6 +419,24 @@ const CLASSES := {
 		"hidden": true, "figure": "rodeur",
 		"skills": [],
 	},
+	# Compagnons de CAMPAGNE (hidden : classes propres au mode histoire,
+	# dessinées via leur figure d'exploration — le JcJ est un mode à part).
+	"sera_pisteuse": {
+		"name": "Sera la pisteuse", "color": Color(0.30, 0.42, 0.62), "symbol": "s",
+		"description": "Déserteuse des rôdeurs. Frappe de loin et connaît leurs faiblesses.",
+		"max_hp": 24, "move_range": 4, "attack": 9, "attack_range": 4,
+		"crit_chance": 0.20, "behavior": "kite", "role": "ranged",
+		"hidden": true, "figure_npc": "etrangere",
+		"skills": [],
+	},
+	"garin_bucheron": {
+		"name": "Garin le bûcheron", "color": Color(0.55, 0.38, 0.22), "symbol": "g",
+		"description": "Bûcheron à l'allonge de lancier. Solide, tient la ligne de front.",
+		"max_hp": 34, "move_range": 3, "attack": 9, "attack_range": 2,
+		"crit_chance": 0.10, "behavior": "melee", "role": "tank",
+		"hidden": true, "figure_npc": "bucheron",
+		"skills": [],
+	},
 	"veilleur_murmures": {
 		"name": "Le Veilleur des Murmures", "color": Color(0.45, 0.28, 0.66), "symbol": "Ω",
 		"description": "BOSS. L'esprit cornu qui règne sur le Bois des Murmures. Il combat seul — et ça suffit.",
@@ -541,12 +559,95 @@ var campaign_hero := {}              # héros créé : name, gender ("f"/"m"), d
 
 # Compagnons recrutables en campagne (id -> nom, classe de combat, figure
 # d'exploration). Recrutés via les dialogues ; ils marchent derrière le héros.
+# Leurs classes sont PROPRES à la campagne (le JcJ est un mode à part).
 const COMPANIONS := {
-	"sera":  {"name": "Sera",  "class": "chasseur", "figure": "etrangere"},
-	"garin": {"name": "Garin", "class": "lancier",  "figure": "bucheron"},
+	"sera":  {"name": "Sera",  "class": "sera_pisteuse",  "figure": "etrangere"},
+	"garin": {"name": "Garin", "class": "garin_bucheron", "figure": "bucheron"},
 }
 var campaign_party: Array = []         # ids des compagnons recrutés (ordre de marche)
 var campaign_battle_names: Array = []  # noms des unités joueur au combat (transitoire)
+var campaign_battle_ids: Array = []    # ids de progression ("hero", "sera"...) alignés
+
+# --- Niveaux & arbres de compétences (campagne uniquement) ---
+# Victoire = +1 niveau pour chaque membre présent (+2 contre un boss), max 12.
+# Chaque niveau : choix d'un bonus ; chaque niveau PAIR : choix d'1 compétence
+# parmi 2 dans l'arbre du RÔLE (rangée = niveau/2). En campagne, on démarre
+# SANS compétence : le build se construit en jouant.
+const MAX_LEVEL := 12
+const LEVEL_BONUSES := [
+	{"id": "pv",   "label": "+6% PV max",   "hp_pct": 0.06},
+	{"id": "atk",  "label": "+1 Attaque",   "atk": 1},
+	{"id": "crit", "label": "+3% Critique", "crit": 0.03},
+]
+# Arbres par rôle : 6 rangées de 2 choix (types 100 % déjà gérés par le moteur).
+const TREE := {
+	"tank": [
+		[{"name": "Protection", "type": "shield_ally", "target": "ally", "range": 2, "cooldown": 3, "desc": "Bouclier (-50% dégâts subis, 2 tours) sur un allié à 2 cases."},
+		 {"name": "Garde", "type": "self_buff", "target": "self", "buff": "garde", "cooldown": 3, "desc": "-60% de dégâts subis pendant 2 tours."}],
+		[{"name": "Coup de bouclier", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.5, "range": 1, "cooldown": 3, "desc": "Frappe lourde (×1.5) au corps à corps."},
+		 {"name": "Brise-armure", "type": "apply_debuff", "target": "enemy", "buff": "vulnerabilite", "range": 1, "cooldown": 3, "desc": "Frappe et expose la cible (+35% dégâts subis, 2 tours)."}],
+		[{"name": "Rempart", "type": "buff_ally", "target": "ally", "buff": "bouclier", "range": 2, "cooldown": 3, "desc": "Bouclier (-50% dégâts subis, 2 tours) sur un allié."},
+		 {"name": "Secousse", "type": "cleave", "target": "enemy", "radius": 1, "dmg_mult": 1.0, "range": 1, "cooldown": 3, "desc": "Frappe la cible et tous ses voisins."}],
+		[{"name": "Représailles", "type": "self_buff", "target": "self", "buff": "riposte", "cooldown": 3, "desc": "Contre-attaque automatique au corps à corps (2 tours)."},
+		 {"name": "Cri de guerre", "type": "team_buff", "target": "self", "buff": "force", "cooldown": 4, "desc": "TOUTE l'équipe gagne +50% de dégâts (2 tours)."}],
+		[{"name": "Châtiment", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.7, "range": 1, "cooldown": 3, "desc": "Coup dévastateur (×1.7)."},
+		 {"name": "Entrave", "type": "apply_debuff", "target": "enemy", "buff": "racines", "range": 1, "cooldown": 4, "desc": "Frappe et immobilise la cible 1 tour."}],
+		[{"name": "Forteresse", "type": "team_buff", "target": "self", "buff": "bouclier", "cooldown": 4, "desc": "TOUTE l'équipe subit -50% de dégâts (2 tours)."},
+		 {"name": "Exécution", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.9, "range": 1, "cooldown": 3, "desc": "Coup fatal (×1.9)."}],
+	],
+	"melee": [
+		[{"name": "Frappe lourde", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.5, "range": 1, "cooldown": 3, "desc": "Coup puissant (×1.5) au corps à corps."},
+		 {"name": "Affûtage", "type": "self_buff", "target": "self", "buff": "force", "cooldown": 4, "desc": "+50% de dégâts pendant 2 tours."}],
+		[{"name": "Fauchage", "type": "cleave", "target": "enemy", "radius": 1, "dmg_mult": 1.0, "range": 1, "cooldown": 3, "desc": "Frappe la cible et tous ses voisins."},
+		 {"name": "Entaille exposante", "type": "apply_debuff", "target": "enemy", "buff": "vulnerabilite", "range": 1, "cooldown": 3, "desc": "Frappe et expose la cible (+35% dégâts subis, 2 tours)."}],
+		[{"name": "Pas de l'ombre", "type": "teleport_strike", "target": "enemy", "range": 4, "cooldown": 3, "desc": "Se téléporte au contact d'un ennemi (4 cases) et frappe."},
+		 {"name": "Rage", "type": "self_buff", "target": "self", "buff": "rage", "cooldown": 4, "desc": "+50% de dégâts mais +25% subis (2 tours)."}],
+		[{"name": "Lame drainante", "type": "drain_strike", "target": "enemy", "range": 1, "cooldown": 4, "desc": "Frappe et récupère 60% des dégâts en PV."},
+		 {"name": "Coup au genou", "type": "apply_debuff", "target": "enemy", "buff": "racines", "range": 1, "cooldown": 4, "desc": "Frappe et immobilise la cible 1 tour."}],
+		[{"name": "Décapitation", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.8, "range": 1, "cooldown": 3, "desc": "Coup dévastateur (×1.8). Idéal pour achever."},
+		 {"name": "Posture du duel", "type": "self_buff", "target": "self", "buff": "riposte", "cooldown": 3, "desc": "Contre-attaque automatique au corps à corps (2 tours)."}],
+		[{"name": "Tourbillon", "type": "cleave", "target": "enemy", "radius": 1, "dmg_mult": 1.3, "range": 1, "cooldown": 3, "desc": "Fauche tout autour (×1.3)."},
+		 {"name": "Coup fatal", "type": "heavy_strike", "target": "enemy", "dmg_mult": 2.0, "range": 1, "cooldown": 3, "desc": "Le coup ultime (×2.0)."}],
+	],
+	"ranged": [
+		[{"name": "Tir visé", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.5, "range": 4, "cooldown": 3, "desc": "Tir puissant (×1.5) jusqu'à 4 cases."},
+		 {"name": "Flèche vénéneuse", "type": "apply_debuff", "target": "enemy", "buff": "poison", "range": 4, "cooldown": 3, "desc": "Tir + poison (3 dégâts/tour, 3 tours)."}],
+		[{"name": "Tir perforant", "type": "piercing_shot", "target": "line", "range": 4, "cooldown": 3, "desc": "Touche TOUS les ennemis alignés dans une direction."},
+		 {"name": "Flèche entravante", "type": "apply_debuff", "target": "enemy", "buff": "racines", "range": 4, "cooldown": 3, "desc": "Tir + immobilisation 1 tour."}],
+		[{"name": "Tir en retraite", "type": "retreat_shot", "target": "enemy", "range": 4, "retreat": 2, "cooldown": 3, "desc": "Tire puis recule de 2 cases."},
+		 {"name": "Tir fragilisant", "type": "apply_debuff", "target": "enemy", "buff": "vulnerabilite", "range": 4, "cooldown": 3, "desc": "Tir + vulnérabilité (+35% dégâts subis, 2 tours)."}],
+		[{"name": "Pluie de flèches", "type": "cleave", "target": "enemy", "radius": 1, "dmg_mult": 1.0, "range": 4, "cooldown": 3, "desc": "Salve sur la cible et tous ses voisins."},
+		 {"name": "Tir glacé", "type": "apply_debuff", "target": "enemy", "buff": "gel", "range": 4, "cooldown": 3, "desc": "Tir + gel (-2 déplacement, 2 tours)."}],
+		[{"name": "Tir d'élite", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.8, "range": 5, "cooldown": 3, "desc": "Tir surpuissant (×1.8) à très longue portée."},
+		 {"name": "Flèche toxique", "type": "double_dot", "target": "enemy", "range": 4, "cooldown": 3, "desc": "Applique Poison ET Brûlure simultanément."}],
+		[{"name": "Tir fatal", "type": "heavy_strike", "target": "enemy", "dmg_mult": 2.0, "range": 5, "cooldown": 3, "desc": "Le tir ultime (×2.0)."},
+		 {"name": "Volée suppressive", "type": "team_debuff", "target": "self", "buff": "affaiblissement", "cooldown": 4, "desc": "TOUS les ennemis perdent 30% de dégâts (2 tours)."}],
+	],
+	"healer": [
+		[{"name": "Soin", "type": "war_heal", "target": "ally", "heal_amount": 14, "range": 3, "can_self": true, "cooldown": 3, "desc": "Rend 14 PV à un allié (ou soi)."},
+		 {"name": "Régénération", "type": "buff_ally", "target": "ally", "buff": "regen", "range": 3, "can_self": true, "cooldown": 3, "desc": "Soigne 5 PV/tour pendant 3 tours."}],
+		[{"name": "Purification", "type": "purify", "target": "ally", "range": 3, "can_self": true, "cooldown": 3, "desc": "Retire tous les effets négatifs d'un allié (ou de soi)."},
+		 {"name": "Protection sacrée", "type": "buff_ally", "target": "ally", "buff": "bouclier", "range": 3, "can_self": true, "cooldown": 3, "desc": "Bouclier (-50% dégâts subis, 2 tours)."}],
+		[{"name": "Renforcement", "type": "empower_ally", "target": "ally", "range": 3, "cooldown": 3, "desc": "Un allié gagne +50% de dégâts (2 tours)."},
+		 {"name": "Semonce", "type": "apply_debuff", "target": "enemy", "buff": "affaiblissement", "range": 3, "cooldown": 3, "desc": "Frappe et affaiblit la cible (-30% dégâts, 2 tours)."}],
+		[{"name": "Grand soin", "type": "war_heal", "target": "ally", "heal_amount": 20, "range": 3, "can_self": true, "cooldown": 3, "desc": "Rend 20 PV à un allié (ou soi)."},
+		 {"name": "Garde collective", "type": "team_buff", "target": "self", "buff": "bouclier", "cooldown": 5, "desc": "TOUTE l'équipe subit -50% de dégâts (2 tours)."}],
+		[{"name": "Jugement", "type": "apply_debuff", "target": "enemy", "buff": "vulnerabilite", "range": 3, "cooldown": 3, "desc": "Frappe et condamne (+35% dégâts subis, 2 tours)."},
+		 {"name": "Garde du bretteur", "type": "buff_ally", "target": "ally", "buff": "riposte", "range": 3, "can_self": true, "cooldown": 4, "desc": "Un allié contre-attaque au corps à corps (2 tours)."}],
+		[{"name": "Hymne héroïque", "type": "team_buff", "target": "self", "buff": "force", "cooldown": 4, "desc": "TOUTE l'équipe gagne +50% de dégâts (2 tours)."},
+		 {"name": "Miracle", "type": "war_heal", "target": "ally", "heal_amount": 32, "range": 3, "can_self": true, "cooldown": 4, "desc": "Rend 32 PV à un allié (ou soi)."}],
+	],
+}
+# Progression par membre ("hero", "sera"...) : niveau, choix en attente, bonus
+# cumulés et compétences choisies (dicts complets, persistés tels quels).
+var campaign_levels := {}
+
+
+func member_progress(mid: String) -> Dictionary:
+	if not campaign_levels.has(mid):
+		campaign_levels[mid] = {"level": 0, "pending": 0,
+				"hp_pct": 0.0, "atk": 0, "crit": 0.0, "skills": []}
+	return campaign_levels[mid]
 
 
 # Pose un drapeau de campagne (choix mémorisé) sans sauvegarder (l'appelant
@@ -572,6 +673,7 @@ func clear_campaign() -> void:
 	campaign_flags = {}
 	campaign_hero = {}
 	campaign_party = []
+	campaign_levels = {}
 	campaign_saved_at = ""
 	save_settings()
 
@@ -633,6 +735,7 @@ func save_settings() -> void:
 	cfg.set_value("campaign", "flags", campaign_flags)
 	cfg.set_value("campaign", "hero", campaign_hero)
 	cfg.set_value("campaign", "party", campaign_party)
+	cfg.set_value("campaign", "levels", campaign_levels)
 	cfg.save(SETTINGS_PATH)
 
 
@@ -655,3 +758,4 @@ func load_settings() -> void:
 	campaign_flags = cfg.get_value("campaign", "flags", {})
 	campaign_hero = cfg.get_value("campaign", "hero", {})
 	campaign_party = cfg.get_value("campaign", "party", [])
+	campaign_levels = cfg.get_value("campaign", "levels", {})

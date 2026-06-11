@@ -77,7 +77,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not is_alive():
 		return
-	if data.has("figure"):
+	if data.has("figure") or data.has("figure_npc"):
 		# Figures de campagne : animation continue mais redessin à 15 i/s
 		# seulement (60 redraws/s de vecteurs = trop pour le navigateur Xbox).
 		_anim_phase += delta
@@ -192,6 +192,21 @@ func reset_turn() -> void:
 # --- Compétences actives (jusqu'à 3 par classe, via "actives") ---
 # Compatibilité : si une classe utilise encore l'ancien champ "active" (dict
 # unique), il est renvoyé comme une liste d'un élément.
+
+# Campagne : applique la progression du membre (niveaux/arbre). Les stats sont
+# boostées et les compétences = UNIQUEMENT celles choisies dans l'arbre.
+# `data` est dupliqué pour ne jamais toucher au dictionnaire partagé CLASSES.
+func apply_growth(p: Dictionary) -> void:
+	data = data.duplicate()
+	data.max_hp = int(round(float(data.max_hp) * (1.0 + float(p.get("hp_pct", 0.0)))))
+	data.attack = int(data.attack) + int(p.get("atk", 0))
+	data.crit_chance = float(data.crit_chance) + float(p.get("crit", 0.0))
+	hp = data.max_hp
+	data.actives = p.get("skills", [])
+	data.erase("active")
+	skill_cds.resize(get_actives().size())
+	skill_cds.fill(0)
+
 
 func get_actives() -> Array:
 	if data.has("actives"):
@@ -363,6 +378,11 @@ func _draw() -> void:
 	# --- Personnage : figure de campagne dessinée, sprite, ou figurine repli ---
 	if data.has("figure"):
 		_draw_figure(str(data.figure))
+	elif data.has("figure_npc"):
+		# Compagnons de campagne : même figure que dans le monde (Sera, Garin).
+		draw_set_transform(Vector2(0, 6))
+		Overworld.draw_npc_figure(self, str(data.figure_npc), sin(_anim_phase * 2.0) * 0.8)
+		draw_set_transform(Vector2.ZERO)
 	elif SPRITES.has(class_id):
 		_draw_sprite()
 	else:
