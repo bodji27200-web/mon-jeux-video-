@@ -29,6 +29,9 @@ window/size/viewport_width=832
 window/size/viewport_height=704
 window/size/mode=2
 window/stretch/mode="canvas_items"
+; Web (Xbox/TV 4K) : rendu en 832×704 étiré par l'écran, sinon le GPU du
+; navigateur dessine tout en 4K et lâche (« WebGL context lost »).
+window/stretch/mode.web="viewport"
 
 [rendering]
 
