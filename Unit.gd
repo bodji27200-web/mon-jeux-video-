@@ -365,15 +365,19 @@ func _draw() -> void:
 		draw_set_transform(Vector2.ZERO)
 
 	# --- Barre de vie (verte / jaune / rouge selon les PV) ---
-	var ratio := clampf(float(hp) / float(data.max_hp), 0.0, 1.0)
-	var bar_y := -74.0 if data.get("boss", false) else -46.0
-	draw_rect(Rect2(-RADIUS, bar_y, RADIUS * 2.0, 5), Color(0.15, 0.0, 0.0))
-	var hp_col := Color(0.20, 0.85, 0.25)
-	if ratio < 0.3:
-		hp_col = Color(0.90, 0.25, 0.20)
-	elif ratio < 0.6:
-		hp_col = Color(0.92, 0.75, 0.20)
-	draw_rect(Rect2(-RADIUS, bar_y, RADIUS * 2.0 * ratio, 5), hp_col)
+	# Les boss n'ont pas de petite barre : la leur trône en haut de l'écran
+	# avec leur nom (Battle._build_boss_bar, style Clair Obscur).
+	var show_hp_bar: bool = not data.get("boss", false)
+	if show_hp_bar:
+		var ratio := clampf(float(hp) / float(data.max_hp), 0.0, 1.0)
+		var bar_y := -46.0
+		draw_rect(Rect2(-RADIUS, bar_y, RADIUS * 2.0, 5), Color(0.15, 0.0, 0.0))
+		var hp_col := Color(0.20, 0.85, 0.25)
+		if ratio < 0.3:
+			hp_col = Color(0.90, 0.25, 0.20)
+		elif ratio < 0.6:
+			hp_col = Color(0.92, 0.75, 0.20)
+		draw_rect(Rect2(-RADIUS, bar_y, RADIUS * 2.0 * ratio, 5), hp_col)
 
 	# Pastilles des buffs/debuffs actifs (icône + couleur codée).
 	var bx := -RADIUS
