@@ -30,16 +30,18 @@ const DEAGGRO_RANGE := 7.0
 const CONTACT_RANGE := 0.65
 const BODY_RADIUS := 0.22  # rayon de collision des personnages (en tuiles)
 
-# Équipe du joueur en campagne (trio de départ ; choix libre dans une phase future).
-const PLAYER_TEAM := ["tank", "archer", "soigneur"]
+# L'équipe de campagne = TON héros (créé dans CharacterCreate), seul au départ.
+# Les compagnons recrutés l'agrandiront (phase suivante).
 
 # Ennemis qui rôdent dans le bois, posés le long du sentier (px = colonne,
 # dy = écart au sentier). Plus px est grand, plus on est profond, plus c'est fort.
+# Équilibré pour un héros SOLO : combats 1v1 à l'orée ; le boss, lui, attend
+# une équipe (y aller seul = courir à sa perte, et c'est voulu).
 const FOES := [
 	{"id": "loup_solitaire", "name": "Loup des Murmures", "px": 28.0, "dy": -1.2, "tier": 1,
 	 "team": ["loup_murmures"], "hue": Color(0.40, 0.44, 0.52)},
-	{"id": "rodeurs_bois", "name": "Rôdeurs du bois", "px": 34.0, "dy": 1.4, "tier": 2,
-	 "team": ["rodeur_sombre", "loup_murmures"], "hue": Color(0.46, 0.34, 0.24)},
+	{"id": "rodeurs_bois", "name": "Rôdeur du bois", "px": 34.0, "dy": 1.4, "tier": 2,
+	 "team": ["rodeur_sombre"], "hue": Color(0.46, 0.34, 0.24)},
 	# Le boss est SEUL dans son combat : UN Veilleur, pas une équipe.
 	{"id": "veilleur", "name": "Le Veilleur des Murmures", "px": 41.0, "dy": 0.0, "tier": 3,
 	 "team": ["veilleur_murmures"], "hue": Color(0.45, 0.28, 0.66)},
@@ -100,14 +102,14 @@ const DIALOGUES := {
 	# — Garin : un marché ; le tenir récompense (déblocage de classe). —
 	"garin_intro": {
 		"speaker": "Garin, le bûcheron",
-		"text": "J'peux plus couper une bûche : un loup et une bande de rôdeurs squattent ma clairière. Nettoie-moi le bois — le loup ET les rôdeurs — et j'te montre c'que j'sais du métier des armes. Marché conclu ?",
+		"text": "J'peux plus couper une bûche : un loup et un rôdeur masqué squattent ma clairière. Nettoie-moi le bois — le loup ET le rôdeur — et j'te montre c'que j'sais du métier des armes. Marché conclu ?",
 		"choices": [
 			{"label": "« Marché conclu. »", "set": {"garin_accepte": true, "garin_refuse": false}, "next": "garin_topla"},
 			{"label": "« Débrouille-toi. »", "set": {"garin_refuse": true}, "next": "garin_decu"},
 		]},
 	"garin_topla": {
 		"speaker": "Garin, le bûcheron",
-		"text": "Topez là ! Le loup rôde à l'orée, les rôdeurs plus au fond. Reviens me voir quand c'est fait.",
+		"text": "Topez là ! Le loup rôde à l'orée, le rôdeur plus au fond. Reviens me voir quand c'est fait.",
 		"choices": [{"label": "(Partir)"}]},
 	"garin_decu": {
 		"speaker": "Garin, le bûcheron",
@@ -115,14 +117,14 @@ const DIALOGUES := {
 		"choices": [{"label": "(Partir)"}]},
 	"garin_retente": {
 		"speaker": "Garin, le bûcheron",
-		"text": "T'as changé d'avis ? Le marché tient toujours : le loup et les rôdeurs hors de ma clairière, et j'te montre le métier des armes.",
+		"text": "T'as changé d'avis ? Le marché tient toujours : le loup et le rôdeur hors de ma clairière, et j'te montre le métier des armes.",
 		"choices": [
 			{"label": "« C'est d'accord. »", "set": {"garin_accepte": true, "garin_refuse": false}, "next": "garin_topla"},
 			{"label": "« Non, toujours pas. »"},
 		]},
 	"garin_attente": {
 		"speaker": "Garin, le bûcheron",
-		"text": "Alors, ce bois ? J'entends encore ces sales bêtes d'ici... Le loup de l'orée et les rôdeurs du fond, et on est quittes.",
+		"text": "Alors, ce bois ? J'entends encore ces sales bêtes d'ici... Le loup de l'orée et le rôdeur du fond, et on est quittes.",
 		"choices": [{"label": "« J'y travaille. »"}]},
 	"garin_reward": {
 		"speaker": "Garin, le bûcheron",
@@ -193,6 +195,12 @@ var _dlg_choices: VBoxContainer
 
 
 func _ready() -> void:
+	# Sauvegarde d'avant la création de personnage : on crée le héros d'abord.
+	if GameData.campaign_hero.is_empty():
+		set_process(false)
+		set_process_unhandled_input(false)
+		get_tree().change_scene_to_file.call_deferred("res://CharacterCreate.tscn")
+		return
 	_build_world()
 	_build_nodes()
 	_build_ui()
@@ -681,7 +689,7 @@ func _start_battle(foe: Walker) -> void:
 	GameData.campaign_pos = back if _free(back) else _player.mpos
 	GameData.campaign_battle = true
 	GameData.campaign_enemy_id = foe.foe_id
-	GameData.player_team = PLAYER_TEAM.duplicate()
+	GameData.player_team = [str(GameData.campaign_hero.get("class", "tank"))]
 	GameData.ai_team = foe.team.duplicate()
 	GameData.difficulty = GameData.campaign_difficulty
 	GameData.save_campaign()
@@ -738,6 +746,8 @@ func _tile_points(cell: Vector2i) -> PackedVector2Array:
 
 
 func _draw() -> void:
+	if _ground.is_empty():  # redirection vers la création de perso : rien à dessiner
+		return
 	_draw_drop_shadow()
 	_draw_edge_walls()
 	for y in MAP_H:
@@ -885,33 +895,13 @@ class Walker extends Node2D:
 			pts.append(center + Vector2(cos(a) * rx, sin(a) * ry))
 		draw_colored_polygon(pts, color)
 
+	# Le héros tel que créé par le joueur (sexe, design, couleur de classe).
 	func _draw_player() -> void:
-		var b := sin(phase) * (1.4 if moving else 0.5)  # rebond de marche
-		var sw := sin(phase) * 3.5 if moving else 0.0   # balancement des jambes
-		var leg := Color(0.16, 0.14, 0.18)
-		draw_line(Vector2(-2.0, -7.0 + b * 0.5), Vector2(-2.0 - sw, 0.0), leg, 3.0)
-		draw_line(Vector2(2.0, -7.0 + b * 0.5), Vector2(2.0 + sw, 0.0), leg, 3.0)
-		# Cape de voyage (dans le dos, ondule en marchant).
-		var sway := sin(phase * 0.9) * (1.6 if moving else 0.5)
-		draw_colored_polygon(PackedVector2Array([
-			Vector2(-3.0, -16.0 + b), Vector2(-6.5, -14.0 + b),
-			Vector2(-8.5 - sway, -2.0), Vector2(-3.5, -4.0)]),
-			Color(0.50, 0.14, 0.16))
-		# Tunique (bleu du camp joueur) + ceinture.
-		draw_colored_polygon(PackedVector2Array([
-			Vector2(-5.0, -17.0 + b), Vector2(5.0, -17.0 + b),
-			Vector2(6.0, -7.0 + b), Vector2(-6.0, -7.0 + b)]),
-			Color(0.25, 0.42, 0.62))
-		draw_rect(Rect2(-6.0, -9.5 + b, 12.0, 2.2), Color(0.24, 0.18, 0.10))
-		# Bras (balancement opposé aux jambes).
-		var arm := Color(0.22, 0.36, 0.54)
-		draw_line(Vector2(-4.5, -15.0 + b), Vector2(-5.5 + sw * 0.6, -8.5 + b), arm, 2.5)
-		draw_line(Vector2(4.5, -15.0 + b), Vector2(5.5 - sw * 0.6, -8.5 + b), arm, 2.5)
-		# Tête + cheveux.
-		draw_circle(Vector2(0.0, -21.5 + b), 4.6, Color(0.94, 0.80, 0.62))
-		draw_circle(Vector2(-0.8, -23.3 + b), 3.6, Color(0.32, 0.22, 0.14))
-		# Œil (donne le sens de la marche).
-		draw_circle(Vector2(2.0, -21.3 + b), 0.9, Color(0.12, 0.10, 0.12))
+		var h: Dictionary = GameData.campaign_hero
+		var tint: Color = GameData.CLASSES.get(str(h.get("class", "tank")),
+				{}).get("color", Color(0.25, 0.42, 0.62))
+		HeroFigure.draw_hero(self, str(h.get("gender", "m")),
+				int(h.get("design", 0)), tint, phase, moving)
 
 	func _draw_foe() -> void:
 		var s := 0.85 + 0.18 * float(tier)  # plus fort = plus imposant

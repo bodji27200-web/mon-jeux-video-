@@ -49,5 +49,6 @@ func _begin(index: int) -> void:
 	unit.reset_turn()
 	if label:
 		var camp := "Joueur" if unit.is_player() else "IA"
-		label.text = "Tour de : %s (%s)" % [unit.data.name, camp]
+		var nm: String = unit.display_name if unit.display_name != "" else str(unit.data.name)
+		label.text = "Tour de : %s (%s)" % [nm, camp]
 	turn_started.emit(unit)
