@@ -58,6 +58,7 @@ const NPCS := [
 		{"flag": "maud_amie", "dialogue": "maud_revoit"},
 	 ], "fallback": "maud_intro"},
 	{"id": "garin", "name": "Garin, le bûcheron", "pos": Vector2(12.6, 11.6), "figure": "bucheron",
+	 "party_flag": "garin_party",
 	 "rules": [
 		{"flag": "garin_recompense", "dialogue": "garin_fin"},
 		{"flag": "garin_accepte", "foes_down": ["loup_solitaire", "rodeurs_bois"],
@@ -66,7 +67,7 @@ const NPCS := [
 		{"flag": "garin_refuse", "dialogue": "garin_retente"},
 	 ], "fallback": "garin_intro"},
 	{"id": "sera", "name": "Sera, l'étrangère", "pos": Vector2(6.4, 13.0), "figure": "etrangere",
-	 "hide_flag": "sera_denoncee",
+	 "hide_flag": "sera_denoncee", "party_flag": "sera_party",
 	 "rules": [
 		{"flag": "sera_proche", "dialogue": "sera_revoit"},
 	 ], "fallback": "sera_intro"},
@@ -132,8 +133,16 @@ const DIALOGUES := {
 		"choices": [{"label": "« Montre-moi. »", "set": {"garin_recompense": true}, "unlock": "lancier"}]},
 	"garin_fin": {
 		"speaker": "Garin, le bûcheron",
-		"text": "Alors, cette garde de lancier, ça rentre ? Ma clairière te dit merci. Si un jour j'recroise du gibier à problèmes, j'saurai qui appeler.",
-		"choices": [{"label": "« Bon bois, Garin. »"}]},
+		"text": "Alors, cette garde de lancier, ça rentre ? Ma clairière te dit merci. Si t'as besoin d'un bras de plus contre c'qui gronde au fond du bois... ma lance s'ennuie.",
+		"choices": [
+			{"label": "« Viens avec moi, Garin. »", "set": {"garin_party": true},
+			 "recruit": "garin", "next": "garin_join"},
+			{"label": "« Bon bois, Garin. »"},
+		]},
+	"garin_join": {
+		"speaker": "Garin, le bûcheron",
+		"text": "Ha ! J'range la hache, j'prends la lance. Devant moi personne passe — montre le chemin, compagnon.",
+		"choices": [{"label": "(En route)"}]},
 	# — Sera : un secret ; le garder ou la dénoncer change le monde. —
 	"sera_intro": {
 		"speaker": "Sera, l'étrangère",
@@ -153,8 +162,16 @@ const DIALOGUES := {
 		"choices": [{"label": "(La regarder partir)"}]},
 	"sera_revoit": {
 		"speaker": "Sera, l'étrangère",
-		"text": "Toujours muette, ma langue. Toi, tâche de rester vivant : le meneur d'abord, souviens-toi.",
-		"choices": [{"label": "« Compris. »"}]},
+		"text": "Toujours muette, ma langue. Toi, tâche de rester vivant : le meneur d'abord, souviens-toi. ...À moins que tu cherches une lame de plus ?",
+		"choices": [
+			{"label": "« Voyage avec moi, Sera. »", "set": {"sera_party": true},
+			 "recruit": "sera", "next": "sera_join"},
+			{"label": "« Compris. »"},
+		]},
+	"sera_join": {
+		"speaker": "Sera, l'étrangère",
+		"text": "Alors c'est dit. Je connais ce bois mieux que ses loups — je couvre tes arrières, toi ouvre la route. Et au fond du bois... tu verras pourquoi j'ai déserté.",
+		"choices": [{"label": "(En route)"}]},
 }
 
 # Damier de sol 2 tons par type de terrain (style diorama du jeu).
@@ -179,6 +196,7 @@ var _camera: Camera2D
 var _player: Walker
 var _foes: Array = []
 var _npcs: Array = []
+var _party: Array = []  # Walkers des compagnons (suivent le héros en file)
 var _fade: ColorRect
 var _zone_label: Label
 var _zone_current := ""
@@ -364,9 +382,16 @@ func _build_nodes() -> void:
 		w.wander_target = fs.pos
 		_entities.add_child(w)
 		_foes.append(w)
-	# PNJ du hameau (sauf ceux qui ont quitté le monde suite à un choix).
+	# Compagnons recrutés : ils marchent derrière le héros (file de voyage).
+	var fi := 1
+	for comp_id in GameData.campaign_party:
+		_spawn_follower(str(comp_id), _player.mpos + Vector2(-0.7, 0.5) * float(fi))
+		fi += 1
+	# PNJ du hameau (sauf ceux partis ou recrutés suite à un choix).
 	for n in NPCS:
 		if n.has("hide_flag") and GameData.get_flag(n.hide_flag):
+			continue
+		if n.has("party_flag") and GameData.get_flag(n.party_flag):
 			continue
 		var w := Walker.new()
 		w.kind = "npc"
@@ -450,9 +475,12 @@ func _process(delta: float) -> void:
 		_move_player(delta)
 		_update_foes(delta)
 		_update_npcs()
+		_update_party(delta)
 	_player.position = map_to_world(_player.mpos)
 	for f in _foes:
 		f.position = map_to_world(f.mpos)
+	for w in _party:
+		w.position = map_to_world(w.mpos)
 	_camera.position = _player.position - Vector2(0.0, 14.0)
 	_update_zone()
 
@@ -484,6 +512,37 @@ func _update_npcs() -> void:
 			var wx := map_to_world(_player.mpos).x - map_to_world(n.mpos).x
 			if absf(wx) > 4.0:
 				n.face = 1.0 if wx > 0.0 else -1.0
+
+
+# Compagnons : marche en file derrière le héros (chacun suit le précédent).
+func _update_party(delta: float) -> void:
+	var prev: Vector2 = _player.mpos
+	for w in _party:
+		var d: float = w.mpos.distance_to(prev)
+		if d > 0.95:
+			var step: float = minf(PLAYER_SPEED * 1.08 * delta, d - 0.85)
+			w.mpos += (prev - w.mpos).normalized() * step
+			w.moving = true
+			var wx := map_to_world(prev).x - map_to_world(w.mpos).x
+			if absf(wx) > 0.5:
+				w.face = 1.0 if wx > 0.0 else -1.0
+		else:
+			w.moving = false
+		prev = w.mpos
+
+
+func _spawn_follower(comp_id: String, pos: Vector2) -> void:
+	var c: Dictionary = GameData.COMPANIONS.get(comp_id, {})
+	if c.is_empty():
+		return
+	var w := Walker.new()
+	w.kind = "ally"
+	w.figure = str(c.figure)
+	w.label = str(c.name)
+	w.mpos = pos
+	w.position = map_to_world(pos)
+	_entities.add_child(w)
+	_party.append(w)
 
 
 func _nearest_npc() -> Walker:
@@ -559,6 +618,12 @@ func _on_choice(choice: Dictionary) -> void:
 		GameData.unlocked.append(cid)
 		changed = true
 		_announce("⚔ Classe débloquée : %s !" % str(GameData.CLASSES[cid].name))
+	# Recrutement : le PNJ rejoint l'équipe (il suivra le héros dans le monde).
+	var rid: String = str(choice.get("recruit", ""))
+	if rid != "" and not GameData.campaign_party.has(rid):
+		GameData.campaign_party.append(rid)
+		changed = true
+		_announce("🤝 %s rejoint l'équipe !" % str(GameData.COMPANIONS[rid].name))
 	if changed:
 		GameData.campaign_pos = _player.mpos
 		GameData.save_campaign()
@@ -571,11 +636,17 @@ func _on_choice(choice: Dictionary) -> void:
 func _close_dialogue() -> void:
 	_dlg_panel.visible = false
 	_talking = false
-	# Un choix peut chasser le PNJ du monde (ex : Sera dénoncée) : il s'en va.
+	# Un choix peut chasser le PNJ du monde (Sera dénoncée) ou le recruter
+	# (il devient un compagnon qui suit le héros).
 	if _dlg_npc:
 		for n in NPCS:
-			if n.id == _dlg_npc.npc_id and n.has("hide_flag") \
-					and GameData.get_flag(n.hide_flag):
+			if n.id != _dlg_npc.npc_id:
+				continue
+			if n.has("party_flag") and GameData.get_flag(n.party_flag):
+				_npcs.erase(_dlg_npc)
+				_spawn_follower(str(_dlg_npc.npc_id), _dlg_npc.mpos)
+				_dlg_npc.queue_free()
+			elif n.has("hide_flag") and GameData.get_flag(n.hide_flag):
 				_npcs.erase(_dlg_npc)
 				var leaving: Walker = _dlg_npc
 				var tw := create_tween()
@@ -689,7 +760,17 @@ func _start_battle(foe: Walker) -> void:
 	GameData.campaign_pos = back if _free(back) else _player.mpos
 	GameData.campaign_battle = true
 	GameData.campaign_enemy_id = foe.foe_id
-	GameData.player_team = [str(GameData.campaign_hero.get("class", "tank"))]
+	# Équipe = le héros + ses compagnons recrutés (noms affichés en combat).
+	var team: Array = [str(GameData.campaign_hero.get("class", "tank"))]
+	var names: Array = [str(GameData.campaign_hero.get("name", "Héros"))]
+	for comp_id in GameData.campaign_party:
+		var c: Dictionary = GameData.COMPANIONS.get(comp_id, {})
+		if c.is_empty():
+			continue
+		team.append(str(c["class"]))
+		names.append(str(c.name))
+	GameData.player_team = team
+	GameData.campaign_battle_names = names
 	GameData.ai_team = foe.team.duplicate()
 	GameData.difficulty = GameData.campaign_difficulty
 	GameData.save_campaign()
@@ -832,7 +913,7 @@ class Walker extends Node2D:
 		match kind:
 			"player":
 				_draw_player()
-			"npc":
+			"npc", "ally":
 				_draw_npc()
 			_:
 				_draw_foe()

@@ -539,6 +539,15 @@ var campaign_saved_at := ""          # horodatage de la dernière sauvegarde (af
 var campaign_flags := {}             # mémoire des choix (PNJ, quêtes) : clé -> bool
 var campaign_hero := {}              # héros créé : name, gender ("f"/"m"), design, class
 
+# Compagnons recrutables en campagne (id -> nom, classe de combat, figure
+# d'exploration). Recrutés via les dialogues ; ils marchent derrière le héros.
+const COMPANIONS := {
+	"sera":  {"name": "Sera",  "class": "chasseur", "figure": "etrangere"},
+	"garin": {"name": "Garin", "class": "lancier",  "figure": "bucheron"},
+}
+var campaign_party: Array = []         # ids des compagnons recrutés (ordre de marche)
+var campaign_battle_names: Array = []  # noms des unités joueur au combat (transitoire)
+
 
 # Pose un drapeau de campagne (choix mémorisé) sans sauvegarder (l'appelant
 # regroupe ses set_flag puis appelle save_campaign une seule fois).
@@ -562,6 +571,7 @@ func clear_campaign() -> void:
 	campaign_defeated = []
 	campaign_flags = {}
 	campaign_hero = {}
+	campaign_party = []
 	campaign_saved_at = ""
 	save_settings()
 
@@ -618,6 +628,7 @@ func save_settings() -> void:
 	cfg.set_value("campaign", "saved_at", campaign_saved_at)
 	cfg.set_value("campaign", "flags", campaign_flags)
 	cfg.set_value("campaign", "hero", campaign_hero)
+	cfg.set_value("campaign", "party", campaign_party)
 	cfg.save(SETTINGS_PATH)
 
 
@@ -639,3 +650,4 @@ func load_settings() -> void:
 	campaign_saved_at = str(cfg.get_value("campaign", "saved_at", ""))
 	campaign_flags = cfg.get_value("campaign", "flags", {})
 	campaign_hero = cfg.get_value("campaign", "hero", {})
+	campaign_party = cfg.get_value("campaign", "party", [])

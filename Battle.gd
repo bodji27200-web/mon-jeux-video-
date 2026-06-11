@@ -83,11 +83,14 @@ func _ready() -> void:
 	_generate_terrain()
 	_spawn_units()
 	_build_boss_bar()
-	# Combat de campagne : l'unité du joueur porte le nom de SON héros.
-	if GameData.campaign_battle and GameData.campaign_hero.size() > 0:
+	# Combat de campagne : les unités joueur portent les noms du héros et des
+	# compagnons (même ordre que l'équipe envoyée par l'Overworld).
+	if GameData.campaign_battle and GameData.campaign_battle_names.size() > 0:
+		var ni := 0
 		for u in get_tree().get_nodes_in_group("units"):
-			if u.is_player():
-				u.display_name = str(GameData.campaign_hero.get("name", ""))
+			if u.is_player() and ni < GameData.campaign_battle_names.size():
+				u.display_name = str(GameData.campaign_battle_names[ni])
+				ni += 1
 	_start_player = GameData.player_team.size()
 	_start_ai = GameData.ai_team.size()
 	replay_button.pressed.connect(_on_replay)

@@ -401,6 +401,16 @@ Ordre de priorité (✅ = fait) :
     venir). Vieille sauvegarde sans héros → redirection auto vers la création
     (`Overworld._ready`, garde `_draw`/`_ground`). Panneau « Campagne en cours »
     affiche le héros.
+63. ✅ **Compagnons** (`GameData.COMPANIONS`, `campaign_party` persisté
+    `[campaign] party`) : **Sera** (chasseuse — si on a couvert son secret) et
+    **Garin** (lancier — après sa quête) se recrutent par dialogue (choix
+    `recruit` + `party_flag` : le PNJ disparaît du hameau et devient suiveur).
+    Dans le monde, les compagnons **marchent en file derrière le héros**
+    (`_update_party` : chacun suit le précédent, kind "ally", figures PNJ
+    réutilisées). En combat : équipe = héros + compagnons
+    (`Overworld._start_battle` construit `player_team` + `campaign_battle_names`,
+    noms affichés par unité). Le boss devient atteignable en équipe — dur,
+    comme voulu.
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`
