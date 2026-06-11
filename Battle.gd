@@ -57,6 +57,7 @@ var skill_slots: Array = []  # boutons de la barre de compétences
 var selected_skill := -1  # index de la compétence sélectionnée (phase "skill")
 var _skill_return_phase := "attack"  # phase à restaurer si on annule une compétence
 var end_turn_btn: Button  # bouton "Fin de tour" (visible au tour du joueur)
+var flee_btn: Button      # bouton "Fuir" (campagne, hors boss ; visible au tour du joueur)
 # Panneau d'info compétence (s'affiche instantanément au survol d'un bouton).
 var _skill_info_panel: PanelContainer
 var _skill_info_name: Label
@@ -72,6 +73,7 @@ var _start_ai := 0
 func _ready() -> void:
 	_build_skill_bar()
 	_build_end_turn_button()
+	_build_flee_button()
 	_generate_terrain()
 	_spawn_units()
 	_start_player = GameData.player_team.size()
@@ -99,6 +101,34 @@ func _on_end_turn_button() -> void:
 	if _finished or active_unit == null or not active_unit.is_player():
 		return
 	_end_turn()
+
+
+# Bouton "Fuir" (à côté de Fin de tour) : uniquement en combat de campagne,
+# jamais contre un boss. Fuir ramène dans le monde, l'ennemi reste vivant.
+func _build_flee_button() -> void:
+	if not GameData.campaign_battle:
+		return
+	for cid in GameData.ai_team:
+		if GameData.CLASSES.get(cid, {}).get("boss", false):
+			return  # un boss ne se fuit pas
+	flee_btn = Button.new()
+	flee_btn.text = "🏃 Fuir"
+	flee_btn.custom_minimum_size = Vector2(110, 42)
+	flee_btn.size = Vector2(110, 42)
+	flee_btn.position = Vector2(160, 704 - 52)
+	flee_btn.focus_mode = Control.FOCUS_NONE
+	flee_btn.visible = false
+	flee_btn.pressed.connect(_on_flee)
+	$UI.add_child(flee_btn)
+
+
+func _on_flee() -> void:
+	if _finished or active_unit == null or not active_unit.is_player():
+		return
+	GameData.campaign_battle = false
+	Audio.stop_music()
+	Audio.play_sfx("click")
+	get_tree().change_scene_to_file("res://Overworld.tscn")
 
 
 # Construit la barre de 3 boutons composites (icône + nom) et le panneau d'info.
@@ -268,6 +298,8 @@ func _refresh_skill_bar() -> void:
 		b.visible = show_bar
 	if end_turn_btn:
 		end_turn_btn.visible = show_bar
+	if flee_btn:
+		flee_btn.visible = show_bar
 	if not show_bar:
 		skill_hint.visible = false
 		if _skill_info_panel:
@@ -600,12 +632,10 @@ func _check_end() -> bool:
 			replay_button.text = "Continuer l'aventure" if p else "Retour au menu"
 			if p and not GameData.campaign_defeated.has(GameData.campaign_enemy_id):
 				GameData.campaign_defeated.append(GameData.campaign_enemy_id)
-				GameData.save_settings()
+				GameData.save_campaign()
 			elif not p and GameData.campaign_difficulty == "hardcore":
 				# Hardcore : la mort de l'équipe efface la campagne (mort permanente).
-				GameData.campaign_pos = Vector2(-1, -1)
-				GameData.campaign_defeated = []
-				GameData.save_settings()
+				GameData.clear_campaign()
 				stats_label.text += "\n\n☠ Hardcore : campagne perdue, progression effacée."
 		replay_button.visible = true
 		return true

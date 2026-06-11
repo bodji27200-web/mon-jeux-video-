@@ -352,6 +352,16 @@ Ordre de priorité (✅ = fait) :
     Bond d'ombre (teleport_strike) + Furie du bois (rage). Règle posée : **un
     boss combat SEUL** (équipe de 1) — jamais accompagné. `Overworld.FOES`
     mis à jour (loup seul / meute / boss).
+59. ✅ **Fuite + gestion de la sauvegarde de campagne** :
+    - **Fuir** (`Battle._build_flee_button`/`_on_flee`) : bouton à côté de « Fin
+      de tour », **uniquement en combat de campagne et jamais contre un boss**
+      (`boss: true` filtré). Fuir = retour dans le monde, ennemi toujours vivant.
+    - **Menu Campagne** : si une campagne existe (`GameData.has_campaign()`),
+      panneau « Campagne en cours » (`Title._build_campaign_panel`) : difficulté,
+      **date/heure de dernière sauvegarde** (`GameData.campaign_saved_at`, posé
+      par `save_campaign()`), ennemis vaincus + boutons **Continuer** /
+      **Recommencer** (double-clic de confirmation → efface via
+      `clear_campaign()` et rouvre le choix de difficulté).
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`
