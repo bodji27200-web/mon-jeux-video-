@@ -375,6 +375,17 @@ Ordre de priorité (✅ = fait) :
     dans `GameData.campaign_flags` (persistés `[campaign] flags`, effacés par
     `clear_campaign`). Règles d'entrée par PNJ : drapeaux + `foes_down`
     (ennemis vaincus). `_announce()` = bandeau doré (déblocage de classe).
+61. ✅ **Barre de PV de boss façon Clair Obscur** (`Battle._build_boss_bar`) :
+    nom du boss centré tout en haut + grande barre rouge (mise à jour dans
+    `Battle._process`, masquée à sa mort). La petite barre au-dessus de sa tête
+    est supprimée (`Unit._draw`, `show_hp_bar`). Décisions actées : **aucun
+    objet utilisable en combat** (jamais) ; l'inventaire (exploration seule)
+    attendra d'avoir des objets de quête/équipement. Prochaines phases validées,
+    dans l'ordre : **création de personnage** (nom, sexe, apparence, classe —
+    départ SEUL façon BG3, rééquilibrage des premiers combats), **compagnons**,
+    **fiche de personnage**, **arbres de compétences** (2 choix par rangée),
+    inventaire. Le déblocage par l'exploration (Garin → Lancier) alimentera la
+    création de perso + compagnons.
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`

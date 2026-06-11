@@ -69,6 +69,12 @@ var _max_hit := 0
 var _start_player := 0
 var _start_ai := 0
 
+# Barre de vie de boss (en haut de l'écran, nom au centre — style Clair Obscur).
+var _boss_unit: Node = null
+var _boss_name_label: Label
+var _boss_bar_bg: ColorRect
+var _boss_bar_fill: ColorRect
+
 
 func _ready() -> void:
 	_build_skill_bar()
@@ -76,6 +82,7 @@ func _ready() -> void:
 	_build_flee_button()
 	_generate_terrain()
 	_spawn_units()
+	_build_boss_bar()
 	_start_player = GameData.player_team.size()
 	_start_ai = GameData.ai_team.size()
 	replay_button.pressed.connect(_on_replay)
@@ -101,6 +108,50 @@ func _on_end_turn_button() -> void:
 	if _finished or active_unit == null or not active_unit.is_player():
 		return
 	_end_turn()
+
+
+# Barre de vie du boss : tout en haut, son nom au milieu (style Clair Obscur).
+# La petite barre au-dessus de sa tête est masquée (Unit._draw) au profit de
+# celle-ci. Mise à jour en continu dans _process.
+func _build_boss_bar() -> void:
+	# (turn_manager.units n'est rempli qu'au start() : on passe par le groupe.)
+	for u in get_tree().get_nodes_in_group("units"):
+		if not u.is_player() and u.data.get("boss", false):
+			_boss_unit = u
+			break
+	if _boss_unit == null:
+		return
+	_boss_name_label = Label.new()
+	_boss_name_label.text = str(_boss_unit.data.name)
+	_boss_name_label.custom_minimum_size = Vector2(832, 30)
+	_boss_name_label.position = Vector2(0, 6)
+	_boss_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_boss_name_label.add_theme_font_size_override("font_size", 24)
+	_boss_name_label.add_theme_color_override("font_color", Color(0.93, 0.85, 0.70))
+	_boss_name_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_boss_name_label.add_theme_constant_override("outline_size", 6)
+	$UI.add_child(_boss_name_label)
+	_boss_bar_bg = ColorRect.new()
+	_boss_bar_bg.position = Vector2(832.0 / 2.0 - 270.0, 38.0)
+	_boss_bar_bg.size = Vector2(540, 14)
+	_boss_bar_bg.color = Color(0.07, 0.03, 0.05, 0.92)
+	$UI.add_child(_boss_bar_bg)
+	_boss_bar_fill = ColorRect.new()
+	_boss_bar_fill.position = _boss_bar_bg.position + Vector2(2, 2)
+	_boss_bar_fill.size = Vector2(536, 10)
+	_boss_bar_fill.color = Color(0.78, 0.16, 0.20)
+	$UI.add_child(_boss_bar_fill)
+
+
+func _process(_delta: float) -> void:
+	if _boss_unit == null:
+		return
+	var r := clampf(float(_boss_unit.hp) / float(_boss_unit.data.max_hp), 0.0, 1.0)
+	_boss_bar_fill.size.x = 536.0 * r
+	if not _boss_unit.is_alive():
+		_boss_name_label.visible = false
+		_boss_bar_bg.visible = false
+		_boss_bar_fill.visible = false
 
 
 # Bouton "Fuir" (à côté de Fin de tour) : uniquement en combat de campagne,
