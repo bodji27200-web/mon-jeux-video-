@@ -362,6 +362,19 @@ Ordre de priorité (✅ = fait) :
       par `save_campaign()`), ennemis vaincus + boutons **Continuer** /
       **Recommencer** (double-clic de confirmation → efface via
       `clear_campaign()` et rouvre le choix de difficulté).
+60. ✅ **Mode histoire — phase 2 : PNJ vivants + dialogues à conséquences**
+    (`Overworld.NPCS`/`DIALOGUES`, data-driven : un PNJ/dialogue = des données).
+    3 PNJ dessinés à la main dans le hameau (figures `Walker._draw_npc`) :
+    **Maud l'herboriste** (vexée à jamais si on la rembarre, conseils sur le
+    boss sinon), **Garin le bûcheron** (quête : nettoyer le bois → récompense =
+    **déblocage du Lancier par l'exploration** ; refus possible puis retentable),
+    **Sera l'étrangère** (secret : la couvrir → conseil tactique ; la dénoncer →
+    `hide_flag`, **elle quitte le monde pour toujours** — prévu : retour en
+    ennemie). Touche **E** à proximité (invite « E — Parler »), boîte de dialogue
+    à choix cliquables, monde en pause pendant la discussion. Choix mémorisés
+    dans `GameData.campaign_flags` (persistés `[campaign] flags`, effacés par
+    `clear_campaign`). Règles d'entrée par PNJ : drapeaux + `foes_down`
+    (ennemis vaincus). `_announce()` = bandeau doré (déblocage de classe).
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`

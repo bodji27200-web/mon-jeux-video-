@@ -45,6 +45,116 @@ const FOES := [
 	 "team": ["veilleur_murmures"], "hue": Color(0.45, 0.28, 0.66)},
 ]
 
+# --- PNJ du hameau (data-driven : un PNJ = des données, zéro code dédié) ---
+# Chaque PNJ choisit son dialogue d'entrée : première règle satisfaite, sinon
+# "fallback". Une règle = un drapeau requis (+ option "foes_down" : ennemis
+# vaincus requis). "hide_flag" : si ce drapeau est posé, le PNJ a quitté le monde.
+const NPCS := [
+	{"id": "maud", "name": "Maud, l'herboriste", "pos": Vector2(7.6, 6.6), "figure": "herboriste",
+	 "rules": [
+		{"flag": "maud_vexee", "dialogue": "maud_froide"},
+		{"flag": "maud_amie", "dialogue": "maud_revoit"},
+	 ], "fallback": "maud_intro"},
+	{"id": "garin", "name": "Garin, le bûcheron", "pos": Vector2(12.6, 11.6), "figure": "bucheron",
+	 "rules": [
+		{"flag": "garin_recompense", "dialogue": "garin_fin"},
+		{"flag": "garin_accepte", "foes_down": ["loup_solitaire", "rodeurs_bois"],
+		 "dialogue": "garin_reward"},
+		{"flag": "garin_accepte", "dialogue": "garin_attente"},
+		{"flag": "garin_refuse", "dialogue": "garin_retente"},
+	 ], "fallback": "garin_intro"},
+	{"id": "sera", "name": "Sera, l'étrangère", "pos": Vector2(6.4, 13.0), "figure": "etrangere",
+	 "hide_flag": "sera_denoncee",
+	 "rules": [
+		{"flag": "sera_proche", "dialogue": "sera_revoit"},
+	 ], "fallback": "sera_intro"},
+]
+
+# Dialogues : texte + choix. Un choix peut poser des drapeaux ("set"), débloquer
+# une classe ("unlock") et enchaîner sur un autre dialogue ("next", sinon fermer).
+const DIALOGUES := {
+	# — Maud : écouter ou mépriser ; elle s'en souviendra. —
+	"maud_intro": {
+		"speaker": "Maud, l'herboriste",
+		"text": "Encore un qui lorgne vers l'est... Le bois murmure, petit. Ceux qui n'écoutent pas finissent dans la vase. Tu veux le conseil d'une vieille femme ?",
+		"choices": [
+			{"label": "« Je vous écoute. »", "set": {"maud_amie": true}, "next": "maud_conseil"},
+			{"label": "« Gardez vos radotages, la vieille. »", "set": {"maud_vexee": true}, "next": "maud_vexe"},
+		]},
+	"maud_conseil": {
+		"speaker": "Maud, l'herboriste",
+		"text": "Le maître du bois ne se laisse pas fuir : quand on l'affronte, c'est jusqu'au bout. Ses ronces fauchent tout ce qui se serre — n'avance pas en rang d'oignons, écarte tes gens.",
+		"choices": [{"label": "« Merci, Maud. »"}]},
+	"maud_revoit": {
+		"speaker": "Maud, l'herboriste",
+		"text": "Toujours vivant, petit ? Les murmures parlent de toi. Souviens-toi : écartés face aux ronces, et garde celui qui soigne loin des crocs.",
+		"choices": [{"label": "« À bientôt. »"}]},
+	"maud_vexe": {
+		"speaker": "Maud, l'herboriste",
+		"text": "... Comme tu veux. Le bois t'apprendra mieux que moi.",
+		"choices": [{"label": "(Partir)"}]},
+	"maud_froide": {
+		"speaker": "Maud, l'herboriste",
+		"text": "J'ai rien pour les malpolis. Va donc écouter le bois, puisqu'il te tarde.",
+		"choices": [{"label": "(Partir)"}]},
+	# — Garin : un marché ; le tenir récompense (déblocage de classe). —
+	"garin_intro": {
+		"speaker": "Garin, le bûcheron",
+		"text": "J'peux plus couper une bûche : un loup et une bande de rôdeurs squattent ma clairière. Nettoie-moi le bois — le loup ET les rôdeurs — et j'te montre c'que j'sais du métier des armes. Marché conclu ?",
+		"choices": [
+			{"label": "« Marché conclu. »", "set": {"garin_accepte": true, "garin_refuse": false}, "next": "garin_topla"},
+			{"label": "« Débrouille-toi. »", "set": {"garin_refuse": true}, "next": "garin_decu"},
+		]},
+	"garin_topla": {
+		"speaker": "Garin, le bûcheron",
+		"text": "Topez là ! Le loup rôde à l'orée, les rôdeurs plus au fond. Reviens me voir quand c'est fait.",
+		"choices": [{"label": "(Partir)"}]},
+	"garin_decu": {
+		"speaker": "Garin, le bûcheron",
+		"text": "Ouais... comme tout le monde ici. Si tu changes d'avis, tu sais où me trouver.",
+		"choices": [{"label": "(Partir)"}]},
+	"garin_retente": {
+		"speaker": "Garin, le bûcheron",
+		"text": "T'as changé d'avis ? Le marché tient toujours : le loup et les rôdeurs hors de ma clairière, et j'te montre le métier des armes.",
+		"choices": [
+			{"label": "« C'est d'accord. »", "set": {"garin_accepte": true, "garin_refuse": false}, "next": "garin_topla"},
+			{"label": "« Non, toujours pas. »"},
+		]},
+	"garin_attente": {
+		"speaker": "Garin, le bûcheron",
+		"text": "Alors, ce bois ? J'entends encore ces sales bêtes d'ici... Le loup de l'orée et les rôdeurs du fond, et on est quittes.",
+		"choices": [{"label": "« J'y travaille. »"}]},
+	"garin_reward": {
+		"speaker": "Garin, le bûcheron",
+		"text": "Par ma hache, t'as vraiment nettoyé la clairière ! Un marché est un marché : viens là, j'te montre la garde du lancier — c'est comme tenir un grand merlin, regarde...",
+		"choices": [{"label": "« Montre-moi. »", "set": {"garin_recompense": true}, "unlock": "lancier"}]},
+	"garin_fin": {
+		"speaker": "Garin, le bûcheron",
+		"text": "Alors, cette garde de lancier, ça rentre ? Ma clairière te dit merci. Si un jour j'recroise du gibier à problèmes, j'saurai qui appeler.",
+		"choices": [{"label": "« Bon bois, Garin. »"}]},
+	# — Sera : un secret ; le garder ou la dénoncer change le monde. —
+	"sera_intro": {
+		"speaker": "Sera, l'étrangère",
+		"text": "Toi non plus, t'es pas d'ici, pas vrai ?... Bon. Je me cache : les rôdeurs du bois étaient mes frères de route, avant que je déserte. Si le hameau l'apprend, on me chassera. Tu vas leur dire ?",
+		"choices": [
+			{"label": "« Ton secret est en sécurité. »", "set": {"sera_proche": true}, "next": "sera_confiance"},
+			{"label": "« Ces gens méritent la vérité. »", "set": {"sera_denoncee": true}, "next": "sera_chassee"},
+			{"label": "(Ne rien promettre et partir)"},
+		]},
+	"sera_confiance": {
+		"speaker": "Sera, l'étrangère",
+		"text": "Alors tiens, un conseil de déserteuse : les rôdeurs paniquent quand leur meneur tombe en premier. Et... merci. Je ne l'oublierai pas.",
+		"choices": [{"label": "(Partir)"}]},
+	"sera_chassee": {
+		"speaker": "Sera, l'étrangère",
+		"text": "...Je vois. J'aurai quitté le hameau avant la nuit. J'espère que tu sauras vivre avec ce choix — le bois, lui, s'en souviendra.",
+		"choices": [{"label": "(La regarder partir)"}]},
+	"sera_revoit": {
+		"speaker": "Sera, l'étrangère",
+		"text": "Toujours muette, ma langue. Toi, tâche de rester vivant : le meneur d'abord, souviens-toi.",
+		"choices": [{"label": "« Compris. »"}]},
+}
+
 # Damier de sol 2 tons par type de terrain (style diorama du jeu).
 const GROUND_COLORS := {
 	"herbe":   [Color(0.318, 0.420, 0.235), Color(0.270, 0.368, 0.200)],
@@ -66,11 +176,20 @@ var _entities: Node2D
 var _camera: Camera2D
 var _player: Walker
 var _foes: Array = []
+var _npcs: Array = []
 var _fade: ColorRect
 var _zone_label: Label
 var _zone_current := ""
 var _locked := false  # vrai pendant la transition vers le combat
 var _grace := 1.5     # délai sans contact au retour de combat (anti re-déclenchement)
+# Dialogue en cours (le monde est en pause pendant qu'on parle).
+const TALK_RANGE := 1.6
+var _talking := false
+var _dlg_npc: Walker = null
+var _dlg_panel: PanelContainer
+var _dlg_speaker: Label
+var _dlg_text: Label
+var _dlg_choices: VBoxContainer
 
 
 func _ready() -> void:
@@ -237,6 +356,19 @@ func _build_nodes() -> void:
 		w.wander_target = fs.pos
 		_entities.add_child(w)
 		_foes.append(w)
+	# PNJ du hameau (sauf ceux qui ont quitté le monde suite à un choix).
+	for n in NPCS:
+		if n.has("hide_flag") and GameData.get_flag(n.hide_flag):
+			continue
+		var w := Walker.new()
+		w.kind = "npc"
+		w.npc_id = n.id
+		w.figure = n.figure
+		w.label = n.name
+		w.mpos = n.pos
+		w.position = map_to_world(n.pos)
+		_entities.add_child(w)
+		_npcs.append(w)
 	# Caméra qui suit le joueur, bornée à la maquette.
 	_camera = Camera2D.new()
 	_camera.position_smoothing_enabled = true
@@ -263,13 +395,36 @@ func _build_ui() -> void:
 	_zone_label.add_theme_constant_override("outline_size", 6)
 	layer.add_child(_zone_label)
 	var hint := Label.new()
-	hint.text = "ZQSD / flèches : se déplacer   ·   Échap : menu"
+	hint.text = "ZQSD / flèches : se déplacer   ·   E : parler   ·   Échap : menu"
 	hint.position = Vector2(12, 704 - 30)
 	hint.add_theme_font_size_override("font_size", 14)
 	hint.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85, 0.8))
 	hint.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	hint.add_theme_constant_override("outline_size", 4)
 	layer.add_child(hint)
+	# Boîte de dialogue (cachée par défaut) : nom du PNJ, texte, choix cliquables.
+	_dlg_panel = PanelContainer.new()
+	_dlg_panel.position = Vector2(56, 440)
+	_dlg_panel.custom_minimum_size = Vector2(720, 0)
+	_dlg_panel.visible = false
+	layer.add_child(_dlg_panel)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 8)
+	_dlg_panel.add_child(vb)
+	_dlg_speaker = Label.new()
+	_dlg_speaker.add_theme_font_size_override("font_size", 20)
+	_dlg_speaker.add_theme_color_override("font_color", Color(0.95, 0.82, 0.45))
+	vb.add_child(_dlg_speaker)
+	_dlg_text = Label.new()
+	_dlg_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_dlg_text.custom_minimum_size = Vector2(700, 0)
+	_dlg_text.add_theme_font_size_override("font_size", 17)
+	_dlg_text.add_theme_color_override("font_color", Color(0.92, 0.90, 0.84))
+	vb.add_child(_dlg_text)
+	_dlg_choices = VBoxContainer.new()
+	_dlg_choices.add_theme_constant_override("separation", 4)
+	vb.add_child(_dlg_choices)
+
 	_fade = ColorRect.new()
 	_fade.position = Vector2.ZERO
 	_fade.size = Vector2(832, 704)
@@ -283,9 +438,10 @@ func _build_ui() -> void:
 func _process(delta: float) -> void:
 	if _grace > 0.0:
 		_grace -= delta
-	if not _locked:
+	if not _locked and not _talking:
 		_move_player(delta)
 		_update_foes(delta)
+		_update_npcs()
 	_player.position = map_to_world(_player.mpos)
 	for f in _foes:
 		f.position = map_to_world(f.mpos)
@@ -294,10 +450,140 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE and not _locked:
+	if not (event is InputEventKey) or not event.pressed or _locked:
+		return
+	if event.keycode == KEY_ESCAPE:
+		if _talking:
+			_close_dialogue()
+			return
 		GameData.campaign_pos = _player.mpos
 		GameData.save_campaign()
 		get_tree().change_scene_to_file("res://Title.tscn")
+	# E : parler au PNJ à portée (les choix se font à la souris).
+	if event.physical_keycode == KEY_E and not _talking:
+		var npc := _nearest_npc()
+		if npc:
+			_open_dialogue(npc)
+
+
+# PNJ : immobiles, mais se tournent vers le joueur proche (et affichent l'invite).
+func _update_npcs() -> void:
+	for n in _npcs:
+		var dist: float = n.mpos.distance_to(_player.mpos)
+		n.show_label = dist < 4.0
+		n.prompt = dist < TALK_RANGE
+		if dist < 4.0:
+			var wx := map_to_world(_player.mpos).x - map_to_world(n.mpos).x
+			if absf(wx) > 4.0:
+				n.face = 1.0 if wx > 0.0 else -1.0
+
+
+func _nearest_npc() -> Walker:
+	var best: Walker = null
+	var best_d := TALK_RANGE
+	for n in _npcs:
+		var d: float = n.mpos.distance_to(_player.mpos)
+		if d < best_d:
+			best_d = d
+			best = n
+	return best
+
+
+# --- Dialogues à choix (data-driven : NPCS + DIALOGUES) ---
+
+# Choisit le dialogue d'entrée d'un PNJ : première règle satisfaite, sinon fallback.
+func _npc_entry_dialogue(npc_id: String) -> String:
+	for n in NPCS:
+		if n.id != npc_id:
+			continue
+		for r in n.get("rules", []):
+			if not GameData.get_flag(r.flag):
+				continue
+			var ok := true
+			for foe_id in r.get("foes_down", []):
+				if not GameData.campaign_defeated.has(foe_id):
+					ok = false
+					break
+			if ok:
+				return r.dialogue
+		return n.fallback
+	return ""
+
+
+func _open_dialogue(npc: Walker) -> void:
+	var did := _npc_entry_dialogue(npc.npc_id)
+	if did == "" or not DIALOGUES.has(did):
+		return
+	_talking = true
+	_dlg_npc = npc
+	_player.moving = false
+	Audio.play_sfx("click")
+	_show_dialogue(did)
+
+
+func _show_dialogue(did: String) -> void:
+	var d: Dictionary = DIALOGUES[did]
+	_dlg_speaker.text = str(d.speaker)
+	_dlg_text.text = str(d.text)
+	for c in _dlg_choices.get_children():
+		c.queue_free()
+	for choice in d.choices:
+		var b := Button.new()
+		b.text = str(choice.label)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.focus_mode = Control.FOCUS_NONE
+		b.custom_minimum_size = Vector2(0, 34)
+		var ch: Dictionary = choice
+		b.pressed.connect(func(): _on_choice(ch))
+		_dlg_choices.add_child(b)
+	_dlg_panel.visible = true
+
+
+func _on_choice(choice: Dictionary) -> void:
+	Audio.play_sfx("click")
+	var changed := false
+	for key in choice.get("set", {}):
+		GameData.set_flag(key, bool(choice.set[key]))
+		changed = true
+	# Récompense : déblocage d'une classe par l'exploration (vision du jeu).
+	var cid: String = str(choice.get("unlock", ""))
+	if cid != "" and not GameData.is_unlocked(cid):
+		GameData.unlocked.append(cid)
+		changed = true
+		_announce("⚔ Classe débloquée : %s !" % str(GameData.CLASSES[cid].name))
+	if changed:
+		GameData.campaign_pos = _player.mpos
+		GameData.save_campaign()
+	if choice.has("next"):
+		_show_dialogue(str(choice.next))
+	else:
+		_close_dialogue()
+
+
+func _close_dialogue() -> void:
+	_dlg_panel.visible = false
+	_talking = false
+	# Un choix peut chasser le PNJ du monde (ex : Sera dénoncée) : il s'en va.
+	if _dlg_npc:
+		for n in NPCS:
+			if n.id == _dlg_npc.npc_id and n.has("hide_flag") \
+					and GameData.get_flag(n.hide_flag):
+				_npcs.erase(_dlg_npc)
+				var leaving: Walker = _dlg_npc
+				var tw := create_tween()
+				tw.tween_property(leaving, "modulate:a", 0.0, 1.2)
+				tw.tween_callback(leaving.queue_free)
+	_dlg_npc = null
+
+
+# Annonce dorée au centre (réutilise le label de zone, rendu à la zone après 3 s).
+var _announce_t := 0.0
+func _announce(msg: String) -> void:
+	_announce_t = 3.0
+	_zone_current = ""  # forcera le retour au nom de zone après l'annonce
+	_zone_label.text = msg
+	_zone_label.add_theme_color_override("font_color", Color(1.0, 0.86, 0.35))
+	_zone_label.modulate.a = 1.0
 
 
 # Déplacement libre : touches physiques WASD (= ZQSD sur clavier français) + flèches.
@@ -418,6 +704,9 @@ func _zone_name(p: Vector2) -> String:
 
 
 func _update_zone() -> void:
+	if _announce_t > 0.0:
+		_announce_t -= get_process_delta_time()
+		return
 	var z := _zone_name(_player.mpos)
 	if z == _zone_current:
 		return
@@ -501,7 +790,7 @@ func _draw_edge_walls() -> void:
 # Visuels volontairement distincts de ceux du combat : petites silhouettes
 # de voyage (cape, marche balancée) et rôdeurs encapuchonnés aux yeux luisants.
 class Walker extends Node2D:
-	var kind := "player"  # "player" | "foe"
+	var kind := "player"  # "player" | "foe" | "npc"
 	var mpos := Vector2.ZERO  # position dans la carte (en tuiles, continue)
 	var phase := 0.0
 	var moving := false
@@ -510,6 +799,9 @@ class Walker extends Node2D:
 	var tier := 1
 	var team: Array = []
 	var foe_id := ""
+	var npc_id := ""
+	var figure := ""        # visuel du PNJ ("herboriste", "bucheron", "etrangere")
+	var prompt := false     # à portée de parole : affiche « E — Parler »
 	var label := ""
 	var show_label := false
 	var chasing := false
@@ -524,15 +816,74 @@ class Walker extends Node2D:
 	func _draw() -> void:
 		# Ombre de contact (hors miroir, elle est symétrique).
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.5))
-		draw_circle(Vector2.ZERO, 9.0 if kind == "player" else 8.0 + 2.0 * tier,
+		draw_circle(Vector2.ZERO, 9.0 if kind != "foe" else 8.0 + 2.0 * tier,
 				Color(0.0, 0.0, 0.0, 0.30))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(face, 1.0))
-		if kind == "player":
-			_draw_player()
-		else:
-			_draw_foe()
+		match kind:
+			"player":
+				_draw_player()
+			"npc":
+				_draw_npc()
+			_:
+				_draw_foe()
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		_draw_overhead()
+
+	# PNJ du hameau : trois habitants dessinés à la main, respiration lente.
+	func _draw_npc() -> void:
+		var b := sin(phase) * 0.5  # respiration (les PNJ ne marchent pas, v1)
+		match figure:
+			"herboriste":
+				# Vieille femme : robe vert-gris, châle, chignon blanc, canne.
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(-4.5, -16.0 + b), Vector2(4.5, -16.0 + b),
+					Vector2(6.5, 0.0), Vector2(-6.5, 0.0)]), Color(0.36, 0.42, 0.32))
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(-5.5, -16.5 + b), Vector2(5.5, -16.5 + b),
+					Vector2(6.5, -10.0 + b), Vector2(-6.5, -10.0 + b)]),
+					Color(0.55, 0.46, 0.36))  # châle
+				# Tête penchée (dos voûté) + chignon blanc.
+				draw_circle(Vector2(1.5, -19.5 + b), 4.2, Color(0.90, 0.76, 0.62))
+				draw_circle(Vector2(-0.5, -22.0 + b), 2.8, Color(0.88, 0.88, 0.86))
+				draw_circle(Vector2(3.0, -19.2 + b), 0.8, Color(0.12, 0.10, 0.12))
+				# Canne tenue devant.
+				draw_line(Vector2(6.5, -12.0 + b), Vector2(8.0, 0.0), Color(0.38, 0.26, 0.14), 2.0)
+			"bucheron":
+				# Costaud : tunique brune, ceinture, barbe, hache sur l'épaule.
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(-6.5, -17.0 + b), Vector2(6.5, -17.0 + b),
+					Vector2(7.5, 0.0), Vector2(-7.5, 0.0)]), Color(0.46, 0.32, 0.20))
+				draw_rect(Rect2(-7.0, -9.0 + b, 14.0, 2.4), Color(0.22, 0.16, 0.10))
+				# Tête + barbe fournie.
+				draw_circle(Vector2(0.0, -21.0 + b), 4.8, Color(0.92, 0.76, 0.58))
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(-4.0, -20.0 + b), Vector2(4.0, -20.0 + b),
+					Vector2(0.0, -13.5 + b)]), Color(0.42, 0.28, 0.16))
+				draw_circle(Vector2(2.0, -21.8 + b), 0.9, Color(0.12, 0.10, 0.12))
+				# Hache posée sur l'épaule (manche + fer).
+				draw_line(Vector2(-3.0, -16.0 + b), Vector2(-10.0, -26.0 + b), Color(0.40, 0.28, 0.15), 2.4)
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(-10.0, -29.0 + b), Vector2(-6.0, -27.0 + b),
+					Vector2(-10.0, -23.5 + b), Vector2(-13.0, -26.0 + b)]),
+					Color(0.72, 0.74, 0.80))
+			"etrangere":
+				# Voyageuse : cape bleu nuit, capuche, visage dans l'ombre, yeux pâles.
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(-5.5, -17.0 + b), Vector2(5.5, -17.0 + b),
+					Vector2(7.0, 0.0), Vector2(-7.0, 0.0)]), Color(0.20, 0.24, 0.38))
+				draw_circle(Vector2(0.0, -20.0 + b), 5.2, Color(0.16, 0.20, 0.32))
+				_npc_ellipse(Vector2(0.5, -19.5 + b), 3.4, 2.8, Color(0.08, 0.08, 0.12))
+				draw_circle(Vector2(-0.8, -19.8 + b), 0.8, Color(0.75, 0.85, 0.95))
+				draw_circle(Vector2(2.0, -19.8 + b), 0.8, Color(0.75, 0.85, 0.95))
+				# Écharpe qui dépasse de la cape.
+				draw_line(Vector2(-4.0, -15.0 + b), Vector2(-7.5, -8.0 + b), Color(0.55, 0.30, 0.30), 2.2)
+
+	func _npc_ellipse(center: Vector2, rx: float, ry: float, color: Color) -> void:
+		var pts := PackedVector2Array()
+		for i in 14:
+			var a := TAU * i / 14.0
+			pts.append(center + Vector2(cos(a) * rx, sin(a) * ry))
+		draw_colored_polygon(pts, color)
 
 	func _draw_player() -> void:
 		var b := sin(phase) * (1.4 if moving else 0.5)  # rebond de marche
@@ -594,9 +945,21 @@ class Walker extends Node2D:
 
 	# Textes au-dessus de la tête (hors miroir pour ne pas écrire à l'envers).
 	func _draw_overhead() -> void:
+		var font := ThemeDB.fallback_font
+		if kind == "npc":
+			if prompt:
+				draw_string(font, Vector2(-60.0, -36.0), "E — Parler",
+						HORIZONTAL_ALIGNMENT_CENTER, 120, 13, Color(0.0, 0.0, 0.0, 0.7))
+				draw_string(font, Vector2(-61.0, -37.0), "E — Parler",
+						HORIZONTAL_ALIGNMENT_CENTER, 120, 13, Color(1.0, 0.88, 0.45))
+			elif show_label:
+				draw_string(font, Vector2(-60.0, -34.0), label,
+						HORIZONTAL_ALIGNMENT_CENTER, 120, 12, Color(0.0, 0.0, 0.0, 0.7))
+				draw_string(font, Vector2(-61.0, -35.0), label,
+						HORIZONTAL_ALIGNMENT_CENTER, 120, 12, Color(0.80, 0.95, 0.85))
+			return
 		if kind != "foe":
 			return
-		var font := ThemeDB.fallback_font
 		var s := 0.85 + 0.18 * float(tier)
 		if chasing:
 			draw_string(font, Vector2(-4.0, -30.0 * s - 6.0), "!",
