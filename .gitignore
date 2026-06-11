@@ -10,3 +10,4 @@ CaptureShot.gd
 CaptureShot.tscn
 shot.png
 shot.png.import
+build/
