@@ -330,7 +330,7 @@ func _show_moves(unit: Node) -> void:
 	grid.heal_cells = []
 	grid.skill_cells = []
 	_refresh_skill_bar()
-	grid.queue_redraw()
+	grid.refresh_highlights()
 
 
 func _enter_action_phase() -> void:
@@ -345,7 +345,7 @@ func _enter_action_phase() -> void:
 		grid.target_cells = _action_targets(active_unit)
 		grid.heal_cells = []
 	_refresh_skill_bar()
-	grid.queue_redraw()
+	grid.refresh_highlights()
 
 
 # Met à jour la barre de 3 carrés selon l'unité active et la phase. Chaque carré
@@ -488,7 +488,7 @@ func _enter_skill_phase() -> void:
 	grid.heal_cells = []
 	grid.skill_cells = _skill_targets(active_unit, selected_skill)
 	_refresh_skill_bar()
-	grid.queue_redraw()
+	grid.refresh_highlights()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -497,7 +497,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		var hc: Vector2i = grid.local_to_cell(grid.to_local(get_global_mouse_position()))
 		if hc != grid.hover_cell:
 			grid.hover_cell = hc
-			grid.queue_redraw()
+			grid.refresh_highlights()
 			_update_terrain_hint(hc)  # seulement au changement de case (perf)
 		return
 	if _finished or active_unit == null or not active_unit.is_player():
@@ -659,7 +659,7 @@ func _end_turn() -> void:
 	grid.skill_cells = []
 	phase = "idle"
 	_refresh_skill_bar()
-	grid.queue_redraw()
+	grid.refresh_highlights()
 	if _check_end():
 		return
 	turn_manager.next_turn()
