@@ -441,6 +441,12 @@ Ordre de priorité (✅ = fait) :
     context lost », même après les culling v1/v2). Sur le Web UNIQUEMENT, le jeu
     est rendu dans un viewport 832×704 puis étiré par l'écran (image plus douce,
     gameplay/desktop inchangés — le PC garde `canvas_items`).
+68. ✅ **Perf Web v4 — stabilité combat de campagne** : crash à l'approche des
+    ennemis = les **figures de campagne** (loup/rôdeur/boss, `Unit._process`)
+    se redessinaient à 60 i/s en combat (vecteurs re-générés à chaque image).
+    → redessin **15 i/s** comme l'Overworld. + **`Engine.max_fps = 30` sur le
+    Web** (`GameData._ready`, `OS.has_feature("web")`) et bois moins dense
+    (90 sapins au lieu de 150). Gameplay inchangé.
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`

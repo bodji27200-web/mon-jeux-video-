@@ -78,8 +78,13 @@ func _process(delta: float) -> void:
 	if not is_alive():
 		return
 	if data.has("figure"):
+		# Figures de campagne : animation continue mais redessin à 15 i/s
+		# seulement (60 redraws/s de vecteurs = trop pour le navigateur Xbox).
 		_anim_phase += delta
-		queue_redraw()
+		_anim_t += delta
+		if _anim_t >= 1.0 / 15.0:
+			_anim_t = 0.0
+			queue_redraw()
 		return
 	if not SPRITES.has(class_id):
 		return

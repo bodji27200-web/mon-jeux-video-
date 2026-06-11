@@ -290,7 +290,8 @@ func _build_world() -> void:
 		_foe_spawns.append({"id": f.id, "name": f.name, "tier": f.tier,
 				"team": f.team, "hue": f.hue, "pos": pos})
 	# Sapins du bois (clairières autour des ennemis + couloir du sentier préservés).
-	for i in 150:
+	# 90 essais (et pas plus) : le bois reste dense mais le navigateur respire.
+	for i in 90:
 		var x := _rng.randi_range(FOREST_X, MAP_W - 2)
 		var y := _rng.randi_range(1, MAP_H - 2)
 		var c := Vector2i(x, y)
