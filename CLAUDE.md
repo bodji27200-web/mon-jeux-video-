@@ -411,6 +411,15 @@ Ordre de priorité (✅ = fait) :
     (`Overworld._start_battle` construit `player_team` + `campaign_battle_names`,
     noms affichés par unité). Le boss devient atteignable en équipe — dur,
     comme voulu.
+64. ✅ **Export Web automatique** (`.github/workflows/web.yml`,
+    `export_presets.cfg`, rendu `gl_compatibility` requis pour le Web) : chaque
+    push sur `main` construit le jeu en HTML5 (Godot 4.3 headless, preset Web
+    **sans threads** → aucun en-tête COOP/COEP requis) et le déploie sur
+    **GitHub Pages** (`https://bodji27200-web.github.io/mon-jeux-video-/`) +
+    artefact zip `jeu-web-itchio` (plan B itch.io privé). ⚠ Pages ne
+    fonctionne que si le dépôt est **public** (le job deploy est en
+    `continue-on-error` tant que c'est privé). Jouable Xbox/téléphone via
+    navigateur (clavier+souris sur Xbox Edge).
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`
