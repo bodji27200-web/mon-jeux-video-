@@ -428,6 +428,13 @@ Ordre de priorité (✅ = fait) :
     pour suivre le joueur, décors masqués via `visible`. Gameplay 100 % inchangé
     (coords, collisions, IA). Déployé sur GitHub Pages (public) :
     https://bodji27200-web.github.io/mon-jeux-video-/
+66. ✅ **Perf Overworld v2 (lags navigateur)** : le culling v1 redessinait le sol
+    À CHAQUE image (CPU wasm saturé). Refonte : **sol en blocs statiques**
+    (`GroundChunk`, 8×8 tuiles, dessinés UNE fois → cache GPU, ~13/30 visibles),
+    **culling périodique** (`_refresh_culling` toutes les 0,12 s : chunks,
+    décors, rôdeurs, PNJ via `visible`), **animations Walker à 15 i/s**
+    (`REDRAW_DT`, rien si hors écran). Le nœud racine ne dessine plus que
+    l'ombre + le socle, une fois. Gameplay 100 % inchangé.
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`
