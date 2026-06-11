@@ -56,6 +56,7 @@ var summoner: Node = null
 var _active := false
 var _frame := 0          # frame d'animation idle courante
 var _anim_t := 0.0
+var _anim_phase := 0.0   # phase continue (figures de campagne, animation fluide)
 var _move_tween: Tween   # glissement de déplacement en cours (cosmétique)
 
 
@@ -65,14 +66,21 @@ func _ready() -> void:
 	data = GameData.CLASSES[class_id]
 	hp = data.max_hp
 	_frame = randi() % SPRITE_FRAMES  # désynchronise l'animation entre unités
+	_anim_phase = randf() * TAU
 	skill_cds.resize(get_actives().size())
 	skill_cds.fill(0)
 	_refresh_position()
 
 
-# Animation idle : fait défiler doucement les 4 frames du sprite.
+# Animation idle : frames du sprite, ou phase continue pour les figures dessinées.
 func _process(delta: float) -> void:
-	if not SPRITES.has(class_id) or not is_alive():
+	if not is_alive():
+		return
+	if data.has("figure"):
+		_anim_phase += delta
+		queue_redraw()
+		return
+	if not SPRITES.has(class_id):
 		return
 	_anim_t += delta
 	if _anim_t >= SPRITE_ANIM_SPEED:
@@ -338,14 +346,18 @@ func _draw() -> void:
 
 	# --- Anneau de sol : couleur du camp (doré quand c'est son tour) ---
 	# Centré sur le losange de la case (l'unité "tient" sur sa case).
+	# Les boss de campagne ont un anneau élargi (présence).
 	var ring_col: Color = Color(1.0, 0.9, 0.35) if _active else team_tint
-	_draw_ellipse(Vector2(0, 4), 25.0, 12.0, Color(ring_col, 0.20))
-	_draw_ellipse_outline(Vector2(0, 4), 26.0, 12.5, Color(ring_col, 0.95), 3.0 if _active else 2.0)
+	var ring_s := 1.3 if data.get("boss", false) else 1.0
+	_draw_ellipse(Vector2(0, 4), 25.0 * ring_s, 12.0 * ring_s, Color(ring_col, 0.20))
+	_draw_ellipse_outline(Vector2(0, 4), 26.0 * ring_s, 12.5 * ring_s, Color(ring_col, 0.95), 3.0 if _active else 2.0)
 	# Ombre de contact sous les pieds.
-	_draw_ellipse(Vector2(0, 6), 16.0, 6.0, Color(0, 0, 0, 0.30))
+	_draw_ellipse(Vector2(0, 6), 16.0 * ring_s, 6.0 * ring_s, Color(0, 0, 0, 0.30))
 
-	# --- Personnage : sprite du pack si dispo, sinon figurine vectorielle ---
-	if SPRITES.has(class_id):
+	# --- Personnage : figure de campagne dessinée, sprite, ou figurine repli ---
+	if data.has("figure"):
+		_draw_figure(str(data.figure))
+	elif SPRITES.has(class_id):
 		_draw_sprite()
 	else:
 		draw_set_transform(Vector2(0, -11))  # cale les pieds de la figurine sur l'anneau
@@ -354,7 +366,7 @@ func _draw() -> void:
 
 	# --- Barre de vie (verte / jaune / rouge selon les PV) ---
 	var ratio := clampf(float(hp) / float(data.max_hp), 0.0, 1.0)
-	var bar_y := -46.0
+	var bar_y := -74.0 if data.get("boss", false) else -46.0
 	draw_rect(Rect2(-RADIUS, bar_y, RADIUS * 2.0, 5), Color(0.15, 0.0, 0.0))
 	var hp_col := Color(0.20, 0.85, 0.25)
 	if ratio < 0.3:
@@ -501,3 +513,136 @@ func _draw_ellipse_outline(center: Vector2, rx: float, ry: float, color: Color, 
 		var a := TAU * i / 22.0
 		pts.append(center + Vector2(cos(a) * rx, sin(a) * ry))
 	draw_polyline(pts, color, width)
+
+
+# --- Figures de campagne : ennemis dessinés à la main par code (aucun sprite).
+# Animées en continu via _anim_phase. Pieds calés sur l'anneau de sol (y = 6).
+
+func _draw_figure(kind: String) -> void:
+	match kind:
+		"loup":
+			_draw_figure_loup()
+		"rodeur":
+			_draw_figure_rodeur()
+		"veilleur":
+			_draw_figure_veilleur()
+
+
+# Loup des Murmures : prédateur gris-bleu de profil, respiration, œil luisant.
+func _draw_figure_loup() -> void:
+	var bob := sin(_anim_phase * 2.8) * 1.2
+	var fur := Color(0.36, 0.40, 0.48)
+	var fur_d := fur.darkened(0.45)
+	# Pattes (légèrement écartées vers l'extérieur).
+	for lx in [-11.0, -6.0, 7.0, 12.0]:
+		var fx: float = lx
+		draw_line(Vector2(fx, -8.0), Vector2(fx + (1.2 if fx > 0.0 else -1.2), 5.0), fur_d, 3.0)
+	# Queue relevée.
+	draw_line(Vector2(14, -13 + bob * 0.3), Vector2(22, -20 + bob), fur_d, 3.5)
+	# Corps + poitrail clair.
+	_draw_ellipse(Vector2(1, -11 + bob * 0.5), 15.0, 7.5, fur)
+	_draw_ellipse(Vector2(-8, -12 + bob * 0.5), 8.0, 7.0, fur.lightened(0.08))
+	# Tête + museau (tournés vers la gauche, face au joueur).
+	var hy := -19.0 + bob
+	draw_circle(Vector2(-14, hy), 6.0, fur.lightened(0.10))
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(-18, hy - 2.5), Vector2(-26, hy + 1.0), Vector2(-17, hy + 3.5)]), fur)
+	draw_circle(Vector2(-25.0, hy + 0.6), 1.3, Color(0.08, 0.08, 0.10))  # truffe
+	# Oreilles dressées.
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(-16, hy - 5), Vector2(-13, hy - 12), Vector2(-10, hy - 5)]), fur_d)
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(-10, hy - 5), Vector2(-7, hy - 11), Vector2(-5, hy - 4)]), fur)
+	# Œil luisant (halo + cœur).
+	draw_circle(Vector2(-16, hy - 1), 2.2, Color(1.0, 0.75, 0.25, 0.45))
+	draw_circle(Vector2(-16, hy - 1), 1.1, Color(1.0, 0.85, 0.40))
+
+
+# Rôdeur masqué : silhouette voûtée en haillons, masque d'os, dague au poing.
+func _draw_figure_rodeur() -> void:
+	var sway := sin(_anim_phase * 2.2) * 1.0
+	var cloth := Color(0.30, 0.26, 0.22)
+	var cloth_d := cloth.darkened(0.40)
+	# Cape en haillons (ourlet déchiqueté, épaules qui respirent).
+	var pts := PackedVector2Array([
+		Vector2(-8 + sway, -26), Vector2(8 + sway, -26),
+		Vector2(13, 6), Vector2(8, 2), Vector2(4, 6), Vector2(0, 2),
+		Vector2(-4, 6), Vector2(-8, 2), Vector2(-13, 6)])
+	draw_colored_polygon(pts, cloth)
+	# Ceinture de corde.
+	draw_line(Vector2(-9 + sway * 0.6, -10), Vector2(9 + sway * 0.6, -10),
+			Color(0.52, 0.42, 0.26), 2.0)
+	# Capuche (penchée en avant) + masque d'os pâle, fentes sombres.
+	var hx := sway * 0.8
+	draw_circle(Vector2(hx, -29), 7.5, cloth_d)
+	_draw_ellipse(Vector2(hx - 1.0, -27.5), 4.0, 5.0, Color(0.86, 0.82, 0.70))
+	draw_line(Vector2(hx - 3.0, -29), Vector2(hx - 1.5, -28), Color(0.10, 0.08, 0.08), 1.8)
+	draw_line(Vector2(hx + 1.0, -29), Vector2(hx + 2.5, -28), Color(0.10, 0.08, 0.08), 1.8)
+	draw_line(Vector2(hx - 1.0, -25.5), Vector2(hx - 1.0, -23.5), Color(0.10, 0.08, 0.08), 1.4)
+	# Dague (lame + reflet).
+	draw_line(Vector2(11, -8), Vector2(18, -1), Color(0.78, 0.80, 0.86), 2.6)
+	draw_line(Vector2(11, -8), Vector2(18, -1), Color(1, 1, 1, 0.45), 1.0)
+
+
+# BOSS — Le Veilleur des Murmures : grand spectre cornu, voile d'ombre ondulant,
+# yeux et rune luisants, braises violettes en orbite. Volontairement imposant.
+func _draw_figure_veilleur() -> void:
+	var t := _anim_phase
+	var breathe := sin(t * 1.6) * 1.8
+	var robe := Color(0.16, 0.10, 0.24)
+	var robe_d := robe.darkened(0.35)
+	var glow := Color(0.72, 0.45, 1.0)
+	# Brume au sol (pulse lente).
+	_draw_ellipse(Vector2(0, 4), 26.0 + sin(t * 2.0) * 2.0, 9.0, Color(0.30, 0.16, 0.45, 0.25))
+	# Braises arrière (derrière le corps).
+	_draw_veilleur_embers(t, false)
+	# Voile d'ombre : épaules hautes, ourlet qui ondule en continu.
+	var top_y := -52.0 + breathe
+	var pts := PackedVector2Array([
+		Vector2(-14, top_y + 10), Vector2(0, top_y + 4), Vector2(14, top_y + 10),
+		Vector2(20, -16)])
+	for i in 9:
+		var ox := 20.0 - 40.0 * float(i) / 8.0
+		pts.append(Vector2(ox, 5.0 + sin(t * 3.0 + float(i) * 1.3) * 2.2))
+	pts.append(Vector2(-20, -16))
+	draw_colored_polygon(pts, robe)
+	# Pan d'ombre intérieur (profondeur).
+	_draw_ellipse(Vector2(0, -22 + breathe * 0.5), 11.0, 16.0, robe_d)
+	# Rune de poitrine : losange luisant qui pulse.
+	var rc := Vector2(0, -26 + breathe * 0.5)
+	var ra := 0.55 + 0.35 * sin(t * 2.4)
+	draw_colored_polygon(PackedVector2Array([
+		rc + Vector2(0, -5), rc + Vector2(4, 0), rc + Vector2(0, 5), rc + Vector2(-4, 0)]),
+		Color(glow, ra))
+	# Tête : orbe d'ombre + yeux luisants (halo puis cœur).
+	var hc := Vector2(0, top_y - 2.0)
+	draw_circle(hc, 8.5, Color(0.10, 0.06, 0.16))
+	for s in [-1.0, 1.0]:
+		var e: Vector2 = hc + Vector2(3.4 * s, -0.5)
+		draw_circle(e, 2.6, Color(glow, 0.45))
+		draw_circle(e, 1.2, glow.lightened(0.30))
+	# Ramure : bois noueux symétriques (branches + fourches).
+	var bone := Color(0.76, 0.70, 0.60)
+	for s in [-1.0, 1.0]:
+		var a: Vector2 = hc + Vector2(5.0 * s, -6.0)
+		var m: Vector2 = a + Vector2(5.0 * s, -7.0)
+		var top: Vector2 = a + Vector2(7.0 * s, -15.0)
+		draw_polyline(PackedVector2Array([a, m, top]), bone, 2.6)
+		draw_line(m, m + Vector2(6.0 * s, -2.0), bone, 2.0)
+		draw_line(top, top + Vector2(3.0 * s, -5.0), bone, 1.8)
+		draw_line(top, top + Vector2(-2.0 * s, -4.0), bone, 1.6)
+	# Braises avant (devant le corps).
+	_draw_veilleur_embers(t, true)
+
+
+# Braises en orbite autour du Veilleur ; `front` = moitié avant (sin > 0).
+func _draw_veilleur_embers(t: float, front: bool) -> void:
+	var glow := Color(0.72, 0.45, 1.0)
+	for i in 4:
+		var ph := t * 1.4 + TAU * float(i) / 4.0
+		if (sin(ph) > 0.0) != front:
+			continue
+		var p := Vector2(cos(ph) * 24.0, -24.0 + sin(ph) * 7.0)
+		var ea := 0.45 + 0.30 * sin(t * 3.0 + float(i) * 1.7)
+		draw_circle(p, 2.6, Color(glow, ea * 0.5))
+		draw_circle(p, 1.2, Color(0.95, 0.85, 1.0, ea))

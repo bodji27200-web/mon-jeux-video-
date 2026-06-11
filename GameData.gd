@@ -400,6 +400,41 @@ const CLASSES := {
 		],
 		"skills": [],
 	},
+	# --- Ennemis de CAMPAGNE (hidden : jamais dans le draft ni la Partie rapide).
+	# Pas des « classes » : de vraies créatures, dessinées 100 % à la main par code
+	# (Unit._draw_figure_*, champ "figure"). "boss": true = présenté seul, en grand.
+	"loup_murmures": {
+		"name": "Loup des Murmures", "color": Color(0.40, 0.44, 0.52), "symbol": "w",
+		"description": "Prédateur du bois. Rapide, frappe au contact et chasse les isolés.",
+		"max_hp": 20, "move_range": 5, "attack": 8, "attack_range": 1,
+		"crit_chance": 0.15, "behavior": "melee", "role": "melee",
+		"hidden": true, "figure": "loup",
+		"skills": [],
+	},
+	"rodeur_sombre": {
+		"name": "Rôdeur masqué", "color": Color(0.46, 0.38, 0.28), "symbol": "r",
+		"description": "Brigand au masque d'os. Harcèle à distance, flèches empoisonnées.",
+		"max_hp": 18, "move_range": 4, "attack": 9, "attack_range": 3,
+		"crit_chance": 0.15, "behavior": "kite", "on_hit": "poison", "role": "ranged",
+		"hidden": true, "figure": "rodeur",
+		"skills": [],
+	},
+	"veilleur_murmures": {
+		"name": "Le Veilleur des Murmures", "color": Color(0.45, 0.28, 0.66), "symbol": "Ω",
+		"description": "BOSS. L'esprit cornu qui règne sur le Bois des Murmures. Il combat seul — et ça suffit.",
+		"max_hp": 115, "move_range": 4, "attack": 15, "attack_range": 1,
+		"crit_chance": 0.15, "behavior": "melee", "role": "melee",
+		"hidden": true, "figure": "veilleur", "boss": true,
+		"actives": [
+			{"name": "Étreinte des ronces", "type": "cleave", "target": "enemy", "radius": 1, "dmg_mult": 1.0, "range": 1, "cooldown": 3,
+				"desc": "Fauche la cible et tous ses voisins de ronces acérées. Recharge : 3 tours."},
+			{"name": "Bond d'ombre", "type": "teleport_strike", "target": "enemy", "range": 4, "cooldown": 3,
+				"desc": "Fond sur une proie jusqu'à 4 cases et la frappe. Recharge : 3 tours."},
+			{"name": "Furie du bois", "type": "self_buff", "target": "self", "buff": "rage", "cooldown": 4,
+				"desc": "Le bois s'éveille : +50% de dégâts mais +25% subis (2 tours). Recharge : 4 tours."},
+		],
+		"skills": [],
+	},
 }
 
 # Difficultés (les effets sont appliqués à l'étape 9 dans l'IA et les dégâts).
