@@ -341,6 +341,17 @@ Ordre de priorité (✅ = fait) :
     `GameData.campaign_difficulty`, appliqué aux combats dans
     `Overworld._start_battle`). En **Hardcore uniquement** (façon BG3) : défaite
     totale = campagne effacée (position + vaincus, `Battle._check_end`).
+58. ✅ **Vrais ennemis de campagne dessinés à la main** (demande forte : plus
+    AUCUNE classe/sprite du JcJ dans les combats de campagne) : 3 créatures
+    `hidden` dans `CLASSES` avec champ `figure` → dessin vectoriel dédié animé
+    en continu (`Unit._draw_figure_*`, `_anim_phase`) : **Loup des Murmures**
+    (mêlée rapide), **Rôdeur masqué** (distance + poison, masque d'os),
+    **Le Veilleur des Murmures** (BOSS, `boss: true` = anneau élargi + barre de
+    vie remontée) : spectre cornu animé (voile ondulant, ramure, yeux/rune
+    luisants, braises en orbite), 115 PV, Étreinte des ronces (cleave) +
+    Bond d'ombre (teleport_strike) + Furie du bois (rage). Règle posée : **un
+    boss combat SEUL** (équipe de 1) — jamais accompagné. `Overworld.FOES`
+    mis à jour (loup seul / meute / boss).
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`

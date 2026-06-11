@@ -36,12 +36,13 @@ const PLAYER_TEAM := ["tank", "archer", "soigneur"]
 # Ennemis qui rôdent dans le bois, posés le long du sentier (px = colonne,
 # dy = écart au sentier). Plus px est grand, plus on est profond, plus c'est fort.
 const FOES := [
-	{"id": "maraudeur", "name": "Maraudeur", "px": 28.0, "dy": -1.2, "tier": 1,
-	 "team": ["berserker"], "hue": Color(0.62, 0.36, 0.18)},
-	{"id": "eclaireurs", "name": "Éclaireurs brigands", "px": 34.0, "dy": 1.4, "tier": 2,
-	 "team": ["archer", "berserker"], "hue": Color(0.52, 0.20, 0.26)},
-	{"id": "chef_brigands", "name": "Chef des brigands", "px": 41.0, "dy": 0.0, "tier": 3,
-	 "team": ["tank", "mage", "archer"], "hue": Color(0.30, 0.14, 0.42)},
+	{"id": "loup_solitaire", "name": "Loup des Murmures", "px": 28.0, "dy": -1.2, "tier": 1,
+	 "team": ["loup_murmures"], "hue": Color(0.40, 0.44, 0.52)},
+	{"id": "rodeurs_bois", "name": "Rôdeurs du bois", "px": 34.0, "dy": 1.4, "tier": 2,
+	 "team": ["rodeur_sombre", "loup_murmures"], "hue": Color(0.46, 0.34, 0.24)},
+	# Le boss est SEUL dans son combat : UN Veilleur, pas une équipe.
+	{"id": "veilleur", "name": "Le Veilleur des Murmures", "px": 41.0, "dy": 0.0, "tier": 3,
+	 "team": ["veilleur_murmures"], "hue": Color(0.45, 0.28, 0.66)},
 ]
 
 # Damier de sol 2 tons par type de terrain (style diorama du jeu).
