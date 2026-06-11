@@ -41,6 +41,12 @@ risquée, la plus facile à étendre**. Éviter la sur-ingénierie.
 > départ, MAIS on ne code pas de systèmes entiers (buffs, 20 classes…) tant
 > qu'ils ne sont pas à l'ordre du jour.
 
+### Git / livraison (demande permanente de l'utilisateur)
+- Après chaque fonctionnalité terminée : pousser la branche de travail PUIS
+  **fusionner aussitôt dans `main` et pousser `main`**, sans redemander.
+  Raison : le jeu est récupéré par `git pull` sur `main` sur plusieurs PC
+  (dont celui d'Eline) — si `main` n'est pas à jour, rien n'apparaît.
+
 ---
 
 ## Le projet : RPG Tactique Dark Fantasy
@@ -330,6 +336,11 @@ Ordre de priorité (✅ = fait) :
     minimaux : `Battle._campaign_won` (fin de combat) + `Title._on_campaign`.
     Phases suivantes prévues (une à la fois, sur demande) : dialogues à
     conséquences, compagnons, réputation, boss à mécaniques, autres mondes.
+57. ✅ **Difficulté de campagne + mort permanente Hardcore** : nouvelle campagne →
+    panneau de choix de difficulté (`Title._build_difficulty`, persisté
+    `GameData.campaign_difficulty`, appliqué aux combats dans
+    `Overworld._start_battle`). En **Hardcore uniquement** (façon BG3) : défaite
+    totale = campagne effacée (position + vaincus, `Battle._check_end`).
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`

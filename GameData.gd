@@ -498,6 +498,8 @@ var campaign_battle := false         # le combat en cours vient de la campagne
 var campaign_enemy_id := ""          # ennemi d'overworld affronté
 var campaign_pos := Vector2(-1, -1)  # position du joueur (en tuiles), -1 = départ
 var campaign_defeated: Array = []    # ids des ennemis d'overworld vaincus
+var campaign_difficulty := "normal"  # choisie au début de la campagne ;
+                                     # hardcore = mort de l'équipe → campagne effacée
 
 
 func _ready() -> void:
@@ -542,6 +544,7 @@ func save_settings() -> void:
 	cfg.set_value("progress", "wins", wins)
 	cfg.set_value("campaign", "pos", campaign_pos)
 	cfg.set_value("campaign", "defeated", campaign_defeated)
+	cfg.set_value("campaign", "difficulty", campaign_difficulty)
 	cfg.save(SETTINGS_PATH)
 
 
@@ -559,3 +562,4 @@ func load_settings() -> void:
 	wins = int(cfg.get_value("progress", "wins", 0))
 	campaign_pos = cfg.get_value("campaign", "pos", Vector2(-1, -1))
 	campaign_defeated = cfg.get_value("campaign", "defeated", [])
+	campaign_difficulty = str(cfg.get_value("campaign", "difficulty", "normal"))

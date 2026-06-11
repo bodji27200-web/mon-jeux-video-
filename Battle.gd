@@ -601,6 +601,12 @@ func _check_end() -> bool:
 			if p and not GameData.campaign_defeated.has(GameData.campaign_enemy_id):
 				GameData.campaign_defeated.append(GameData.campaign_enemy_id)
 				GameData.save_settings()
+			elif not p and GameData.campaign_difficulty == "hardcore":
+				# Hardcore : la mort de l'équipe efface la campagne (mort permanente).
+				GameData.campaign_pos = Vector2(-1, -1)
+				GameData.campaign_defeated = []
+				GameData.save_settings()
+				stats_label.text += "\n\n☠ Hardcore : campagne perdue, progression effacée."
 		replay_button.visible = true
 		return true
 	return false

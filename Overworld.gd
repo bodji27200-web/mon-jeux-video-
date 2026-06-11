@@ -396,6 +396,7 @@ func _start_battle(foe: Walker) -> void:
 	GameData.campaign_enemy_id = foe.foe_id
 	GameData.player_team = PLAYER_TEAM.duplicate()
 	GameData.ai_team = foe.team.duplicate()
+	GameData.difficulty = GameData.campaign_difficulty
 	GameData.save_settings()
 	Audio.play_sfx("skill")
 	_fade.color = Color(0.45, 0.25, 0.75, 0.0)
