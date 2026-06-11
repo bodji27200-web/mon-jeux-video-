@@ -15,6 +15,11 @@ const HALF_W := TILE_W / 2.0
 const HALF_H := TILE_H / 2.0
 const EDGE_DEPTH := 30.0  # socle du diorama (parois sous les bords de la carte)
 
+# Culling : on ne dessine que les cases/décors proches de la caméra. Sinon
+# ~1500 cases + ~200 décors sont rendus à CHAQUE image → le GPU du navigateur
+# sature et lâche (« WebGL context lost »). Demi-fenêtre + marge (caméra zoom 1).
+const VIEW_HALF := Vector2(485.0, 435.0)
+
 const MAP_W := 44
 const MAP_H := 34
 const WORLD_SEED := 20260610  # monde déterministe : identique à chaque visite
@@ -197,6 +202,7 @@ var _player: Walker
 var _foes: Array = []
 var _npcs: Array = []
 var _party: Array = []  # Walkers des compagnons (suivent le héros en file)
+var _decor_nodes: Array = []  # tous les décors (pour le culling à l'écran)
 var _fade: ColorRect
 var _zone_label: Label
 var _zone_current := ""
@@ -350,6 +356,7 @@ func _build_nodes() -> void:
 		n.scale = Vector2(d.scale, d.scale)
 		n.position = map_to_world(d.pos)
 		_entities.add_child(n)
+		_decor_nodes.append(n)
 	# Maisons (décor dessiné, posé au coin sud du bloc 2×2).
 	for h in [Vector2i(5, 5), Vector2i(10, 5), Vector2i(5, 10)]:
 		var n := Decor.new()
@@ -357,6 +364,7 @@ func _build_nodes() -> void:
 		n.seed_v = float(h.x) * 0.17
 		n.position = map_to_world(Vector2(h) + Vector2(1.0, 1.9))
 		_entities.add_child(n)
+		_decor_nodes.append(n)
 	# Joueur (reprend la position sauvegardée si elle est valide).
 	_player = Walker.new()
 	_player.kind = "player"
@@ -483,6 +491,12 @@ func _process(delta: float) -> void:
 		w.position = map_to_world(w.mpos)
 	_camera.position = _player.position - Vector2(0.0, 14.0)
 	_update_zone()
+	# Culling : masque les décors hors écran et redessine le sol autour de la
+	# caméra (le sol suit alors le joueur sans tout rendre d'un coup).
+	var vr := _visible_rect()
+	for n in _decor_nodes:
+		n.visible = vr.has_point(n.position)
+	queue_redraw()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -826,14 +840,24 @@ func _tile_points(cell: Vector2i) -> PackedVector2Array:
 		c + Vector2(0.0, HALF_H), c + Vector2(-HALF_W, 0.0)])
 
 
+# Rectangle monde visible par la caméra (+ marge), pour le culling.
+func _visible_rect() -> Rect2:
+	var c: Vector2 = _camera.position if _camera else map_to_world(_player.mpos)
+	return Rect2(c - VIEW_HALF, VIEW_HALF * 2.0)
+
+
 func _draw() -> void:
 	if _ground.is_empty():  # redirection vers la création de perso : rien à dessiner
 		return
+	var vr := _visible_rect()
 	_draw_drop_shadow()
-	_draw_edge_walls()
+	_draw_edge_walls(vr)
 	for y in MAP_H:
 		for x in MAP_W:
 			var cell := Vector2i(x, y)
+			var center := map_to_world(Vector2(cell) + Vector2(0.5, 0.5))
+			if not vr.has_point(center):  # hors écran : on ne dessine pas
+				continue
 			var pts := _tile_points(cell)
 			draw_colored_polygon(pts, _tile_color(cell))
 			var closed := pts.duplicate()
@@ -864,16 +888,18 @@ func _draw_drop_shadow() -> void:
 		draw_colored_polygon(pts, Color(0.0, 0.0, 0.0, i[1]))
 
 
-func _draw_edge_walls() -> void:
+func _draw_edge_walls(vr: Rect2) -> void:
 	var down := Vector2(0.0, EDGE_DEPTH)
 	for x in MAP_W:
 		var pts := _tile_points(Vector2i(x, MAP_H - 1))
-		draw_colored_polygon(PackedVector2Array([
-			pts[3], pts[2], pts[2] + down, pts[3] + down]), COLOR_WALL_L)
+		if vr.has_point(pts[2]):
+			draw_colored_polygon(PackedVector2Array([
+				pts[3], pts[2], pts[2] + down, pts[3] + down]), COLOR_WALL_L)
 	for y in MAP_H:
 		var pts := _tile_points(Vector2i(MAP_W - 1, y))
-		draw_colored_polygon(PackedVector2Array([
-			pts[2], pts[1], pts[1] + down, pts[2] + down]), COLOR_WALL_R)
+		if vr.has_point(pts[2]):
+			draw_colored_polygon(PackedVector2Array([
+				pts[2], pts[1], pts[1] + down, pts[2] + down]), COLOR_WALL_R)
 
 
 # =====================================================================
