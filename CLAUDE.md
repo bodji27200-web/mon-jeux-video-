@@ -41,6 +41,12 @@ risquée, la plus facile à étendre**. Éviter la sur-ingénierie.
 > départ, MAIS on ne code pas de systèmes entiers (buffs, 20 classes…) tant
 > qu'ils ne sont pas à l'ordre du jour.
 
+### Git / livraison (demande permanente de l'utilisateur)
+- Après chaque fonctionnalité terminée : pousser la branche de travail PUIS
+  **fusionner aussitôt dans `main` et pousser `main`**, sans redemander.
+  Raison : le jeu est récupéré par `git pull` sur `main` sur plusieurs PC
+  (dont celui d'Eline) — si `main` n'est pas à jour, rien n'apparaît.
+
 ---
 
 ## Le projet : RPG Tactique Dark Fantasy
@@ -316,6 +322,25 @@ Ordre de priorité (✅ = fait) :
     remplace la grille bleue), **micro-variation de teinte par case**
     (déterministe, `_top_color`). Palette chargée à chaque `_draw`
     (`_load_palette`). Rendu seul, gameplay/clics inchangés.
+56. ✅ **Mode histoire — phase 1 : exploration libre** (`Overworld.gd/.tscn`) :
+    bouton **Campagne** au menu titre (la Partie rapide reste intacte). Région 1
+    « Vallée de Bruyère » en diorama iso : déplacement **continu** ZQSD/WASD/flèches
+    (aucune case hors combat), hameau + prairie + étang + **Bois des Murmures**
+    (zone des ennemis à l'est : plus on s'enfonce, plus c'est fort — 3 rôdeurs).
+    Visuels d'exploration **dédiés** (vectoriels animés : marche, cape, yeux
+    luisants, « ! » de poursuite), distincts du combat. Contact ennemi =
+    transition « dimension de combat » (fondu violet + zoom) vers la scène de
+    combat **inchangée** ; victoire → retour au monde, ennemi disparu à jamais ;
+    défaite → menu. Équipe campagne v1 fixe (tank/archer/soigneur). Position +
+    vaincus persistés (`GameData.campaign_*`, section `[campaign]`). Hooks
+    minimaux : `Battle._campaign_won` (fin de combat) + `Title._on_campaign`.
+    Phases suivantes prévues (une à la fois, sur demande) : dialogues à
+    conséquences, compagnons, réputation, boss à mécaniques, autres mondes.
+57. ✅ **Difficulté de campagne + mort permanente Hardcore** : nouvelle campagne →
+    panneau de choix de difficulté (`Title._build_difficulty`, persisté
+    `GameData.campaign_difficulty`, appliqué aux combats dans
+    `Overworld._start_battle`). En **Hardcore uniquement** (façon BG3) : défaite
+    totale = campagne effacée (position + vaincus, `Battle._check_end`).
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`

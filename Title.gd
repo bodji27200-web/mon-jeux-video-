@@ -7,12 +7,14 @@ extends Control
 const BUS_LABELS := {"Master": "Volume général", "Music": "Musique", "SFX": "Effets"}
 
 var _settings_panel: PanelContainer
+var _difficulty_panel: PanelContainer
 
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_build_menu()
 	_build_settings()
+	_build_difficulty()
 	Audio.play_music("menu")
 
 
@@ -64,7 +66,8 @@ func _build_menu() -> void:
 	spacer.custom_minimum_size = Vector2(0, 24)
 	center.add_child(spacer)
 
-	center.add_child(_menu_button("⚔  Jouer", _on_play))
+	center.add_child(_menu_button("⚜  Campagne", _on_campaign))
+	center.add_child(_menu_button("⚔  Partie rapide", _on_play))
 	center.add_child(_menu_button("⚙  Réglages", _on_settings))
 	center.add_child(_menu_button("✕  Quitter", _on_quit))
 
@@ -145,6 +148,71 @@ func _volume_row(bus: String) -> HBoxContainer:
 	row.add_child(slider)
 	row.add_child(pct)
 	return row
+
+
+func _on_campaign() -> void:
+	# Campagne déjà commencée → on reprend directement ; sinon, choix de la
+	# difficulté d'abord (Hardcore = mort de l'équipe → campagne effacée).
+	if GameData.campaign_pos.x >= 0.0 or GameData.campaign_defeated.size() > 0:
+		get_tree().change_scene_to_file("res://Overworld.tscn")
+		return
+	_difficulty_panel.visible = true
+
+
+# --- Panneau « Nouvelle campagne » : choix de la difficulté ---
+func _build_difficulty() -> void:
+	_difficulty_panel = PanelContainer.new()
+	_difficulty_panel.anchor_left = 0.5
+	_difficulty_panel.anchor_right = 0.5
+	_difficulty_panel.anchor_top = 0.5
+	_difficulty_panel.anchor_bottom = 0.5
+	_difficulty_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_difficulty_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_difficulty_panel.custom_minimum_size = Vector2(440, 0)
+	_difficulty_panel.visible = false
+	add_child(_difficulty_panel)
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 10)
+	_difficulty_panel.add_child(vb)
+
+	var head := Label.new()
+	head.text = "Nouvelle campagne — Difficulté"
+	head.add_theme_font_size_override("font_size", 24)
+	vb.add_child(head)
+
+	var descs := {
+		"facile": "IA indulgente, idéal pour découvrir.",
+		"normal": "L'expérience équilibrée recommandée.",
+		"difficile": "IA affûtée, les erreurs coûtent cher.",
+		"hardcore": "☠ Mort de l'équipe = campagne PERDUE (progression effacée).",
+	}
+	for diff_id in ["facile", "normal", "difficile", "hardcore"]:
+		var b := Button.new()
+		b.text = "%s — %s" % [GameData.DIFFICULTIES[diff_id].name, descs[diff_id]]
+		b.custom_minimum_size = Vector2(0, 44)
+		b.focus_mode = Control.FOCUS_NONE
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		var d: String = diff_id  # capture
+		b.pressed.connect(func():
+			Audio.play_sfx("click")
+			_start_campaign(d))
+		vb.add_child(b)
+
+	var back := Button.new()
+	back.text = "Retour"
+	back.custom_minimum_size = Vector2(0, 40)
+	back.focus_mode = Control.FOCUS_NONE
+	back.pressed.connect(func():
+		Audio.play_sfx("click")
+		_difficulty_panel.visible = false)
+	vb.add_child(back)
+
+
+func _start_campaign(diff: String) -> void:
+	GameData.campaign_difficulty = diff
+	GameData.save_settings()
+	get_tree().change_scene_to_file("res://Overworld.tscn")
 
 
 func _on_play() -> void:

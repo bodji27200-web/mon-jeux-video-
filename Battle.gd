@@ -52,6 +52,7 @@ const SKILL_TYPE_CATEGORY := {
 var active_unit: Node = null
 var phase := "idle"  # "move", "attack" puis éventuellement "skill" (joueur)
 var _finished := false
+var _campaign_won := false  # issue d'un combat de campagne (retour overworld/menu)
 var skill_slots: Array = []  # boutons de la barre de compétences
 var selected_skill := -1  # index de la compétence sélectionnée (phase "skill")
 var _skill_return_phase := "attack"  # phase à restaurer si on annule une compétence
@@ -184,6 +185,12 @@ func _on_skill_hover(index: int) -> void:
 
 
 func _on_replay() -> void:
+	# Combat de campagne : retour à l'aventure (victoire) ou au menu (défaite).
+	if GameData.campaign_battle:
+		GameData.campaign_battle = false
+		get_tree().change_scene_to_file(
+				"res://Overworld.tscn" if _campaign_won else "res://Title.tscn")
+		return
 	# Relance une partie depuis l'écran de sélection (équipe + difficulté).
 	get_tree().change_scene_to_file("res://TeamSelect.tscn")
 
@@ -587,6 +594,19 @@ func _check_end() -> bool:
 		end_label.add_theme_font_size_override("font_size", 64)
 		end_label.visible = true
 		_show_stats()
+		# Combat de campagne : l'ennemi vaincu disparaît du monde, définitivement.
+		if GameData.campaign_battle:
+			_campaign_won = p
+			replay_button.text = "Continuer l'aventure" if p else "Retour au menu"
+			if p and not GameData.campaign_defeated.has(GameData.campaign_enemy_id):
+				GameData.campaign_defeated.append(GameData.campaign_enemy_id)
+				GameData.save_settings()
+			elif not p and GameData.campaign_difficulty == "hardcore":
+				# Hardcore : la mort de l'équipe efface la campagne (mort permanente).
+				GameData.campaign_pos = Vector2(-1, -1)
+				GameData.campaign_defeated = []
+				GameData.save_settings()
+				stats_label.text += "\n\n☠ Hardcore : campagne perdue, progression effacée."
 		replay_button.visible = true
 		return true
 	return false
