@@ -25,9 +25,14 @@ func _ready() -> void:
 	Audio.play_music("menu")
 
 
+var _preview_t := 0.0
 func _process(delta: float) -> void:
+	# Aperçu animé à 15 i/s (règle perf : jamais de redraw vectoriel à 60 i/s).
 	_phase += delta * 2.2
-	_preview.queue_redraw()
+	_preview_t += delta
+	if _preview_t >= 1.0 / 15.0:
+		_preview_t = 0.0
+		_preview.queue_redraw()
 
 
 func _draw() -> void:
