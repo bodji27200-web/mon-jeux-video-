@@ -296,7 +296,7 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE and not _locked:
 		GameData.campaign_pos = _player.mpos
-		GameData.save_settings()
+		GameData.save_campaign()
 		get_tree().change_scene_to_file("res://Title.tscn")
 
 
@@ -398,7 +398,7 @@ func _start_battle(foe: Walker) -> void:
 	GameData.player_team = PLAYER_TEAM.duplicate()
 	GameData.ai_team = foe.team.duplicate()
 	GameData.difficulty = GameData.campaign_difficulty
-	GameData.save_settings()
+	GameData.save_campaign()
 	Audio.play_sfx("skill")
 	_fade.color = Color(0.45, 0.25, 0.75, 0.0)
 	var tw := create_tween()

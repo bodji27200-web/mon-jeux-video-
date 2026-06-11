@@ -8,6 +8,10 @@ const BUS_LABELS := {"Master": "Volume général", "Music": "Musique", "SFX": "E
 
 var _settings_panel: PanelContainer
 var _difficulty_panel: PanelContainer
+var _campaign_panel: PanelContainer
+var _campaign_info: Label
+var _campaign_reset_btn: Button
+var _campaign_confirm := false  # 1er clic sur Recommencer = demande de confirmation
 
 
 func _ready() -> void:
@@ -15,6 +19,7 @@ func _ready() -> void:
 	_build_menu()
 	_build_settings()
 	_build_difficulty()
+	_build_campaign_panel()
 	Audio.play_music("menu")
 
 
@@ -151,11 +156,87 @@ func _volume_row(bus: String) -> HBoxContainer:
 
 
 func _on_campaign() -> void:
-	# Campagne déjà commencée → on reprend directement ; sinon, choix de la
-	# difficulté d'abord (Hardcore = mort de l'équipe → campagne effacée).
-	if GameData.campaign_pos.x >= 0.0 or GameData.campaign_defeated.size() > 0:
-		get_tree().change_scene_to_file("res://Overworld.tscn")
+	# Campagne en cours → panneau Continuer / Recommencer (avec l'horodatage de
+	# la sauvegarde) ; sinon, choix de la difficulté pour une nouvelle campagne.
+	if GameData.has_campaign():
+		_open_campaign_panel()
 		return
+	_difficulty_panel.visible = true
+
+
+# --- Panneau « Campagne en cours » : infos de sauvegarde + Continuer / Recommencer ---
+func _build_campaign_panel() -> void:
+	_campaign_panel = PanelContainer.new()
+	_campaign_panel.anchor_left = 0.5
+	_campaign_panel.anchor_right = 0.5
+	_campaign_panel.anchor_top = 0.5
+	_campaign_panel.anchor_bottom = 0.5
+	_campaign_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_campaign_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_campaign_panel.custom_minimum_size = Vector2(460, 0)
+	_campaign_panel.visible = false
+	add_child(_campaign_panel)
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 10)
+	_campaign_panel.add_child(vb)
+
+	var head := Label.new()
+	head.text = "Campagne en cours"
+	head.add_theme_font_size_override("font_size", 24)
+	vb.add_child(head)
+
+	_campaign_info = Label.new()
+	_campaign_info.add_theme_font_size_override("font_size", 17)
+	_campaign_info.add_theme_color_override("font_color", Color(0.80, 0.78, 0.70))
+	vb.add_child(_campaign_info)
+
+	var cont := Button.new()
+	cont.text = "▶  Continuer l'aventure"
+	cont.custom_minimum_size = Vector2(0, 44)
+	cont.focus_mode = Control.FOCUS_NONE
+	cont.pressed.connect(func():
+		Audio.play_sfx("click")
+		get_tree().change_scene_to_file("res://Overworld.tscn"))
+	vb.add_child(cont)
+
+	_campaign_reset_btn = Button.new()
+	_campaign_reset_btn.custom_minimum_size = Vector2(0, 44)
+	_campaign_reset_btn.focus_mode = Control.FOCUS_NONE
+	_campaign_reset_btn.pressed.connect(_on_campaign_reset)
+	vb.add_child(_campaign_reset_btn)
+
+	var back := Button.new()
+	back.text = "Retour"
+	back.custom_minimum_size = Vector2(0, 40)
+	back.focus_mode = Control.FOCUS_NONE
+	back.pressed.connect(func():
+		Audio.play_sfx("click")
+		_campaign_panel.visible = false)
+	vb.add_child(back)
+
+
+func _open_campaign_panel() -> void:
+	var diff_name := str(GameData.DIFFICULTIES.get(
+			GameData.campaign_difficulty, {}).get("name", GameData.campaign_difficulty))
+	var saved := GameData.campaign_saved_at if GameData.campaign_saved_at != "" else "date inconnue"
+	_campaign_info.text = "Difficulté : %s\nDernière sauvegarde : %s\nEnnemis vaincus : %d" % [
+			diff_name, saved, GameData.campaign_defeated.size()]
+	_campaign_confirm = false
+	_campaign_reset_btn.text = "🗑  Recommencer (efface la sauvegarde)"
+	_campaign_panel.visible = true
+
+
+# Recommencer = 2 clics : le 1er demande confirmation, le 2e efface et ouvre le
+# choix de difficulté d'une nouvelle campagne.
+func _on_campaign_reset() -> void:
+	Audio.play_sfx("click")
+	if not _campaign_confirm:
+		_campaign_confirm = true
+		_campaign_reset_btn.text = "⚠  Vraiment tout effacer ? (re-cliquer)"
+		return
+	GameData.clear_campaign()
+	_campaign_panel.visible = false
 	_difficulty_panel.visible = true
 
 
