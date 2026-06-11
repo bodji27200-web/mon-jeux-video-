@@ -19,6 +19,9 @@ const EDGE_DEPTH := 30.0  # socle du diorama (parois sous les bords de la carte)
 # ~1500 cases + ~200 décors sont rendus à CHAQUE image → le GPU du navigateur
 # sature et lâche (« WebGL context lost »). Demi-fenêtre + marge (caméra zoom 1).
 const VIEW_HALF := Vector2(485.0, 435.0)
+# Sol découpé en blocs STATIQUES de CHUNK×CHUNK tuiles : chaque bloc est dessiné
+# UNE fois puis rejoué depuis le cache GPU (zéro géométrie recalculée par image).
+const CHUNK := 8
 
 const MAP_W := 44
 const MAP_H := 34
@@ -203,6 +206,8 @@ var _foes: Array = []
 var _npcs: Array = []
 var _party: Array = []  # Walkers des compagnons (suivent le héros en file)
 var _decor_nodes: Array = []  # tous les décors (pour le culling à l'écran)
+var _chunks: Array = []       # blocs de sol statiques (culling par visibilité)
+var _cull_t := 0.0            # prochain rafraîchissement du culling (périodique)
 var _fade: ColorRect
 var _zone_label: Label
 var _zone_current := ""
@@ -345,6 +350,23 @@ func _decor_at(kind: String, cell: Vector2i) -> void:
 
 
 func _build_nodes() -> void:
+	# Sol : blocs statiques (dessinés une fois, cache GPU). Ajoutés AVANT les
+	# entités pour rester sous les personnages et décors.
+	for cy in range(0, MAP_H, CHUNK):
+		for cx in range(0, MAP_W, CHUNK):
+			var ch := GroundChunk.new()
+			ch.ow = self
+			ch.x0 = cx
+			ch.y0 = cy
+			ch.x1 = mini(cx + CHUNK, MAP_W)
+			ch.y1 = mini(cy + CHUNK, MAP_H)
+			var left: float = map_to_world(Vector2(ch.x0 + 0.5, ch.y1 - 0.5)).x - HALF_W
+			var right: float = map_to_world(Vector2(ch.x1 - 0.5, ch.y0 + 0.5)).x + HALF_W
+			var top: float = map_to_world(Vector2(ch.x0 + 0.5, ch.y0 + 0.5)).y - HALF_H
+			var bottom: float = map_to_world(Vector2(ch.x1 - 0.5, ch.y1 - 0.5)).y + HALF_H
+			ch.rect = Rect2(left, top, right - left, bottom - top)
+			add_child(ch)
+			_chunks.append(ch)
 	_entities = Node2D.new()
 	_entities.y_sort_enabled = true
 	add_child(_entities)
@@ -491,12 +513,12 @@ func _process(delta: float) -> void:
 		w.position = map_to_world(w.mpos)
 	_camera.position = _player.position - Vector2(0.0, 14.0)
 	_update_zone()
-	# Culling : masque les décors hors écran et redessine le sol autour de la
-	# caméra (le sol suit alors le joueur sans tout rendre d'un coup).
-	var vr := _visible_rect()
-	for n in _decor_nodes:
-		n.visible = vr.has_point(n.position)
-	queue_redraw()
+	# Culling périodique (8×/s suffit largement avec la marge de VIEW_HALF) :
+	# blocs de sol, décors et personnages hors écran sont masqués.
+	_cull_t -= delta
+	if _cull_t <= 0.0:
+		_cull_t = 0.12
+		_refresh_culling()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -846,23 +868,26 @@ func _visible_rect() -> Rect2:
 	return Rect2(c - VIEW_HALF, VIEW_HALF * 2.0)
 
 
+# Masque tout ce qui est hors écran. Les blocs/décors/personnages cachés ne
+# coûtent plus rien ; ceux visibles sont rejoués depuis le cache (pas de redraw).
+func _refresh_culling() -> void:
+	var vr := _visible_rect()
+	for c in _chunks:
+		c.visible = vr.intersects(c.rect)
+	for n in _decor_nodes:
+		n.visible = vr.has_point(n.position)
+	for f in _foes:
+		f.visible = vr.has_point(f.position)
+	for n in _npcs:
+		n.visible = vr.has_point(n.position)
+
+
+# Le nœud racine ne dessine plus que le statique pur (ombre + socle), UNE fois.
 func _draw() -> void:
 	if _ground.is_empty():  # redirection vers la création de perso : rien à dessiner
 		return
-	var vr := _visible_rect()
 	_draw_drop_shadow()
-	_draw_edge_walls(vr)
-	for y in MAP_H:
-		for x in MAP_W:
-			var cell := Vector2i(x, y)
-			var center := map_to_world(Vector2(cell) + Vector2(0.5, 0.5))
-			if not vr.has_point(center):  # hors écran : on ne dessine pas
-				continue
-			var pts := _tile_points(cell)
-			draw_colored_polygon(pts, _tile_color(cell))
-			var closed := pts.duplicate()
-			closed.append(pts[0])
-			draw_polyline(closed, COLOR_SEAM, 1.0)
+	_draw_edge_walls()
 
 
 func _tile_color(cell: Vector2i) -> Color:
@@ -888,18 +913,37 @@ func _draw_drop_shadow() -> void:
 		draw_colored_polygon(pts, Color(0.0, 0.0, 0.0, i[1]))
 
 
-func _draw_edge_walls(vr: Rect2) -> void:
+func _draw_edge_walls() -> void:
 	var down := Vector2(0.0, EDGE_DEPTH)
 	for x in MAP_W:
 		var pts := _tile_points(Vector2i(x, MAP_H - 1))
-		if vr.has_point(pts[2]):
-			draw_colored_polygon(PackedVector2Array([
-				pts[3], pts[2], pts[2] + down, pts[3] + down]), COLOR_WALL_L)
+		draw_colored_polygon(PackedVector2Array([
+			pts[3], pts[2], pts[2] + down, pts[3] + down]), COLOR_WALL_L)
 	for y in MAP_H:
 		var pts := _tile_points(Vector2i(MAP_W - 1, y))
-		if vr.has_point(pts[2]):
-			draw_colored_polygon(PackedVector2Array([
-				pts[2], pts[1], pts[1] + down, pts[2] + down]), COLOR_WALL_R)
+		draw_colored_polygon(PackedVector2Array([
+			pts[2], pts[1], pts[1] + down, pts[2] + down]), COLOR_WALL_R)
+
+
+# Bloc de sol statique (CHUNK×CHUNK tuiles) : dessiné UNE seule fois, le GPU
+# rejoue ensuite le cache. La visibilité est pilotée par _refresh_culling.
+class GroundChunk extends Node2D:
+	var ow: Node2D
+	var x0 := 0
+	var y0 := 0
+	var x1 := 0
+	var y1 := 0
+	var rect := Rect2()
+
+	func _draw() -> void:
+		for y in range(y0, y1):
+			for x in range(x0, x1):
+				var cell := Vector2i(x, y)
+				var pts: PackedVector2Array = ow._tile_points(cell)
+				draw_colored_polygon(pts, ow._tile_color(cell))
+				var closed := pts.duplicate()
+				closed.append(pts[0])
+				draw_polyline(closed, ow.COLOR_SEAM, 1.0)
 
 
 # =====================================================================
@@ -926,9 +970,19 @@ class Walker extends Node2D:
 	var wander_target := Vector2.ZERO
 	var wait := 0.0
 
+	# Animation à ~15 i/s (suffisant pour de petites figurines, 4× moins de
+	# redraws que 60 i/s — crucial pour le navigateur). Rien si hors écran.
+	const REDRAW_DT := 1.0 / 15.0
+	var _redraw_t := 0.0
+
 	func _process(delta: float) -> void:
 		phase += delta * (9.0 if moving else 2.2)
-		queue_redraw()
+		if not visible:
+			return
+		_redraw_t += delta
+		if _redraw_t >= REDRAW_DT:
+			_redraw_t = 0.0
+			queue_redraw()
 
 	func _draw() -> void:
 		# Ombre de contact (hors miroir, elle est symétrique).
