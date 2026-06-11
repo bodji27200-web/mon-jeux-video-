@@ -220,8 +220,13 @@ func _open_campaign_panel() -> void:
 	var diff_name := str(GameData.DIFFICULTIES.get(
 			GameData.campaign_difficulty, {}).get("name", GameData.campaign_difficulty))
 	var saved := GameData.campaign_saved_at if GameData.campaign_saved_at != "" else "date inconnue"
-	_campaign_info.text = "Difficulté : %s\nDernière sauvegarde : %s\nEnnemis vaincus : %d" % [
-			diff_name, saved, GameData.campaign_defeated.size()]
+	var hero_line := ""
+	if GameData.campaign_hero.size() > 0:
+		hero_line = "Héros : %s (%s)\n" % [str(GameData.campaign_hero.get("name", "?")),
+				str(GameData.CLASSES.get(str(GameData.campaign_hero.get("class", "")),
+						{}).get("name", "?"))]
+	_campaign_info.text = "%sDifficulté : %s\nDernière sauvegarde : %s\nEnnemis vaincus : %d" % [
+			hero_line, diff_name, saved, GameData.campaign_defeated.size()]
 	_campaign_confirm = false
 	_campaign_reset_btn.text = "🗑  Recommencer (efface la sauvegarde)"
 	_campaign_panel.visible = true
@@ -293,7 +298,8 @@ func _build_difficulty() -> void:
 func _start_campaign(diff: String) -> void:
 	GameData.campaign_difficulty = diff
 	GameData.save_settings()
-	get_tree().change_scene_to_file("res://Overworld.tscn")
+	# Nouvelle campagne : on crée d'abord SON héros (nom, sexe, apparence, classe).
+	get_tree().change_scene_to_file("res://CharacterCreate.tscn")
 
 
 func _on_play() -> void:

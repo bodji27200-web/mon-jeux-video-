@@ -46,6 +46,7 @@ const SPRITES := {
 }
 
 var data: Dictionary = {}
+var display_name := ""  # nom affiché (héros de campagne) ; vide = nom de classe
 var hp := 0
 var has_moved := false
 var has_acted := false

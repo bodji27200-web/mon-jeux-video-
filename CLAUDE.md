@@ -386,6 +386,21 @@ Ordre de priorité (✅ = fait) :
     **fiche de personnage**, **arbres de compétences** (2 choix par rangée),
     inventaire. Le déblocage par l'exploration (Garin → Lancier) alimentera la
     création de perso + compagnons.
+62. ✅ **Création de personnage façon BG3** (`CharacterCreate.gd/.tscn` +
+    `HeroFigure.gd`) : nouvelle campagne → après le choix de difficulté, écran
+    de création : **nom** (LineEdit), **sexe** (♀/♂), **apparence** (3 designs
+    par sexe — peau/coiffure, aperçu animé ×4 dessiné via `HeroFigure.draw_hero`,
+    partagé avec l'exploration), **classe** parmi les débloquées (🔒 sinon ; les
+    déblocages JcJ + exploration comptent). Héros persisté
+    (`GameData.campaign_hero`, `[campaign] hero`). La campagne se joue avec
+    **SON héros, SEUL au départ** (plus de trio fixe) : `Overworld._start_battle`
+    envoie `[classe du héros]`, le Walker joueur est dessiné selon le perso créé
+    (tunique teintée classe), l'unité porte son **nom en combat**
+    (`Unit.display_name`, lu par `TurnManager`). Combats de l'orée rééquilibrés
+    solo (loup seul, rôdeur seul) ; le boss exige une équipe (compagnons à
+    venir). Vieille sauvegarde sans héros → redirection auto vers la création
+    (`Overworld._ready`, garde `_draw`/`_ground`). Panneau « Campagne en cours »
+    affiche le héros.
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`
