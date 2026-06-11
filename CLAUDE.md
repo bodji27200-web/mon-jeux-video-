@@ -41,6 +41,18 @@ risquée, la plus facile à étendre**. Éviter la sur-ingénierie.
 > départ, MAIS on ne code pas de systèmes entiers (buffs, 20 classes…) tant
 > qu'ils ne sont pas à l'ordre du jour.
 
+### Performance (règle permanente — demande forte de l'utilisateur)
+> Cible réelle : **navigateur Edge sur Xbox Series S / TV 4K** (et téléphone).
+- **PERFORMANCE > QUALITÉ visuelle**, dans TOUT ce qui est codé. Plus jamais de
+  crash (« WebGL context lost ») ni de lags : c'est prioritaire sur le beau.
+- Jamais de `queue_redraw()` à 60 i/s : tout redessin animé est **throttlé
+  (≤ 15 i/s)** et **coupé hors écran** ; le statique est dessiné **UNE fois**
+  (cache GPU, ex : `GroundChunk`). Les labels/UI ne se mettent à jour que
+  quand leur contenu change. `Engine.max_fps = 30` sur le Web.
+- À chaque nouveau code : se demander « **que coûte-t-il PAR IMAGE ?** » et
+  auditer les points chauds **EN BLOC** (analyse globale, pas rustine par
+  rustine après chaque crash).
+
 ### Git / livraison (demande permanente de l'utilisateur)
 - Après chaque fonctionnalité terminée : pousser la branche de travail PUIS
   **fusionner aussitôt dans `main` et pousser `main`**, sans redemander.
@@ -447,6 +459,13 @@ Ordre de priorité (✅ = fait) :
     → redessin **15 i/s** comme l'Overworld. + **`Engine.max_fps = 30` sur le
     Web** (`GameData._ready`, `OS.has_feature("web")`) et bois moins dense
     (90 sapins au lieu de 150). Gameplay inchangé.
+69. ✅ **Règle PERFORMANCE > QUALITÉ (permanente, voir garde-fou) + audit
+    global** : aperçu de la création de perso throttlé 15 i/s, `Battle._process`
+    coupé sans boss (`set_process(false)`), label de terrain mis à jour
+    seulement au changement de case. + **Fiche de personnage** (`Overworld`,
+    touche **C**) : panneau construit une fois, rempli à l'ouverture (héros ★ +
+    compagnons : stats PV/ATK/portée/dépl./crit + compétences), monde en pause,
+    C/Échap pour fermer. Zéro coût par image fermé comme ouvert.
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`

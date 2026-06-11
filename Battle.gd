@@ -128,6 +128,7 @@ func _build_boss_bar() -> void:
 			_boss_unit = u
 			break
 	if _boss_unit == null:
+		set_process(false)  # pas de boss : aucun travail par image
 		return
 	_boss_name_label = Label.new()
 	_boss_name_label.text = str(_boss_unit.data.name)
@@ -497,7 +498,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if hc != grid.hover_cell:
 			grid.hover_cell = hc
 			grid.queue_redraw()
-		_update_terrain_hint(hc)
+			_update_terrain_hint(hc)  # seulement au changement de case (perf)
 		return
 	if _finished or active_unit == null or not active_unit.is_player():
 		return

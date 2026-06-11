@@ -221,6 +221,11 @@ var _dlg_panel: PanelContainer
 var _dlg_speaker: Label
 var _dlg_text: Label
 var _dlg_choices: VBoxContainer
+# Fiche de personnage (touche C) : panneau construit une fois, rempli à
+# l'ouverture seulement (règle perf : rien par image quand c'est fermé).
+var _sheet_open := false
+var _sheet_panel: PanelContainer
+var _sheet_box: VBoxContainer
 
 
 func _ready() -> void:
@@ -459,7 +464,7 @@ func _build_ui() -> void:
 	_zone_label.add_theme_constant_override("outline_size", 6)
 	layer.add_child(_zone_label)
 	var hint := Label.new()
-	hint.text = "ZQSD / flèches : se déplacer   ·   E : parler   ·   Échap : menu"
+	hint.text = "ZQSD : se déplacer   ·   E : parler   ·   C : équipe   ·   Échap : menu"
 	hint.position = Vector2(12, 704 - 30)
 	hint.add_theme_font_size_override("font_size", 14)
 	hint.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85, 0.8))
@@ -489,6 +494,20 @@ func _build_ui() -> void:
 	_dlg_choices.add_theme_constant_override("separation", 4)
 	vb.add_child(_dlg_choices)
 
+	# Fiche d'équipe (cachée par défaut, remplie à l'ouverture).
+	_sheet_panel = PanelContainer.new()
+	_sheet_panel.position = Vector2(116, 80)
+	_sheet_panel.custom_minimum_size = Vector2(600, 0)
+	_sheet_panel.visible = false
+	layer.add_child(_sheet_panel)
+	var sheet_scroll := ScrollContainer.new()
+	sheet_scroll.custom_minimum_size = Vector2(600, 520)
+	_sheet_panel.add_child(sheet_scroll)
+	_sheet_box = VBoxContainer.new()
+	_sheet_box.custom_minimum_size = Vector2(580, 0)
+	_sheet_box.add_theme_constant_override("separation", 8)
+	sheet_scroll.add_child(_sheet_box)
+
 	_fade = ColorRect.new()
 	_fade.position = Vector2.ZERO
 	_fade.size = Vector2(832, 704)
@@ -502,7 +521,7 @@ func _build_ui() -> void:
 func _process(delta: float) -> void:
 	if _grace > 0.0:
 		_grace -= delta
-	if not _locked and not _talking:
+	if not _locked and not _talking and not _sheet_open:
 		_move_player(delta)
 		_update_foes(delta)
 		_update_npcs()
@@ -529,14 +548,23 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _talking:
 			_close_dialogue()
 			return
+		if _sheet_open:
+			_close_sheet()
+			return
 		GameData.campaign_pos = _player.mpos
 		GameData.save_campaign()
 		get_tree().change_scene_to_file("res://Title.tscn")
 	# E : parler au PNJ à portée (les choix se font à la souris).
-	if event.physical_keycode == KEY_E and not _talking:
+	if event.physical_keycode == KEY_E and not _talking and not _sheet_open:
 		var npc := _nearest_npc()
 		if npc:
 			_open_dialogue(npc)
+	# C : fiche d'équipe (héros + compagnons), monde en pause pendant la lecture.
+	if event.physical_keycode == KEY_C and not _talking:
+		if _sheet_open:
+			_close_sheet()
+		else:
+			_open_sheet()
 
 
 # PNJ : immobiles, mais se tournent vers le joueur proche (et affichent l'invite).
@@ -690,6 +718,70 @@ func _close_dialogue() -> void:
 				tw.tween_property(leaving, "modulate:a", 0.0, 1.2)
 				tw.tween_callback(leaving.queue_free)
 	_dlg_npc = null
+
+
+# --- Fiche d'équipe (touche C) : héros + compagnons, stats et compétences ---
+
+const ROLE_NAMES := {"tank": "Tank", "melee": "Mêlée", "ranged": "Tireur", "healer": "Soutien"}
+
+func _open_sheet() -> void:
+	_sheet_open = true
+	_player.moving = false
+	Audio.play_sfx("click")
+	for c in _sheet_box.get_children():
+		c.queue_free()
+	var title := Label.new()
+	title.text = "⚔ ÉQUIPE — fiche de personnage   (C pour fermer)"
+	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_color_override("font_color", Color(0.92, 0.86, 0.66))
+	_sheet_box.add_child(title)
+	_add_sheet_member(str(GameData.campaign_hero.get("name", "Héros")),
+			str(GameData.campaign_hero.get("class", "tank")), true)
+	for comp_id in GameData.campaign_party:
+		var c: Dictionary = GameData.COMPANIONS.get(comp_id, {})
+		if not c.is_empty():
+			_add_sheet_member(str(c.name), str(c["class"]), false)
+	if GameData.campaign_party.is_empty():
+		var alone := Label.new()
+		alone.text = "Tu voyages seul·e. Des compagnons t'attendent quelque part..."
+		alone.add_theme_font_size_override("font_size", 14)
+		alone.add_theme_color_override("font_color", Color(0.65, 0.62, 0.58))
+		_sheet_box.add_child(alone)
+	_sheet_panel.visible = true
+
+
+func _close_sheet() -> void:
+	_sheet_open = false
+	_sheet_panel.visible = false
+
+
+# Un membre de l'équipe : nom + classe/rôle, stats, et ses compétences actives.
+func _add_sheet_member(member_name: String, cid: String, is_hero: bool) -> void:
+	var d: Dictionary = GameData.CLASSES.get(cid, {})
+	if d.is_empty():
+		return
+	var head := Label.new()
+	var role := str(ROLE_NAMES.get(str(d.get("role", "")), ""))
+	head.text = "%s%s — %s (%s)" % ["★ " if is_hero else "", member_name, str(d.name), role]
+	head.add_theme_font_size_override("font_size", 17)
+	head.add_theme_color_override("font_color",
+			Color(0.95, 0.82, 0.45) if is_hero else Color(0.75, 0.88, 0.80))
+	_sheet_box.add_child(head)
+	var stats := Label.new()
+	stats.text = "   PV %d   ·   ATK %d   ·   Portée %d   ·   Déplacement %d   ·   Crit %d%%" % [
+			int(d.max_hp), int(d.attack), int(d.attack_range),
+			int(d.move_range), int(float(d.crit_chance) * 100.0)]
+	stats.add_theme_font_size_override("font_size", 14)
+	stats.add_theme_color_override("font_color", Color(0.85, 0.83, 0.78))
+	_sheet_box.add_child(stats)
+	for a in d.get("actives", []):
+		var sk := Label.new()
+		sk.text = "   • %s — %s" % [str(a.name), str(a.get("desc", ""))]
+		sk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		sk.custom_minimum_size = Vector2(560, 0)
+		sk.add_theme_font_size_override("font_size", 13)
+		sk.add_theme_color_override("font_color", Color(0.72, 0.74, 0.70))
+		_sheet_box.add_child(sk)
 
 
 # Annonce dorée au centre (réutilise le label de zone, rendu à la zone après 3 s).
