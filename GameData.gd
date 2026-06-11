@@ -536,6 +536,17 @@ var campaign_defeated: Array = []    # ids des ennemis d'overworld vaincus
 var campaign_difficulty := "normal"  # choisie au début de la campagne ;
                                      # hardcore = mort de l'équipe → campagne effacée
 var campaign_saved_at := ""          # horodatage de la dernière sauvegarde (affiché au menu)
+var campaign_flags := {}             # mémoire des choix (PNJ, quêtes) : clé -> bool
+
+
+# Pose un drapeau de campagne (choix mémorisé) sans sauvegarder (l'appelant
+# regroupe ses set_flag puis appelle save_campaign une seule fois).
+func set_flag(key: String, value := true) -> void:
+	campaign_flags[key] = value
+
+
+func get_flag(key: String) -> bool:
+	return bool(campaign_flags.get(key, false))
 
 
 # Sauvegarde la campagne en l'horodatant (date/heure affichées au menu Campagne).
@@ -548,13 +559,15 @@ func save_campaign() -> void:
 func clear_campaign() -> void:
 	campaign_pos = Vector2(-1, -1)
 	campaign_defeated = []
+	campaign_flags = {}
 	campaign_saved_at = ""
 	save_settings()
 
 
 # Une campagne est-elle en cours (sauvegarde existante) ?
 func has_campaign() -> bool:
-	return campaign_pos.x >= 0.0 or campaign_defeated.size() > 0
+	return campaign_pos.x >= 0.0 or campaign_defeated.size() > 0 \
+			or campaign_flags.size() > 0
 
 
 func _ready() -> void:
@@ -601,6 +614,7 @@ func save_settings() -> void:
 	cfg.set_value("campaign", "defeated", campaign_defeated)
 	cfg.set_value("campaign", "difficulty", campaign_difficulty)
 	cfg.set_value("campaign", "saved_at", campaign_saved_at)
+	cfg.set_value("campaign", "flags", campaign_flags)
 	cfg.save(SETTINGS_PATH)
 
 
@@ -620,3 +634,4 @@ func load_settings() -> void:
 	campaign_defeated = cfg.get_value("campaign", "defeated", [])
 	campaign_difficulty = str(cfg.get_value("campaign", "difficulty", "normal"))
 	campaign_saved_at = str(cfg.get_value("campaign", "saved_at", ""))
+	campaign_flags = cfg.get_value("campaign", "flags", {})
