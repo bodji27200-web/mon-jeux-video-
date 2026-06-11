@@ -466,6 +466,19 @@ Ordre de priorité (✅ = fait) :
     touche **C**) : panneau construit une fois, rempli à l'ouverture (héros ★ +
     compagnons : stats PV/ATK/portée/dépl./crit + compétences), monde en pause,
     C/Échap pour fermer. Zéro coût par image fermé comme ouvert.
+70. ✅ **Lot perf v5 (en bloc) + fiche d'équipe façon BG3** :
+    - **Combat (JcJ + campagne)** : surbrillances/survol déplacés sur un calque
+      dédié (`Grid.HighlightLayer`, `refresh_highlights()`) → le plateau (~120
+      blocs) n'est plus redessiné au survol, seuls quelques losanges le sont.
+      `Battle` appelle `refresh_highlights()` partout sauf génération de terrain.
+    - **Overworld web** : pas de joints de cases ni d'ombre portée sur le Web
+      (`OS.has_feature("web")`), ennemis à >14 tuiles totalement inertes
+      (anti-crash course-poursuite).
+    - **Fiche d'équipe BG3** (`_add_sheet_column`, `PortraitBox`) : une colonne
+      par perso — portrait figurine dessiné en grand (statique, 1 draw),
+      nom/classe/rôle, stats, compétences, sacoche 4 emplacements (structure
+      d'inventaire, objets à venir). Figures PNJ extraites en
+      `Overworld.draw_npc_figure()` statique (partagées monde/portraits).
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`

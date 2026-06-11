@@ -1,3 +1,4 @@
+class_name Overworld
 extends Node2D
 
 # Mode histoire — phase 1 : exploration libre de la région 1 (Vallée de Bruyère)
@@ -225,7 +226,7 @@ var _dlg_choices: VBoxContainer
 # l'ouverture seulement (règle perf : rien par image quand c'est fermé).
 var _sheet_open := false
 var _sheet_panel: PanelContainer
-var _sheet_box: VBoxContainer
+var _sheet_box: HBoxContainer  # colonnes côte à côte (façon BG3 : 1 par perso)
 
 
 func _ready() -> void:
@@ -494,19 +495,26 @@ func _build_ui() -> void:
 	_dlg_choices.add_theme_constant_override("separation", 4)
 	vb.add_child(_dlg_choices)
 
-	# Fiche d'équipe (cachée par défaut, remplie à l'ouverture).
+	# Fiche d'équipe façon BG3 (cachée, remplie à l'ouverture) : une colonne par
+	# personnage — portrait dessiné, stats, compétences et sacoche.
 	_sheet_panel = PanelContainer.new()
-	_sheet_panel.position = Vector2(116, 80)
-	_sheet_panel.custom_minimum_size = Vector2(600, 0)
+	_sheet_panel.position = Vector2(8, 64)
+	_sheet_panel.custom_minimum_size = Vector2(816, 0)
 	_sheet_panel.visible = false
 	layer.add_child(_sheet_panel)
-	var sheet_scroll := ScrollContainer.new()
-	sheet_scroll.custom_minimum_size = Vector2(600, 520)
-	_sheet_panel.add_child(sheet_scroll)
-	_sheet_box = VBoxContainer.new()
-	_sheet_box.custom_minimum_size = Vector2(580, 0)
-	_sheet_box.add_theme_constant_override("separation", 8)
-	sheet_scroll.add_child(_sheet_box)
+	var sheet_root := VBoxContainer.new()
+	sheet_root.add_theme_constant_override("separation", 8)
+	_sheet_panel.add_child(sheet_root)
+	var sheet_title := Label.new()
+	sheet_title.text = "⚔  ÉQUIPE        (C ou Échap pour fermer)"
+	sheet_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sheet_title.add_theme_font_size_override("font_size", 19)
+	sheet_title.add_theme_color_override("font_color", Color(0.92, 0.86, 0.66))
+	sheet_root.add_child(sheet_title)
+	_sheet_box = HBoxContainer.new()
+	_sheet_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	_sheet_box.add_theme_constant_override("separation", 10)
+	sheet_root.add_child(_sheet_box)
 
 	_fade = ColorRect.new()
 	_fade.position = Vector2.ZERO
@@ -730,23 +738,12 @@ func _open_sheet() -> void:
 	Audio.play_sfx("click")
 	for c in _sheet_box.get_children():
 		c.queue_free()
-	var title := Label.new()
-	title.text = "⚔ ÉQUIPE — fiche de personnage   (C pour fermer)"
-	title.add_theme_font_size_override("font_size", 20)
-	title.add_theme_color_override("font_color", Color(0.92, 0.86, 0.66))
-	_sheet_box.add_child(title)
-	_add_sheet_member(str(GameData.campaign_hero.get("name", "Héros")),
-			str(GameData.campaign_hero.get("class", "tank")), true)
+	_add_sheet_column(str(GameData.campaign_hero.get("name", "Héros")),
+			str(GameData.campaign_hero.get("class", "tank")), true, "")
 	for comp_id in GameData.campaign_party:
 		var c: Dictionary = GameData.COMPANIONS.get(comp_id, {})
 		if not c.is_empty():
-			_add_sheet_member(str(c.name), str(c["class"]), false)
-	if GameData.campaign_party.is_empty():
-		var alone := Label.new()
-		alone.text = "Tu voyages seul·e. Des compagnons t'attendent quelque part..."
-		alone.add_theme_font_size_override("font_size", 14)
-		alone.add_theme_color_override("font_color", Color(0.65, 0.62, 0.58))
-		_sheet_box.add_child(alone)
+			_add_sheet_column(str(c.name), str(c["class"]), false, str(c.figure))
 	_sheet_panel.visible = true
 
 
@@ -755,33 +752,103 @@ func _close_sheet() -> void:
 	_sheet_panel.visible = false
 
 
-# Un membre de l'équipe : nom + classe/rôle, stats, et ses compétences actives.
-func _add_sheet_member(member_name: String, cid: String, is_hero: bool) -> void:
+# Une colonne de personnage (façon BG3) : portrait dessiné en grand, identité,
+# stats, compétences, et la sacoche (structure de l'inventaire à venir).
+func _add_sheet_column(member_name: String, cid: String, is_hero: bool, fig: String) -> void:
 	var d: Dictionary = GameData.CLASSES.get(cid, {})
 	if d.is_empty():
 		return
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(258, 0)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 5)
+	panel.add_child(col)
+	# Portrait : figurine du perso dessinée en grand (statique = zéro coût/image).
+	var pb := PortraitBox.new()
+	pb.hero = is_hero
+	pb.figure = fig
+	pb.custom_minimum_size = Vector2(244, 150)
+	col.add_child(pb)
 	var head := Label.new()
-	var role := str(ROLE_NAMES.get(str(d.get("role", "")), ""))
-	head.text = "%s%s — %s (%s)" % ["★ " if is_hero else "", member_name, str(d.name), role]
+	head.text = "%s%s" % ["★ " if is_hero else "", member_name]
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	head.add_theme_font_size_override("font_size", 17)
 	head.add_theme_color_override("font_color",
 			Color(0.95, 0.82, 0.45) if is_hero else Color(0.75, 0.88, 0.80))
-	_sheet_box.add_child(head)
+	col.add_child(head)
+	var sub := Label.new()
+	sub.text = "%s · %s" % [str(d.name), str(ROLE_NAMES.get(str(d.get("role", "")), ""))]
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.add_theme_font_size_override("font_size", 13)
+	sub.add_theme_color_override("font_color", Color(0.70, 0.72, 0.68))
+	col.add_child(sub)
 	var stats := Label.new()
-	stats.text = "   PV %d   ·   ATK %d   ·   Portée %d   ·   Déplacement %d   ·   Crit %d%%" % [
-			int(d.max_hp), int(d.attack), int(d.attack_range),
-			int(d.move_range), int(float(d.crit_chance) * 100.0)]
-	stats.add_theme_font_size_override("font_size", 14)
+	stats.text = "PV %d  ·  ATK %d  ·  Crit %d%%\nPortée %d  ·  Déplacement %d" % [
+			int(d.max_hp), int(d.attack), int(float(d.crit_chance) * 100.0),
+			int(d.attack_range), int(d.move_range)]
+	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stats.add_theme_font_size_override("font_size", 13)
 	stats.add_theme_color_override("font_color", Color(0.85, 0.83, 0.78))
-	_sheet_box.add_child(stats)
+	col.add_child(stats)
+	var sk_head := Label.new()
+	sk_head.text = "— Compétences —"
+	sk_head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sk_head.add_theme_font_size_override("font_size", 13)
+	sk_head.add_theme_color_override("font_color", Color(0.80, 0.65, 0.85))
+	col.add_child(sk_head)
 	for a in d.get("actives", []):
 		var sk := Label.new()
-		sk.text = "   • %s — %s" % [str(a.name), str(a.get("desc", ""))]
-		sk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		sk.custom_minimum_size = Vector2(560, 0)
-		sk.add_theme_font_size_override("font_size", 13)
+		sk.text = "• " + str(a.name)
+		sk.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		sk.add_theme_font_size_override("font_size", 12)
 		sk.add_theme_color_override("font_color", Color(0.72, 0.74, 0.70))
-		_sheet_box.add_child(sk)
+		col.add_child(sk)
+	# Sacoche : la structure de l'inventaire (les objets viendront plus tard).
+	var inv_head := Label.new()
+	inv_head.text = "— Sacoche —"
+	inv_head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	inv_head.add_theme_font_size_override("font_size", 13)
+	inv_head.add_theme_color_override("font_color", Color(0.75, 0.70, 0.55))
+	col.add_child(inv_head)
+	var slots := HBoxContainer.new()
+	slots.alignment = BoxContainer.ALIGNMENT_CENTER
+	slots.add_theme_constant_override("separation", 6)
+	for i in 4:
+		var slot := PanelContainer.new()
+		slot.custom_minimum_size = Vector2(38, 38)
+		var dash := Label.new()
+		dash.text = "·"
+		dash.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		dash.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		dash.add_theme_color_override("font_color", Color(0.45, 0.44, 0.40))
+		slot.add_child(dash)
+		slots.add_child(slot)
+	col.add_child(slots)
+	_sheet_box.add_child(panel)
+
+
+# Portrait d'un personnage (fiche d'équipe) : figurine dessinée en grand, pose
+# figée — dessiné UNE fois à l'ouverture, zéro coût par image (règle perf).
+class PortraitBox extends Control:
+	var hero := false
+	var figure := ""
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.09, 0.09, 0.14))
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.35, 0.32, 0.26), false, 1.5)
+		var base := Vector2(size.x / 2.0, size.y - 18.0)
+		draw_set_transform(base, 0.0, Vector2(1.0, 0.5))
+		draw_circle(Vector2.ZERO, 34.0, Color(0.0, 0.0, 0.0, 0.35))
+		draw_set_transform(base, 0.0, Vector2(4.2, 4.2))
+		if hero:
+			var h: Dictionary = GameData.campaign_hero
+			var tint: Color = GameData.CLASSES.get(str(h.get("class", "tank")),
+					{}).get("color", Color(0.25, 0.42, 0.62))
+			HeroFigure.draw_hero(self, str(h.get("gender", "m")),
+					int(h.get("design", 0)), tint, 0.0, false)
+		else:
+			Overworld.draw_npc_figure(self, figure, 0.0)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 # Annonce dorée au centre (réutilise le label de zone, rendu à la zone après 3 s).
@@ -817,6 +884,11 @@ func _move_player(delta: float) -> void:
 func _update_foes(delta: float) -> void:
 	for f in _foes:
 		var dist: float = f.mpos.distance_to(_player.mpos)
+		# Ennemi loin : aucune logique ni animation (règle perf — rien ne se
+		# passe à l'écran, rien ne doit tourner).
+		if dist > 14.0 and not f.chasing:
+			f.moving = false
+			continue
 		if f.chasing:
 			if dist > DEAGGRO_RANGE:
 				f.chasing = false
@@ -979,7 +1051,10 @@ func _refresh_culling() -> void:
 func _draw() -> void:
 	if _ground.is_empty():  # redirection vers la création de perso : rien à dessiner
 		return
-	_draw_drop_shadow()
+	# Web : pas d'ombre portée (3 polygones translucides de la taille de la
+	# carte — du remplissage GPU pur pour un détail cosmétique).
+	if not OS.has_feature("web"):
+		_draw_drop_shadow()
 	_draw_edge_walls()
 
 
@@ -1029,14 +1104,75 @@ class GroundChunk extends Node2D:
 	var rect := Rect2()
 
 	func _draw() -> void:
+		# Web : pas de joints entre cases (divise par 2 les primitives du sol).
+		var seams: bool = not OS.has_feature("web")
 		for y in range(y0, y1):
 			for x in range(x0, x1):
 				var cell := Vector2i(x, y)
 				var pts: PackedVector2Array = ow._tile_points(cell)
 				draw_colored_polygon(pts, ow._tile_color(cell))
-				var closed := pts.duplicate()
-				closed.append(pts[0])
-				draw_polyline(closed, ow.COLOR_SEAM, 1.0)
+				if seams:
+					var closed := pts.duplicate()
+					closed.append(pts[0])
+					draw_polyline(closed, ow.COLOR_SEAM, 1.0)
+
+
+# Dessin des figures de PNJ/compagnons (statique, partagé : monde + portraits
+# de la fiche d'équipe). b = respiration (0.0 = pose figée pour un portrait).
+static func draw_npc_figure(ci: CanvasItem, figure: String, b: float) -> void:
+	match figure:
+		"herboriste":
+			# Vieille femme : robe vert-gris, châle, chignon blanc, canne.
+			ci.draw_colored_polygon(PackedVector2Array([
+				Vector2(-4.5, -16.0 + b), Vector2(4.5, -16.0 + b),
+				Vector2(6.5, 0.0), Vector2(-6.5, 0.0)]), Color(0.36, 0.42, 0.32))
+			ci.draw_colored_polygon(PackedVector2Array([
+				Vector2(-5.5, -16.5 + b), Vector2(5.5, -16.5 + b),
+				Vector2(6.5, -10.0 + b), Vector2(-6.5, -10.0 + b)]),
+				Color(0.55, 0.46, 0.36))  # châle
+			# Tête penchée (dos voûté) + chignon blanc.
+			ci.draw_circle(Vector2(1.5, -19.5 + b), 4.2, Color(0.90, 0.76, 0.62))
+			ci.draw_circle(Vector2(-0.5, -22.0 + b), 2.8, Color(0.88, 0.88, 0.86))
+			ci.draw_circle(Vector2(3.0, -19.2 + b), 0.8, Color(0.12, 0.10, 0.12))
+			# Canne tenue devant.
+			ci.draw_line(Vector2(6.5, -12.0 + b), Vector2(8.0, 0.0), Color(0.38, 0.26, 0.14), 2.0)
+		"bucheron":
+			# Costaud : tunique brune, ceinture, barbe, hache sur l'épaule.
+			ci.draw_colored_polygon(PackedVector2Array([
+				Vector2(-6.5, -17.0 + b), Vector2(6.5, -17.0 + b),
+				Vector2(7.5, 0.0), Vector2(-7.5, 0.0)]), Color(0.46, 0.32, 0.20))
+			ci.draw_rect(Rect2(-7.0, -9.0 + b, 14.0, 2.4), Color(0.22, 0.16, 0.10))
+			# Tête + barbe fournie.
+			ci.draw_circle(Vector2(0.0, -21.0 + b), 4.8, Color(0.92, 0.76, 0.58))
+			ci.draw_colored_polygon(PackedVector2Array([
+				Vector2(-4.0, -20.0 + b), Vector2(4.0, -20.0 + b),
+				Vector2(0.0, -13.5 + b)]), Color(0.42, 0.28, 0.16))
+			ci.draw_circle(Vector2(2.0, -21.8 + b), 0.9, Color(0.12, 0.10, 0.12))
+			# Hache posée sur l'épaule (manche + fer).
+			ci.draw_line(Vector2(-3.0, -16.0 + b), Vector2(-10.0, -26.0 + b), Color(0.40, 0.28, 0.15), 2.4)
+			ci.draw_colored_polygon(PackedVector2Array([
+				Vector2(-10.0, -29.0 + b), Vector2(-6.0, -27.0 + b),
+				Vector2(-10.0, -23.5 + b), Vector2(-13.0, -26.0 + b)]),
+				Color(0.72, 0.74, 0.80))
+		"etrangere":
+			# Voyageuse : cape bleu nuit, capuche, visage dans l'ombre, yeux pâles.
+			ci.draw_colored_polygon(PackedVector2Array([
+				Vector2(-5.5, -17.0 + b), Vector2(5.5, -17.0 + b),
+				Vector2(7.0, 0.0), Vector2(-7.0, 0.0)]), Color(0.20, 0.24, 0.38))
+			ci.draw_circle(Vector2(0.0, -20.0 + b), 5.2, Color(0.16, 0.20, 0.32))
+			_ellipse_on(ci, Vector2(0.5, -19.5 + b), 3.4, 2.8, Color(0.08, 0.08, 0.12))
+			ci.draw_circle(Vector2(-0.8, -19.8 + b), 0.8, Color(0.75, 0.85, 0.95))
+			ci.draw_circle(Vector2(2.0, -19.8 + b), 0.8, Color(0.75, 0.85, 0.95))
+			# Écharpe qui dépasse de la cape.
+			ci.draw_line(Vector2(-4.0, -15.0 + b), Vector2(-7.5, -8.0 + b), Color(0.55, 0.30, 0.30), 2.2)
+
+
+static func _ellipse_on(ci: CanvasItem, center: Vector2, rx: float, ry: float, color: Color) -> void:
+	var pts := PackedVector2Array()
+	for i in 14:
+		var a := TAU * i / 14.0
+		pts.append(center + Vector2(cos(a) * rx, sin(a) * ry))
+	ci.draw_colored_polygon(pts, color)
 
 
 # =====================================================================
@@ -1093,63 +1229,11 @@ class Walker extends Node2D:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		_draw_overhead()
 
-	# PNJ du hameau : trois habitants dessinés à la main, respiration lente.
+	# PNJ du hameau / compagnons : figures partagées avec la fiche d'équipe.
 	func _draw_npc() -> void:
-		var b := sin(phase) * 0.5  # respiration (les PNJ ne marchent pas, v1)
-		match figure:
-			"herboriste":
-				# Vieille femme : robe vert-gris, châle, chignon blanc, canne.
-				draw_colored_polygon(PackedVector2Array([
-					Vector2(-4.5, -16.0 + b), Vector2(4.5, -16.0 + b),
-					Vector2(6.5, 0.0), Vector2(-6.5, 0.0)]), Color(0.36, 0.42, 0.32))
-				draw_colored_polygon(PackedVector2Array([
-					Vector2(-5.5, -16.5 + b), Vector2(5.5, -16.5 + b),
-					Vector2(6.5, -10.0 + b), Vector2(-6.5, -10.0 + b)]),
-					Color(0.55, 0.46, 0.36))  # châle
-				# Tête penchée (dos voûté) + chignon blanc.
-				draw_circle(Vector2(1.5, -19.5 + b), 4.2, Color(0.90, 0.76, 0.62))
-				draw_circle(Vector2(-0.5, -22.0 + b), 2.8, Color(0.88, 0.88, 0.86))
-				draw_circle(Vector2(3.0, -19.2 + b), 0.8, Color(0.12, 0.10, 0.12))
-				# Canne tenue devant.
-				draw_line(Vector2(6.5, -12.0 + b), Vector2(8.0, 0.0), Color(0.38, 0.26, 0.14), 2.0)
-			"bucheron":
-				# Costaud : tunique brune, ceinture, barbe, hache sur l'épaule.
-				draw_colored_polygon(PackedVector2Array([
-					Vector2(-6.5, -17.0 + b), Vector2(6.5, -17.0 + b),
-					Vector2(7.5, 0.0), Vector2(-7.5, 0.0)]), Color(0.46, 0.32, 0.20))
-				draw_rect(Rect2(-7.0, -9.0 + b, 14.0, 2.4), Color(0.22, 0.16, 0.10))
-				# Tête + barbe fournie.
-				draw_circle(Vector2(0.0, -21.0 + b), 4.8, Color(0.92, 0.76, 0.58))
-				draw_colored_polygon(PackedVector2Array([
-					Vector2(-4.0, -20.0 + b), Vector2(4.0, -20.0 + b),
-					Vector2(0.0, -13.5 + b)]), Color(0.42, 0.28, 0.16))
-				draw_circle(Vector2(2.0, -21.8 + b), 0.9, Color(0.12, 0.10, 0.12))
-				# Hache posée sur l'épaule (manche + fer).
-				draw_line(Vector2(-3.0, -16.0 + b), Vector2(-10.0, -26.0 + b), Color(0.40, 0.28, 0.15), 2.4)
-				draw_colored_polygon(PackedVector2Array([
-					Vector2(-10.0, -29.0 + b), Vector2(-6.0, -27.0 + b),
-					Vector2(-10.0, -23.5 + b), Vector2(-13.0, -26.0 + b)]),
-					Color(0.72, 0.74, 0.80))
-			"etrangere":
-				# Voyageuse : cape bleu nuit, capuche, visage dans l'ombre, yeux pâles.
-				draw_colored_polygon(PackedVector2Array([
-					Vector2(-5.5, -17.0 + b), Vector2(5.5, -17.0 + b),
-					Vector2(7.0, 0.0), Vector2(-7.0, 0.0)]), Color(0.20, 0.24, 0.38))
-				draw_circle(Vector2(0.0, -20.0 + b), 5.2, Color(0.16, 0.20, 0.32))
-				_npc_ellipse(Vector2(0.5, -19.5 + b), 3.4, 2.8, Color(0.08, 0.08, 0.12))
-				draw_circle(Vector2(-0.8, -19.8 + b), 0.8, Color(0.75, 0.85, 0.95))
-				draw_circle(Vector2(2.0, -19.8 + b), 0.8, Color(0.75, 0.85, 0.95))
-				# Écharpe qui dépasse de la cape.
-				draw_line(Vector2(-4.0, -15.0 + b), Vector2(-7.5, -8.0 + b), Color(0.55, 0.30, 0.30), 2.2)
+		Overworld.draw_npc_figure(self, figure, sin(phase) * 0.5)
 
-	func _npc_ellipse(center: Vector2, rx: float, ry: float, color: Color) -> void:
-		var pts := PackedVector2Array()
-		for i in 14:
-			var a := TAU * i / 14.0
-			pts.append(center + Vector2(cos(a) * rx, sin(a) * ry))
-		draw_colored_polygon(pts, color)
 
-	# Le héros tel que créé par le joueur (sexe, design, couleur de classe).
 	func _draw_player() -> void:
 		var h: Dictionary = GameData.campaign_hero
 		var tint: Color = GameData.CLASSES.get(str(h.get("class", "tank")),

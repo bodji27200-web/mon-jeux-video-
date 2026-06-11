@@ -47,6 +47,24 @@ var skill_cells: Array = []
 var hover_cell := Vector2i(-1, -1)  # case sous la souris (surbrillance), -1 = aucune
 var terrain: Dictionary = {}  # Vector2i -> String (clé dans GameData.TERRAIN)
 var heights: Dictionary = {}  # Vector2i -> int (niveau de hauteur, 0 = sol)
+# Calque des surbrillances : seul lui est redessiné au survol / à la sélection,
+# le plateau (statique) reste en cache GPU (règle perf : statique dessiné 1 fois).
+var _hl: Node2D
+
+
+func _ready() -> void:
+	_hl = HighlightLayer.new()
+	_hl.grid = self
+	# y = 0 : avec le y_sort du nœud Grid, le calque passe au-dessus du plateau
+	# mais sous toutes les unités (leurs y sont toujours > 0).
+	_hl.position = Vector2.ZERO
+	add_child(_hl)
+
+
+# À appeler quand move/target/heal/skill/hover changent (jamais le plateau).
+func refresh_highlights() -> void:
+	if _hl:
+		_hl.queue_redraw()
 
 
 func _draw() -> void:
@@ -68,23 +86,7 @@ func _draw() -> void:
 			continue
 		_fill_cell(cell, GameData.TERRAIN[tid].color)
 		_draw_terrain_feature(cell, tid)
-	# Highlights navigation (remplissage + contour net pour bien lire les cases).
-	for cell in move_cells:
-		_fill_cell(cell, COLOR_MOVE)
-		_outline_cell(cell, Color(0.45, 0.70, 1.0, 0.9), 2.0)
-	for cell in target_cells:
-		_fill_cell(cell, COLOR_TARGET)
-		_outline_cell(cell, Color(1.0, 0.40, 0.40, 0.9), 2.0)
-	for cell in heal_cells:
-		_fill_cell(cell, COLOR_HEAL)
-		_outline_cell(cell, Color(0.40, 0.95, 0.55, 0.9), 2.0)
-	for cell in skill_cells:
-		_fill_cell(cell, COLOR_SKILL)
-		_outline_cell(cell, Color(0.85, 0.50, 1.0, 0.95), 2.0)
-	# Surbrillance de la case survolée (par-dessus tout, pour viser facilement).
-	if is_inside(hover_cell):
-		_fill_cell(hover_cell, Color(1.0, 1.0, 1.0, 0.10))
-		_outline_cell(hover_cell, COLOR_HOVER, 2.0)
+	# (Surbrillances et survol : dessinés par le calque HighlightLayer, léger.)
 
 
 # Les 4 sommets du losange d'une case (haut, droite, bas, gauche), au sommet du
@@ -220,6 +222,45 @@ func _outline_cell(cell: Vector2i, color: Color, width: float) -> void:
 	var pts := _diamond_points(cell)
 	pts.append(pts[0])
 	draw_polyline(pts, color, width)
+
+
+# --- Calque de surbrillances (déplacement / cibles / soin / compétence / survol).
+# Redessiné seul à chaque survol ou sélection : quelques losanges au lieu du
+# plateau entier (~120 blocs) — crucial sur le navigateur Xbox.
+
+func _draw_highlights(ci: CanvasItem) -> void:
+	for cell in move_cells:
+		_fill_on(ci, cell, COLOR_MOVE)
+		_outline_on(ci, cell, Color(0.45, 0.70, 1.0, 0.9), 2.0)
+	for cell in target_cells:
+		_fill_on(ci, cell, COLOR_TARGET)
+		_outline_on(ci, cell, Color(1.0, 0.40, 0.40, 0.9), 2.0)
+	for cell in heal_cells:
+		_fill_on(ci, cell, COLOR_HEAL)
+		_outline_on(ci, cell, Color(0.40, 0.95, 0.55, 0.9), 2.0)
+	for cell in skill_cells:
+		_fill_on(ci, cell, COLOR_SKILL)
+		_outline_on(ci, cell, Color(0.85, 0.50, 1.0, 0.95), 2.0)
+	if is_inside(hover_cell):
+		_fill_on(ci, hover_cell, Color(1.0, 1.0, 1.0, 0.10))
+		_outline_on(ci, hover_cell, COLOR_HOVER, 2.0)
+
+
+func _fill_on(ci: CanvasItem, cell: Vector2i, color: Color) -> void:
+	ci.draw_colored_polygon(_diamond_points(cell), color)
+
+
+func _outline_on(ci: CanvasItem, cell: Vector2i, color: Color, width: float) -> void:
+	var pts := _diamond_points(cell)
+	pts.append(pts[0])
+	ci.draw_polyline(pts, color, width)
+
+
+class HighlightLayer extends Node2D:
+	var grid: Node2D
+
+	func _draw() -> void:
+		grid._draw_highlights(self)
 
 
 # --- Décors de terrain (100 % vectoriel, aucun asset) ---
