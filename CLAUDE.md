@@ -420,6 +420,14 @@ Ordre de priorité (✅ = fait) :
     fonctionne que si le dépôt est **public** (le job deploy est en
     `continue-on-error` tant que c'est privé). Jouable Xbox/téléphone via
     navigateur (clavier+souris sur Xbox Edge).
+65. ✅ **Fix « WebGL context lost » (campagne) + culling Overworld** : la carte
+    rendait ~1500 cases + ~158 décors À CHAQUE image → le GPU du navigateur
+    (Xbox Edge) saturait et lâchait. Ajout d'un **culling caméra**
+    (`Overworld._visible_rect`, `VIEW_HALF`) : seules les cases/décors proches de
+    la caméra sont dessinés (≈469 cases / 25 décors), `queue_redraw()` par image
+    pour suivre le joueur, décors masqués via `visible`. Gameplay 100 % inchangé
+    (coords, collisions, IA). Déployé sur GitHub Pages (public) :
+    https://bodji27200-web.github.io/mon-jeux-video-/
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`
