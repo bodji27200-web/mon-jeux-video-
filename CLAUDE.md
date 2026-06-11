@@ -435,6 +435,12 @@ Ordre de priorité (✅ = fait) :
     décors, rôdeurs, PNJ via `visible`), **animations Walker à 15 i/s**
     (`REDRAW_DT`, rien si hors écran). Le nœud racine ne dessine plus que
     l'ombre + le socle, une fois. Gameplay 100 % inchangé.
+67. ✅ **Perf Web v3 — rendu 832×704 sur le Web** (`project.godot`,
+    `window/stretch/mode.web="viewport"`) : la Xbox affichait le canvas en 4K →
+    le GPU du navigateur dessinait ~27× trop de pixels et lâchait (« WebGL
+    context lost », même après les culling v1/v2). Sur le Web UNIQUEMENT, le jeu
+    est rendu dans un viewport 832×704 puis étiré par l'écran (image plus douce,
+    gameplay/desktop inchangés — le PC garde `canvas_items`).
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`
