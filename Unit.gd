@@ -48,6 +48,7 @@ const SPRITES := {
 var data: Dictionary = {}
 var display_name := ""  # nom affiché (héros de campagne) ; vide = nom de classe
 var has_katana := false  # Katana d'améthyste équipé (Duelliste) : aura violette
+var facing := Vector2i(1, 0)  # orientation (attaques de dos, façon SoC)
 var hp := 0
 var has_moved := false
 var has_acted := false
@@ -140,6 +141,11 @@ func move_range() -> int:
 
 
 func move_to(cell: Vector2i) -> void:
+	# Orientation (attaques de dos, façon SoC) : on regarde vers où l'on marche.
+	var d: Vector2i = cell - grid_position
+	if d != Vector2i.ZERO:
+		facing = Vector2i(signi(d.x), 0) if absi(d.x) >= absi(d.y) \
+				else Vector2i(0, signi(d.y))
 	grid_position = cell  # logique : la position de grille change tout de suite
 	has_moved = true
 	var grid := get_parent()

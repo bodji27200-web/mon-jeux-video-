@@ -89,6 +89,7 @@ func _ready() -> void:
 	_generate_terrain()
 	_spawn_units()
 	_build_boss_bar()
+	_build_timeline()
 	# Combat de campagne : les unités joueur portent les noms du héros et des
 	# compagnons (même ordre que l'équipe envoyée par l'Overworld).
 	if GameData.campaign_battle and GameData.campaign_battle_names.size() > 0:
@@ -216,6 +217,63 @@ func _trigger_boss_phase(ph: Dictionary) -> void:
 func _add_score(u: Node, amount: int) -> void:
 	if u != null and u.is_player():
 		_score[u] = int(_score.get(u, 0)) + amount
+
+
+# Timeline des tours (façon Sword of Convallaria) : les 8 prochaines unités à
+# agir, dans l'ordre d'agilité. Construite une fois, rafraîchie au changement
+# de tour SEULEMENT (règle perf).
+var _timeline_slots: Array = []
+
+
+func _build_timeline() -> void:
+	var y := 58.0 if _boss_unit != null else 8.0
+	for i in 8:
+		var p := PanelContainer.new()
+		p.position = Vector2(12.0 + float(i) * 38.0, y)
+		p.custom_minimum_size = Vector2(34, 34)
+		p.visible = false
+		var l := Label.new()
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		l.add_theme_font_size_override("font_size", 15)
+		p.add_child(l)
+		$UI.add_child(p)
+		_timeline_slots.append(p)
+
+
+func _refresh_timeline() -> void:
+	var n: int = turn_manager.units.size()
+	if n == 0 or _timeline_slots.is_empty():
+		return
+	# Les 8 prochains tours à partir de l'unité active (le tour reboucle).
+	var order: Array = []
+	var scan := 0
+	while order.size() < 8 and scan < n * 2:
+		var u = turn_manager.units[(turn_manager.current_index + scan) % n]
+		if u.is_alive():
+			order.append(u)
+		scan += 1
+	for i in _timeline_slots.size():
+		var p: PanelContainer = _timeline_slots[i]
+		if i >= order.size():
+			p.visible = false
+			continue
+		var u = order[i]
+		p.visible = true
+		var l: Label = p.get_child(0)
+		l.text = str(u.data.symbol)
+		var lum: float = u.data.color.r * 0.299 + u.data.color.g * 0.587 + u.data.color.b * 0.114
+		l.add_theme_color_override("font_color",
+				Color.BLACK if lum > 0.55 else Color(1, 1, 1, 0.95))
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(u.data.color, 0.92 if i == 0 else 0.55)
+		sb.set_corner_radius_all(5)
+		sb.border_width_bottom = 4
+		sb.border_color = Color(0.40, 0.65, 1.0) if u.is_player() else Color(1.0, 0.35, 0.30)
+		if i == 0:
+			sb.set_border_width_all(2)
+			sb.border_width_bottom = 4
+		p.add_theme_stylebox_override("panel", sb)
 
 
 # Bouton "Fuir" (à côté de Fin de tour) : uniquement en combat de campagne,
@@ -353,6 +411,8 @@ func _spawn_team(classes: Array, team: int, col: int) -> void:
 		u.class_id = classes[i]
 		u.team = team
 		u.grid_position = Vector2i(col, start_row + i)
+		# Orientation de départ (attaques de dos, façon SoC) : face à l'ennemi.
+		u.facing = Vector2i(1, 0) if team == GameData.Team.PLAYER else Vector2i(-1, 0)
 		grid.add_child(u)
 
 
@@ -361,6 +421,7 @@ func _on_turn_started(unit: Node) -> void:
 		_check_end()
 		return
 	active_unit = unit
+	_refresh_timeline()
 	# Effets de début de tour (poison, régénération...).
 	unit.tick_buffs()
 	if not unit.is_alive():
@@ -656,6 +717,22 @@ func _attack(unit: Node, target: Node, mult := 1.0, is_counter := false) -> void
 	if is_crit:
 		dmg *= 2.0
 	dmg *= unit.damage_dealt_mult() * target.damage_taken_mult()
+	# Attaque de DOS (façon Sword of Convallaria) : frapper au corps à corps une
+	# cible qui tourne le dos = ×1.25. L'attaquant se tourne vers sa cible.
+	var rel: Vector2i = target.grid_position - unit.grid_position
+	var backstab: bool = grid.manhattan(unit.grid_position, target.grid_position) == 1 \
+			and rel == target.facing
+	if backstab:
+		dmg *= 1.25
+		var bs := preload("res://FloatingText.tscn").instantiate()
+		bs.text = "DOS !"
+		bs.color_value = Color(1.0, 0.78, 0.25)
+		bs.font_size_value = 20
+		bs.duration = 0.9
+		bs.position = target.position + Vector2(-12.0, -58.0)
+		grid.add_child(bs)
+	unit.facing = Vector2i(signi(rel.x), 0) if absi(rel.x) >= absi(rel.y) \
+			else Vector2i(0, signi(rel.y))
 	# Chasseur : bonus si la cible est marquée
 	if unit.data.has("mark_bonus_mult") and _target_has_buff(target, "marque"):
 		dmg *= float(unit.data.mark_bonus_mult)

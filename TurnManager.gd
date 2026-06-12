@@ -19,7 +19,15 @@ func start() -> void:
 	units = get_tree().get_nodes_in_group("units")
 	if units.is_empty():
 		return
+	# Ordre des tours façon Sword of Convallaria : les plus AGILES d'abord
+	# (champ "agility" de la classe, sinon son déplacement). Tri stable.
+	units.sort_custom(func(a, b):
+		return _agility(a) > _agility(b))
 	_begin(0)
+
+
+static func _agility(u: Node) -> int:
+	return int(u.data.get("agility", u.data.move_range))
 
 
 func current_unit() -> Node:

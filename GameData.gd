@@ -506,7 +506,7 @@ const CLASSES := {
 		"name": "Duelliste", "color": Color(0.68, 0.36, 0.92), "symbol": "D",
 		"description": "Bretteuse de salle d'armes jetée sur les routes. Riposte, parade, sentence — et le Katana d'améthyste n'attend qu'elle.",
 		"max_hp": 27, "move_range": 4, "attack": 11, "attack_range": 1,
-		"crit_chance": 0.25, "behavior": "melee", "role": "melee",
+		"crit_chance": 0.25, "behavior": "melee", "role": "melee", "agility": 6,
 		"hidden": true, "skills": [],
 	},
 	# Luna : compagnonne archère rencontrée à la taverne (émotions à règles).
@@ -531,7 +531,7 @@ const CLASSES := {
 		"name": "Le Traqueur-Roi", "color": Color(0.62, 0.18, 0.34), "symbol": "R",
 		"description": "BOSS SECRET. Le maître des rôdeurs. Il ne pardonne pas la désertion.",
 		"max_hp": 90, "move_range": 4, "attack": 11, "attack_range": 3,
-		"crit_chance": 0.20, "behavior": "kite", "role": "ranged",
+		"crit_chance": 0.20, "behavior": "kite", "role": "ranged", "agility": 6,
 		"hidden": true, "figure": "roi", "boss": true,
 		"on_hit": "marque", "mark_bonus_mult": 1.6,
 		"phases": [
@@ -564,7 +564,7 @@ const CLASSES := {
 	"veilleur_murmures": {
 		"name": "Le Veilleur des Murmures", "color": Color(0.45, 0.28, 0.66), "symbol": "Ω",
 		"description": "BOSS. L'esprit cornu qui règne sur le Bois des Murmures. Il combat seul — et ça suffit.",
-		"max_hp": 115, "move_range": 4, "attack": 15, "attack_range": 1,
+		"max_hp": 115, "move_range": 4, "attack": 15, "attack_range": 1, "agility": 2,
 		"crit_chance": 0.15, "behavior": "melee", "role": "melee",
 		"hidden": true, "figure": "veilleur", "boss": true,
 		# Boss à MÉCANIQUES : phases déclenchées par ses PV (Battle._process).

@@ -129,11 +129,12 @@ const NPCS := [
 	 "party_flag": "luna_party",
 	 "rules": [
 		{"flag": "luna_vexee", "dialogue": "luna_froide_tav"},
-		{"flag": "luna_2_fait", "relation_min": {"luna": 2}, "dialogue": "luna_offre"},
-		{"flag": "luna_2_fait", "foes_down": ["loup_solitaire"], "dialogue": "luna_offre_actes"},
-		{"flag": "luna_2_fait", "not_flag": "luna_tournee", "dialogue": "luna_hesite"},
-		{"flag": "luna_2_fait", "dialogue": "luna_hesite2"},
-		{"flag": "luna_1_fait", "dialogue": "luna_2"},
+		{"flag": "luna_3_fait", "relation_min": {"luna": 2}, "dialogue": "luna_offre"},
+		{"flag": "luna_3_fait", "foes_down": ["loup_solitaire"], "dialogue": "luna_offre_actes"},
+		{"flag": "luna_3_fait", "not_flag": "luna_tournee", "dialogue": "luna_hesite"},
+		{"flag": "luna_3_fait", "dialogue": "luna_hesite2"},
+		{"flag": "luna_2_fait", "dialogue": "luna_frere"},
+		{"flag": "luna_1_fait", "dialogue": "luna_meet2"},
 	 ], "fallback": "luna_intro"},
 	{"id": "marn", "name": "Marn, le tavernier", "pos": Vector2(13.2, 14.4), "figure": "tavernier",
 	 "rules": [], "fallback": "marn_sert"},
@@ -409,52 +410,121 @@ const DIALOGUES := {
 	# === LUNA — taverne. Ses émotions sont des RÈGLES : la relation monte ou
 	# descend, elle se vexe (luna_vexee) et s'en souvient jusqu'à des excuses
 	# sincères. Pas de mensonges : elle dit ce qu'elle pense. ===
+	# RENCONTRE 1 : on fait connaissance. Elle RÉPOND à chaque réplique (next),
+	# et ne parlera de son frère qu'à la 3e rencontre (la confiance se gagne).
 	"luna_intro": {
 		"speaker": "Luna",
 		"text": "Tu fixes ma chope ou tu comptes t'asseoir ? ...Assieds-toi, va. T'as la tête de quelqu'un qui sort du bois — ou qui compte y entrer, ce qui est plus idiot. Moi c'est Luna. Et toi, t'es qui, à part le sujet de conversation de toute la taverne ?",
 		"choices": [
-			{"label": "« Quelqu'un qui compte y entrer. Et en sortir. »",
-			 "set": {"luna_1_fait": true}, "relation": {"luna": 1}},
-			{"label": "« Juste un voyageur. »", "set": {"luna_1_fait": true}},
+			{"label": "« Quelqu'un qui compte entrer dans ce bois. Et en sortir. »",
+			 "set": {"luna_1_fait": true}, "relation": {"luna": 1}, "next": "luna_intro_a"},
+			{"label": "« Juste un voyageur de passage. »",
+			 "set": {"luna_1_fait": true}, "next": "luna_intro_b"},
 			{"label": "« Quelqu'un qui ne parle pas aux inconnues. »",
-			 "set": {"luna_1_fait": true}, "relation": {"luna": -1}},
+			 "set": {"luna_1_fait": true}, "relation": {"luna": -1}, "next": "luna_intro_c"},
 		]},
-	"luna_2": {
+	"luna_intro_a": {
 		"speaker": "Luna",
-		"text": "Re-bonjour, tête de bois. ...Bon. Je vais être honnête, c'est ma seule qualité : je traîne ici parce que mon frère, Tomas, est entré dans ce bois il y a un mois. Personne n'est allé voir. Pas même moi. Voilà. Ris, si tu veux.",
+		"text": "« Et en sortir. » Ha ! J'aime bien. Prétentieux, mais j'aime bien. La moitié des types ici jurent qu'ils iront « un jour ». Toi au moins tu dis QUAND tu comptes mourir. ...Reste dans le coin, tête brûlée. Les gens intéressants sont rares ici.",
+		"choices": [{"label": "« À plus tard, Luna. »"}]},
+	"luna_intro_b": {
+		"speaker": "Luna",
+		"text": "« De passage. » Mh. Tout le monde est « de passage », ici. Et puis le bois leur fait peur, alors ils passent... mais dans l'autre sens. Enfin. Si tu repasses — dans MON sens — je serai là. Je suis toujours là.",
+		"choices": [{"label": "(Finir sa chope et partir)"}]},
+	"luna_intro_c": {
+		"speaker": "Luna",
+		"text": "...Wow. D'accord. Tu sais quoi ? C'est la table de Brom que tu cherches : il dort, il ne risque pas de te déranger. ...Non mais sérieux, qui répond ça à quelqu'un qui propose une place assise ?",
 		"choices": [
-			{"label": "« On va le chercher. Ensemble, si tu veux. »",
-			 "set": {"luna_2_fait": true, "luna_frere_dit": true}, "relation": {"luna": 1}},
-			{"label": "« Un mois ? Il faut être réaliste, Luna. »",
-			 "set": {"luna_2_fait": true, "luna_frere_dit": true}},
-			{"label": "« Il est mort. Passe à autre chose. »",
-			 "set": {"luna_2_fait": true, "luna_frere_dit": true, "luna_vexee": true},
-			 "relation": {"luna": -1}},
+			{"label": "« ...Pardon. Longue route. Mauvaise humeur. »", "relation": {"luna": 1}},
+			{"label": "(Partir sans répondre)"},
 		]},
+	# RENCONTRE 2 : elle te teste — c'est TOI le sujet, pas elle.
+	"luna_meet2": {
+		"speaker": "Luna",
+		"text": "Tiens, te revoilà. Assieds-toi, j'ai une question importante : t'es du genre à foncer d'abord et réfléchir ensuite, ou à réfléchir si longtemps que le problème meurt de vieillesse ?",
+		"choices": [
+			{"label": "« Je fonce. La vie est courte. »",
+			 "set": {"luna_2_fait": true}, "next": "luna_meet2_a"},
+			{"label": "« Je réfléchis. C'est pour ça que je suis vivant. »",
+			 "set": {"luna_2_fait": true}, "next": "luna_meet2_b"},
+			{"label": "« Et toi, Luna ? Tu es du genre à quoi, à traîner ici tous les jours ? »",
+			 "set": {"luna_2_fait": true}, "relation": {"luna": 1}, "next": "luna_meet2_c"},
+		]},
+	"luna_meet2_a": {
+		"speaker": "Luna",
+		"text": "Un fonceur ! J'aurais parié. C'est le profil qui me fait gagner des paris avec Marn — et celui qui remplit le cimetière. ...Sois un fonceur qui revient, d'accord ? Ça changera.",
+		"choices": [{"label": "« Promis. »"}]},
+	"luna_meet2_b": {
+		"speaker": "Luna",
+		"text": "Un prudent. Mouais. La prudence, c'est ce que disent les gens qui n'ont jamais eu une vraie raison de courir... Pardon, c'était méchant. Disons que j'attends de voir si ta réflexion sert à quelque chose.",
+		"choices": [{"label": "« Tu verras. »"}]},
+	"luna_meet2_c": {
+		"speaker": "Luna",
+		"text": "...Tu retournes mes questions contre moi ? D'accord, je note. Personne ne demande jamais. Ils voient la fille qui boit et qui rit fort, et ça leur suffit. ...J'attends quelqu'un. Enfin — j'attends de trouver le courage d'aller le chercher. On en reparlera. Peut-être.",
+		"choices": [{"label": "« Quand tu voudras. »"}]},
+	# RENCONTRE 3 : la confiance est là — elle parle ENFIN de Tomas.
+	"luna_frere": {
+		"speaker": "Luna",
+		"text": "Trois fois que tu reviens t'asseoir là. Soit ma compagnie te plaît, soit t'as rien de mieux — me dis pas, je veux pas savoir. ...Bon. Tu te souviens, « j'attends quelqu'un » ? C'est mon frère. Tomas. Il est entré dans ce bois il y a un mois, pour prouver je sais pas quoi. Personne n'est allé voir. Pas même moi. Voilà. Tu sais tout.",
+		"choices": [
+			{"label": "« Alors on ira voir. Ensemble. »",
+			 "set": {"luna_3_fait": true, "luna_frere_dit": true}, "relation": {"luna": 1},
+			 "next": "luna_frere_a"},
+			{"label": "« Un mois, Luna... Il faut te préparer au pire. »",
+			 "set": {"luna_3_fait": true, "luna_frere_dit": true}, "next": "luna_frere_b"},
+			{"label": "« Il est mort. Passe à autre chose. »",
+			 "set": {"luna_3_fait": true, "luna_frere_dit": true, "luna_vexee": true},
+			 "relation": {"luna": -1}, "next": "luna_frere_c"},
+		]},
+	"luna_frere_a": {
+		"speaker": "Luna",
+		"text": "...Tu dis ça comme ça, comme si c'était rien. « On ira voir. » ...Tu sais que ça fait un mois que PERSONNE ne m'a dit ces trois mots ? Termine ce que t'as à faire ici. Et après — on y va. Toi et moi.",
+		"choices": [{"label": "« Toi et moi. »"}]},
+	"luna_frere_b": {
+		"speaker": "Luna",
+		"text": "« Le pire. » Tu crois que je n'y pense pas, au pire ? Chaque soir, troisième chope, pile à ce moment-là. ...Mais t'as le mérite d'être honnête sans être cruel. C'est rare. Laisse-moi du temps.",
+		"choices": [{"label": "« Prends-le. Je suis pas pressé. »"}]},
+	"luna_frere_c": {
+		"speaker": "Luna",
+		"text": "...Sors. Non — reste, c'est MA taverne, c'est moi qui pars. T'avise pas de me suivre. Et la prochaine fois que tu veux briser quelqu'un, choisis quelqu'un qui n'a pas un arc.",
+		"choices": [{"label": "(La regarder partir)"}]},
 	"luna_hesite": {
 		"speaker": "Luna",
-		"text": "Encore toi. Je réfléchis encore à ce que tu vaux... Un conseil : ici, on jauge les gens à ce qu'ils offrent.",
+		"text": "Encore toi. Je sais pas encore quoi penser de toi, tu sais. T'es là, t'écoutes, et puis ?... Chez nous on dit : on jauge les gens à ce qu'ils offrent.",
 		"choices": [
 			{"label": "« Marn ! Une tournée pour elle. » (offrir à boire)",
-			 "set": {"luna_tournee": true}, "relation": {"luna": 1}},
+			 "set": {"luna_tournee": true}, "relation": {"luna": 1}, "next": "luna_hesite_r"},
 			{"label": "(Repartir)"},
 		]},
+	"luna_hesite_r": {
+		"speaker": "Luna",
+		"text": "...Bon réflexe. À la tienne, tête brûlée. Tu montes dans mon estime — c'est un petit escalier, mais quand même.",
+		"choices": [{"label": "« Santé, Luna. »"}]},
 	"luna_hesite2": {
 		"speaker": "Luna",
-		"text": "Les mots, ça va deux minutes. Tu veux que je te suive dans ce bois ? Prouve que tu y survis. Reviens quand le loup de l'orée ne hurlera plus.",
+		"text": "Les mots, ça va deux minutes. Tu veux que je te suive là-dedans ? Prouve que tu y survis. Reviens quand le loup de l'orée ne hurlera plus — et là on parlera départ.",
 		"choices": [{"label": "« Tu vas m'entendre revenir. »"}]},
 	"luna_froide_tav": {
 		"speaker": "Luna",
-		"text": "...Tiens. J'avais pas oublié, tu sais. Ce que tu m'as dit. Je souris à tout le monde ici, mais toi, t'as pas droit au sourire. Tu voulais quelque chose ?",
+		"text": "...Tiens. J'avais pas oublié, tu sais. Ce que tu m'as dit. Je souris à tout le monde ici — c'est mon métier de cliente. Mais toi, t'as plus droit au sourire. Tu voulais quelque chose ?",
 		"choices": [
 			{"label": "« J'ai été odieux. Je le pense vraiment : pardon. »",
-			 "set": {"luna_vexee": false}, "relation": {"luna": 1}},
-			{"label": "« Toujours aussi susceptible ? »", "relation": {"luna": -1}},
+			 "set": {"luna_vexee": false}, "relation": {"luna": 1}, "next": "luna_pardon"},
+			{"label": "« Toujours aussi susceptible ? »", "relation": {"luna": -1},
+			 "next": "luna_pique"},
 			{"label": "(Repartir sans rien dire)"},
 		]},
+	"luna_pardon": {
+		"speaker": "Luna",
+		"text": "...T'as de la chance que les excuses sincères soient ma faiblesse. La SEULE, hein. Bon. Assieds-toi, on efface. Mais retiens un truc : je pardonne une fois. Une.",
+		"choices": [{"label": "« Une seule. Compris. »"}]},
+	"luna_pique": {
+		"speaker": "Luna",
+		"text": "Susceptible ? SUSCEPTIBLE ? ...Marn, ressers-moi. Et toi — disparais de ma table avant que je te montre à quel point je suis susceptible avec un arc à dix pas.",
+		"choices": [{"label": "(Reculer prudemment)"}]},
 	"luna_offre": {
 		"speaker": "Luna",
-		"text": "J'ai bu avec toi, j'ai ri avec toi, et tu ne m'as pas regardée comme une pauvre fille qui attend son frère. Alors voilà : mon arc vient avec moi, et moi je viens avec toi. On le retrouve. Ou on découvre ce qui lui est arrivé. Marché ?",
+		"text": "Assieds-toi, j'ai répété ce discours toute la nuit. ...Tu m'as écoutée parler de Tomas sans me prendre en pitié. Tu reviens, tu poses des questions, tu OFFRES des tournées. Alors voilà ma conclusion : mon arc vient avec moi, et moi je viens avec toi. On le retrouve — ou on découvre ce qui lui est arrivé. Marché ?",
 		"choices": [
 			{"label": "« Marché. Bienvenue, Luna. »",
 			 "set": {"luna_party": true}, "recruit": "luna", "next": "luna_join"},
