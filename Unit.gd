@@ -556,6 +556,63 @@ func _draw_figure(kind: String) -> void:
 			_draw_figure_rodeur()
 		"veilleur":
 			_draw_figure_veilleur()
+		"traqueur":
+			_draw_figure_traqueur()
+		"totem":
+			_draw_figure_totem()
+
+
+# Traqueur des ombres : silhouette élancée penchée en avant, double dague,
+# volutes d'ombre aux pieds. Rapide et inquiétant.
+func _draw_figure_traqueur() -> void:
+	var sway := sin(_anim_phase * 3.2) * 1.2
+	var dark := Color(0.16, 0.10, 0.20)
+	var mid := Color(0.28, 0.18, 0.36)
+	# Volutes d'ombre au sol.
+	_draw_ellipse(Vector2(0, 4), 14.0 + sin(_anim_phase * 2.2) * 2.0, 5.0,
+			Color(0.25, 0.12, 0.35, 0.30))
+	# Corps fin penché vers l'avant (prêt à bondir).
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(-4.0 + sway * 0.4, -22.0), Vector2(3.0 + sway * 0.4, -24.0),
+		Vector2(6.0, -6.0), Vector2(2.0, 5.0), Vector2(-4.0, 4.0)]), mid)
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(-4.0 + sway * 0.4, -22.0), Vector2(0.0 + sway * 0.4, -23.0),
+		Vector2(0.0, 4.0), Vector2(-4.0, 4.0)]), dark)
+	# Tête basse encapuchonnée + yeux fendus violets.
+	draw_circle(Vector2(-4.0 + sway, -26.0), 5.0, dark)
+	draw_circle(Vector2(-6.2 + sway, -25.5), 1.0, Color(0.85, 0.55, 1.0))
+	draw_circle(Vector2(-3.0 + sway, -26.2), 1.0, Color(0.85, 0.55, 1.0))
+	# Doubles dagues (reflets froids).
+	draw_line(Vector2(7.0, -12.0), Vector2(13.0, -4.0), Color(0.80, 0.82, 0.90), 2.2)
+	draw_line(Vector2(-8.0, -10.0), Vector2(-13.0, -2.0), Color(0.80, 0.82, 0.90), 2.2)
+
+
+# Totem de ronces : pierre dressée gravée de runes, enserrée de ronces,
+# lueur verte qui pulse. Immobile — c'est le bois qui frappe.
+func _draw_figure_totem() -> void:
+	var pulse := 0.5 + 0.4 * sin(_anim_phase * 2.0)
+	var stone := Color(0.38, 0.40, 0.36)
+	var stone_d := stone.darkened(0.35)
+	# Pierre dressée (monolithe irrégulier).
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(-9.0, 4.0), Vector2(-7.0, -28.0), Vector2(-2.0, -34.0),
+		Vector2(6.0, -30.0), Vector2(9.0, -2.0), Vector2(5.0, 5.0)]), stone)
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(-9.0, 4.0), Vector2(-7.0, -28.0), Vector2(-3.0, -31.0),
+		Vector2(-3.0, 4.0)]), stone_d)
+	# Ronces enroulées (lianes sombres + épines).
+	var vine := Color(0.16, 0.30, 0.14)
+	draw_line(Vector2(-9.0, -4.0), Vector2(8.0, -12.0), vine, 2.4)
+	draw_line(Vector2(-7.0, -20.0), Vector2(8.0, -24.0), vine, 2.2)
+	for tx in [-5.0, 1.0, 6.0]:
+		var t2: float = tx
+		draw_line(Vector2(t2, -12.0 + t2 * -0.45), Vector2(t2 + 1.5, -16.0 + t2 * -0.45),
+				vine, 1.4)
+	# Rune gravée qui pulse (le cœur du totem).
+	var glow := Color(0.45, 0.95, 0.40, pulse)
+	draw_circle(Vector2(0.0, -18.0), 4.0, Color(glow, pulse * 0.35))
+	draw_line(Vector2(0.0, -22.0), Vector2(0.0, -14.0), glow, 1.8)
+	draw_line(Vector2(-3.0, -19.0), Vector2(3.0, -17.0), glow, 1.8)
 
 
 # Loup des Murmures : prédateur gris-bleu de profil, respiration, œil luisant.

@@ -437,12 +437,47 @@ const CLASSES := {
 		"hidden": true, "figure_npc": "bucheron",
 		"skills": [],
 	},
+	"traqueur_ombres": {
+		"name": "Traqueur des ombres", "color": Color(0.35, 0.20, 0.45), "symbol": "t",
+		"description": "Tueur furtif du bois. Fragile mais létal : il fond sur les isolés.",
+		"max_hp": 18, "move_range": 5, "attack": 13, "attack_range": 1,
+		"crit_chance": 0.30, "behavior": "melee", "role": "melee",
+		"hidden": true, "figure": "traqueur",
+		"skills": [],
+	},
+	"totem_ronces": {
+		"name": "Totem de ronces", "color": Color(0.30, 0.45, 0.22), "symbol": "o",
+		"description": "Pierre dressée animée par le bois. Immobile, il cloue les intrus sur place.",
+		"max_hp": 35, "move_range": 0, "attack": 7, "attack_range": 3,
+		"crit_chance": 0.0, "behavior": "kite", "role": "ranged",
+		"hidden": true, "figure": "totem",
+		"actives": [
+			{"name": "Racines", "type": "roots", "target": "enemy", "range": 3, "cooldown": 2,
+				"desc": "Immobilise un intrus 1 tour."},
+		],
+		"skills": [],
+	},
+	"sera_traquee": {
+		"name": "Sera, la traquée", "color": Color(0.30, 0.42, 0.62), "symbol": "S",
+		"description": "Dénoncée, chassée du hameau, elle a rejoint le bois. Elle n'a pas oublié.",
+		"max_hp": 26, "move_range": 4, "attack": 10, "attack_range": 4,
+		"crit_chance": 0.25, "behavior": "kite", "role": "ranged",
+		"hidden": true, "figure_npc": "etrangere",
+		"skills": [],
+	},
 	"veilleur_murmures": {
 		"name": "Le Veilleur des Murmures", "color": Color(0.45, 0.28, 0.66), "symbol": "Ω",
 		"description": "BOSS. L'esprit cornu qui règne sur le Bois des Murmures. Il combat seul — et ça suffit.",
 		"max_hp": 115, "move_range": 4, "attack": 15, "attack_range": 1,
 		"crit_chance": 0.15, "behavior": "melee", "role": "melee",
 		"hidden": true, "figure": "veilleur", "boss": true,
+		# Boss à MÉCANIQUES : phases déclenchées par ses PV (Battle._process).
+		"phases": [
+			{"at": 0.55, "announce": "Le bois répond à son maître !",
+			 "summon": ["loup_murmures", "loup_murmures"]},
+			{"at": 0.25, "announce": "FURIE DU VEILLEUR !",
+			 "buff": "rage", "attack_mult": 1.3},
+		],
 		"actives": [
 			{"name": "Étreinte des ronces", "type": "cleave", "target": "enemy", "radius": 1, "dmg_mult": 1.0, "range": 1, "cooldown": 3,
 				"desc": "Fauche la cible et tous ses voisins de ronces acérées. Recharge : 3 tours."},
@@ -638,16 +673,40 @@ const TREE := {
 		 {"name": "Miracle", "type": "war_heal", "target": "ally", "heal_amount": 32, "range": 3, "can_self": true, "cooldown": 4, "desc": "Rend 32 PV à un allié (ou soi)."}],
 	],
 }
-# Progression par membre ("hero", "sera"...) : niveau, choix en attente, bonus
-# cumulés et compétences choisies (dicts complets, persistés tels quels).
+# Progression par membre ("hero", "sera"...) : niveau, XP, choix en attente,
+# bonus cumulés et compétences choisies (dicts complets, persistés tels quels).
+# XP : gagnée à la victoire (= PV max totaux des ennemis, ×2 contre un boss),
+# le MVP du combat gagne +10%. Donne droit aux montées de niveau (max 12).
 var campaign_levels := {}
+var campaign_items: Array = []  # sacoche (objets de quête)
 
 
 func member_progress(mid: String) -> Dictionary:
 	if not campaign_levels.has(mid):
-		campaign_levels[mid] = {"level": 0, "pending": 0,
+		campaign_levels[mid] = {"level": 0, "pending": 0, "xp": 0,
 				"hp_pct": 0.0, "atk": 0, "crit": 0.0, "skills": []}
+	if not campaign_levels[mid].has("xp"):  # migration des vieilles sauvegardes
+		campaign_levels[mid]["xp"] = 0
 	return campaign_levels[mid]
+
+
+# XP nécessaire pour passer du niveau donné au suivant (courbe croissante).
+func xp_to_next(level: int) -> int:
+	return 80 + level * 40
+
+
+# Crédite de l'XP à un membre et convertit en montées de niveau « en attente »
+# (les choix de bonus/compétences se font au retour dans le monde).
+func grant_xp(mid: String, amount: int) -> void:
+	var p := member_progress(mid)
+	var target: int = int(p.level) + int(p.pending)
+	if target >= MAX_LEVEL:
+		return
+	p.xp = int(p.xp) + amount
+	while target < MAX_LEVEL and int(p.xp) >= xp_to_next(target):
+		p.xp = int(p.xp) - xp_to_next(target)
+		p.pending = int(p.pending) + 1
+		target += 1
 
 
 # Pose un drapeau de campagne (choix mémorisé) sans sauvegarder (l'appelant
@@ -674,6 +733,7 @@ func clear_campaign() -> void:
 	campaign_hero = {}
 	campaign_party = []
 	campaign_levels = {}
+	campaign_items = []
 	campaign_saved_at = ""
 	save_settings()
 
@@ -736,6 +796,7 @@ func save_settings() -> void:
 	cfg.set_value("campaign", "hero", campaign_hero)
 	cfg.set_value("campaign", "party", campaign_party)
 	cfg.set_value("campaign", "levels", campaign_levels)
+	cfg.set_value("campaign", "items", campaign_items)
 	cfg.save(SETTINGS_PATH)
 
 
@@ -759,3 +820,4 @@ func load_settings() -> void:
 	campaign_hero = cfg.get_value("campaign", "hero", {})
 	campaign_party = cfg.get_value("campaign", "party", [])
 	campaign_levels = cfg.get_value("campaign", "levels", {})
+	campaign_items = cfg.get_value("campaign", "items", [])
