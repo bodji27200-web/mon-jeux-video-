@@ -7,7 +7,7 @@ extends Control
 
 var _gender := "f"
 var _design := 0
-var _class_id := "tank"
+var _class_id := "lame_errante"
 
 var _preview: Control
 var _name_edit: LineEdit
@@ -21,7 +21,7 @@ var _phase := 0.0
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_build_ui()
-	_select_class("tank")
+	_select_class("lame_errante")
 	Audio.play_music("menu")
 
 
@@ -128,7 +128,7 @@ func _build_ui() -> void:
 	add_child(right)
 
 	var cl := Label.new()
-	cl.text = "Classe (débloquées par tes victoires et l'exploration) :"
+	cl.text = "Classe (chacune a SON arbre de compétences — le build se gagne en jouant) :"
 	cl.add_theme_font_size_override("font_size", 16)
 	right.add_child(cl)
 
@@ -140,16 +140,14 @@ func _build_ui() -> void:
 	grid.add_theme_constant_override("h_separation", 6)
 	grid.add_theme_constant_override("v_separation", 6)
 	scroll.add_child(grid)
-	for cid in GameData.CLASSES:
+	# Classes PROPRES à la campagne (le JcJ est un mode à part) : celles qui ont
+	# un arbre de classe dédié (CLASS_TREES), toutes disponibles dès le départ.
+	for cid in GameData.CLASS_TREES:
 		var data: Dictionary = GameData.CLASSES[cid]
-		if data.get("hidden", false):
-			continue
 		var b := Button.new()
-		var unlocked: bool = GameData.is_unlocked(cid)
-		b.text = str(data.name) if unlocked else "🔒 %s" % str(data.name)
+		b.text = str(data.name)
 		b.custom_minimum_size = Vector2(164, 40)
 		b.focus_mode = Control.FOCUS_NONE
-		b.disabled = not unlocked
 		var c := str(cid)
 		b.pressed.connect(func():
 			Audio.play_sfx("click")
@@ -214,9 +212,12 @@ func _select_class(cid: String) -> void:
 	for k in _class_buttons:
 		_class_buttons[k].modulate = Color(1.0, 0.9, 0.5) if k == cid else Color(1, 1, 1)
 	var d: Dictionary = GameData.CLASSES[cid]
+	# Aperçu de l'arbre de classe : premier choix de build (rangée 1).
+	var tree: Array = GameData.tree_rows(cid)
 	var skills := ""
-	for a in d.get("actives", []):
-		skills += "\n• %s" % str(a.name)
+	if not tree.is_empty():
+		skills = "\nArbre — 1er choix : %s OU %s  (+5 rangées à débloquer)" % [
+				str(tree[0][0].name), str(tree[0][1].name)]
 	_desc_label.text = "%s — %s\nPV %d · ATK %d · Portée %d · Déplacement %d%s" % [
 			str(d.name), str(d.description), int(d.max_hp), int(d.attack),
 			int(d.attack_range), int(d.move_range), skills]
