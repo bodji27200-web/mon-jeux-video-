@@ -74,6 +74,12 @@ var _boss_unit: Node = null
 var _boss_name_label: Label
 var _boss_bar_bg: ColorRect
 var _boss_bar_fill: ColorRect
+var _boss_phase := 0  # index de la prochaine phase à déclencher (data "phases")
+
+# Campagne : score de contribution par unité (dégâts + soins) pour le MVP
+# (+10% d'XP), et correspondance unité -> id de progression.
+var _score := {}
+var _member_of := {}
 
 
 func _ready() -> void:
@@ -92,8 +98,9 @@ func _ready() -> void:
 				u.display_name = str(GameData.campaign_battle_names[ni])
 				# Progression de campagne : niveaux, bonus et compétences d'arbre.
 				if ni < GameData.campaign_battle_ids.size():
-					u.apply_growth(GameData.member_progress(
-							str(GameData.campaign_battle_ids[ni])))
+					var mid := str(GameData.campaign_battle_ids[ni])
+					u.apply_growth(GameData.member_progress(mid))
+					_member_of[u] = mid
 				ni += 1
 	_start_player = GameData.player_team.size()
 	_start_ai = GameData.ai_team.size()
@@ -161,10 +168,46 @@ func _process(_delta: float) -> void:
 		return
 	var r := clampf(float(_boss_unit.hp) / float(_boss_unit.data.max_hp), 0.0, 1.0)
 	_boss_bar_fill.size.x = 536.0 * r
+	# Boss à mécaniques : déclenche la phase suivante quand ses PV passent le seuil.
+	var phases: Array = _boss_unit.data.get("phases", [])
+	if _boss_unit.is_alive() and _boss_phase < phases.size() \
+			and r <= float(phases[_boss_phase].at):
+		var ph: Dictionary = phases[_boss_phase]
+		_boss_phase += 1
+		_trigger_boss_phase(ph)
 	if not _boss_unit.is_alive():
 		_boss_name_label.visible = false
 		_boss_bar_bg.visible = false
 		_boss_bar_fill.visible = false
+
+
+# Applique une phase de boss : annonce + invocations + montée en puissance.
+func _trigger_boss_phase(ph: Dictionary) -> void:
+	Audio.play_sfx("skill")
+	_show_map_name(str(ph.get("announce", "")))
+	_fx("nova", _boss_unit.grid_position, _boss_unit.grid_position,
+			Color(0.72, 0.45, 1.0), 64.0)
+	for cid in ph.get("summon", []):
+		var cell = _free_adjacent(_boss_unit.grid_position, _boss_unit)
+		if cell == null:
+			continue
+		var u := UNIT_SCENE.instantiate()
+		u.class_id = str(cid)
+		u.team = GameData.Team.AI
+		u.grid_position = cell
+		grid.add_child(u)
+		turn_manager.add_unit(u)
+	if ph.has("attack_mult"):
+		_boss_unit.data = _boss_unit.data.duplicate()
+		_boss_unit.data.attack = int(round(float(_boss_unit.data.attack) * float(ph.attack_mult)))
+	if ph.has("buff"):
+		_boss_unit.add_buff(str(ph.buff))
+
+
+# Score de contribution (campagne) : dégâts infligés et soins prodigués.
+func _add_score(u: Node, amount: int) -> void:
+	if u != null and u.is_player():
+		_score[u] = int(_score.get(u, 0)) + amount
 
 
 # Bouton "Fuir" (à côté de Fin de tour) : uniquement en combat de campagne,
@@ -563,6 +606,7 @@ func _handle_click(cell: Vector2i) -> void:
 func _perform_action(unit: Node, target: Node) -> void:
 	if _is_healer(unit) and target.team == unit.team:
 		target.heal(int(unit.data.heal))
+		_add_score(unit, int(unit.data.heal))
 		Audio.play_sfx("heal")
 		_fx("buff", target.grid_position, target.grid_position, Color(0.30, 0.90, 0.40))
 	else:
@@ -607,6 +651,7 @@ func _attack(unit: Node, target: Node, mult := 1.0, is_counter := false) -> void
 	if is_crit:
 		Audio.play_sfx("crit")
 	target.take_damage(final_dmg, is_crit)
+	_add_score(unit, final_dmg)
 	if not target.is_alive():
 		Audio.play_sfx("death")
 	if unit.data.has("on_hit") and target.is_alive():
@@ -696,17 +741,36 @@ func _check_end() -> bool:
 			replay_button.text = "Continuer l'aventure" if p else "Retour au menu"
 			if p and not GameData.campaign_defeated.has(GameData.campaign_enemy_id):
 				GameData.campaign_defeated.append(GameData.campaign_enemy_id)
-				# Victoire = +1 niveau pour chaque membre présent (+2 si boss).
-				var gain := 1
+				# XP = PV max totaux des ennemis (×2 contre un boss). Le membre
+				# au meilleur score (dégâts + soins) est MVP : +10% d'XP.
+				var base := 0
+				var is_boss := false
 				for cid2 in GameData.ai_team:
+					base += int(GameData.CLASSES.get(cid2, {}).get("max_hp", 0))
 					if GameData.CLASSES.get(cid2, {}).get("boss", false):
-						gain = 2
+						is_boss = true
+				if is_boss:
+					base *= 2
+				var mvp_mid := ""
+				var best := -1
+				for u in _member_of:
+					if int(_score.get(u, 0)) > best:
+						best = int(_score.get(u, 0))
+						mvp_mid = str(_member_of[u])
+				var mvp_name := ""
+				var idx := 0
 				for mid in GameData.campaign_battle_ids:
-					var prog: Dictionary = GameData.member_progress(str(mid))
-					prog.pending = mini(int(prog.pending) + gain,
-							GameData.MAX_LEVEL - int(prog.level))
+					var amount := base
+					if str(mid) == mvp_mid:
+						amount = int(round(float(base) * 1.1))
+						if idx < GameData.campaign_battle_names.size():
+							mvp_name = str(GameData.campaign_battle_names[idx])
+					GameData.grant_xp(str(mid), amount)
+					idx += 1
 				GameData.save_campaign()
-				stats_label.text += "\n\n★ Niveau supérieur ! (choix au retour dans le monde)"
+				stats_label.text += "\n\n★ +%d XP" % base
+				if mvp_name != "":
+					stats_label.text += "   ·   MVP : %s (+10%%)" % mvp_name
 			elif not p and GameData.campaign_difficulty == "hardcore":
 				# Hardcore : la mort de l'équipe efface la campagne (mort permanente).
 				GameData.clear_campaign()
@@ -811,6 +875,7 @@ func _use_skill(caster: Node, cell: Vector2i, index: int) -> void:
 			var ally := _unit_at(cell)
 			if ally:
 				ally.heal(int(sk.get("heal_amount", 12)))
+				_add_score(caster, int(sk.get("heal_amount", 12)))
 				_fx("buff", cell, cell, Color(0.30, 0.90, 0.40))
 		"roots":
 			var enemy := _unit_at(cell)

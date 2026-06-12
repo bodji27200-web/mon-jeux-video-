@@ -495,6 +495,23 @@ Ordre de priorité (✅ = fait) :
     mode à part, kits intacts). Barre de compétences passée à **6 carrés**
     (`SKILL_SLOTS`). Fiche d'équipe : niveau X/12, stats boostées, compétences
     d'arbre.
+72. ✅ **Zone 1 complète : XP, boss à phases, nouveaux ennemis, conséquences** :
+    - **XP remplace « victoire = niveau »** : XP = PV max totaux des ennemis
+      (×2 boss), **MVP du combat +10%** (`Battle._score` : dégâts + soins,
+      `_member_of`). Courbe `xp_to_next = 80 + 40×niveau` (`GameData.grant_xp`
+      → `pending`, choix inchangés au retour). **Barre d'XP dans la fiche**
+      (hors combat), `campaign_items` (sacoche) persisté.
+    - **Veilleur à MÉCANIQUES** (`data.phases`, moteur `Battle._process` →
+      `_trigger_boss_phase`) : 55% PV = invoque 2 loups ; 25% = FURIE
+      (rage + ATK ×1.3). Annonces via `_show_map_name` + nova.
+    - **3 nouveaux combats zone 1** : Meute (3 loups), **Traqueur des ombres**
+      (assassin fragile/létal, figure dédiée), **Totem de ronces** (immobile
+      `fixed`, racines, figure dédiée — gardé par un loup).
+    - **Sera dénoncée revient en ennemie** (`sera_traquee`, FOES `need_flag`).
+    - **Quête de Maud** : sachet d'herbes au bord de l'étang (PNJ-objet
+      `need_flag`/`prompt`, effets de choix `item`/`remove_item`/`xp_team`,
+      +60 XP équipe). **Journal de quêtes** + ☠ de danger par tier sur les
+      rôdeurs. `_close_dialogue` déclenche les montées de niveau de quête.
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`

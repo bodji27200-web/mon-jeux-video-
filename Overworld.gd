@@ -49,8 +49,17 @@ const BODY_RADIUS := 0.22  # rayon de collision des personnages (en tuiles)
 const FOES := [
 	{"id": "loup_solitaire", "name": "Loup des Murmures", "px": 28.0, "dy": -1.2, "tier": 1,
 	 "team": ["loup_murmures"], "hue": Color(0.40, 0.44, 0.52)},
+	{"id": "meute_murmures", "name": "Meute des Murmures", "px": 31.0, "dy": -3.2, "tier": 2,
+	 "team": ["loup_murmures", "loup_murmures", "loup_murmures"], "hue": Color(0.34, 0.38, 0.46)},
 	{"id": "rodeurs_bois", "name": "Rôdeur du bois", "px": 34.0, "dy": 1.4, "tier": 2,
 	 "team": ["rodeur_sombre"], "hue": Color(0.46, 0.34, 0.24)},
+	# Sera revient en ennemie SI on l'a dénoncée (conséquence du choix).
+	{"id": "sera_traquee", "name": "Sera, la traquée", "px": 33.0, "dy": 3.4, "tier": 2,
+	 "team": ["sera_traquee"], "hue": Color(0.30, 0.42, 0.62), "need_flag": "sera_denoncee"},
+	{"id": "traqueur", "name": "Traqueur des ombres", "px": 36.5, "dy": -1.8, "tier": 2,
+	 "team": ["traqueur_ombres"], "hue": Color(0.30, 0.18, 0.40)},
+	{"id": "totem", "name": "Totem de ronces", "px": 38.5, "dy": 2.2, "tier": 2,
+	 "team": ["totem_ronces", "loup_murmures"], "hue": Color(0.28, 0.40, 0.22), "fixed": true},
 	# Le boss est SEUL dans son combat : UN Veilleur, pas une équipe.
 	{"id": "veilleur", "name": "Le Veilleur des Murmures", "px": 41.0, "dy": 0.0, "tier": 3,
 	 "team": ["veilleur_murmures"], "hue": Color(0.45, 0.28, 0.66)},
@@ -64,8 +73,16 @@ const NPCS := [
 	{"id": "maud", "name": "Maud, l'herboriste", "pos": Vector2(7.6, 6.6), "figure": "herboriste",
 	 "rules": [
 		{"flag": "maud_vexee", "dialogue": "maud_froide"},
-		{"flag": "maud_amie", "dialogue": "maud_revoit"},
+		{"flag": "herbes_rendues", "dialogue": "maud_fin"},
+		{"flag": "herbes_prises", "dialogue": "maud_rendre"},
+		{"flag": "maud_quete", "dialogue": "maud_attente"},
+		{"flag": "maud_amie", "dialogue": "maud_quete_offre"},
 	 ], "fallback": "maud_intro"},
+	# Le sachet perdu de Maud (objet au bord de l'étang, visible si quête prise).
+	{"id": "sachet", "name": "Sachet d'herbes", "pos": Vector2(13.6, 20.2), "figure": "sachet",
+	 "need_flag": "maud_quete", "hide_flag": "herbes_prises",
+	 "prompt": "E — Ramasser",
+	 "rules": [], "fallback": "sachet_trouve"},
 	{"id": "garin", "name": "Garin, le bûcheron", "pos": Vector2(12.6, 11.6), "figure": "bucheron",
 	 "party_flag": "garin_party",
 	 "rules": [
@@ -97,10 +114,38 @@ const DIALOGUES := {
 		"speaker": "Maud, l'herboriste",
 		"text": "Le maître du bois ne se laisse pas fuir : quand on l'affronte, c'est jusqu'au bout. Ses ronces fauchent tout ce qui se serre — n'avance pas en rang d'oignons, écarte tes gens.",
 		"choices": [{"label": "« Merci, Maud. »"}]},
-	"maud_revoit": {
+	"maud_quete_offre": {
 		"speaker": "Maud, l'herboriste",
-		"text": "Toujours vivant, petit ? Les murmures parlent de toi. Souviens-toi : écartés face aux ronces, et garde celui qui soigne loin des crocs.",
+		"text": "Toujours vivant, petit ? Tant mieux... J'ai perdu mon sachet d'herbes lunaires au bord de l'étang, mes vieilles jambes n'iront pas le chercher. Tu me le rapportes ? Je saurai te le rendre — j'en sais long sur ce bois.",
+		"choices": [
+			{"label": "« J'irai vous le chercher. »", "set": {"maud_quete": true}, "next": "maud_quete_merci"},
+			{"label": "« Une autre fois, Maud. »"},
+		]},
+	"maud_quete_merci": {
+		"speaker": "Maud, l'herboriste",
+		"text": "Brave petit. Au bord de l'étang, côté prairie. Fais attention à la vase.",
+		"choices": [{"label": "(Partir)"}]},
+	"maud_attente": {
+		"speaker": "Maud, l'herboriste",
+		"text": "Alors, mon sachet ? Au bord de l'étang, côté prairie. Mes tisanes n'attendront pas cent ans.",
+		"choices": [{"label": "« J'y vais. »"}]},
+	"maud_rendre": {
+		"speaker": "Maud, l'herboriste",
+		"text": "Mon sachet ! Intact, en plus. Tiens, approche : je vais t'apprendre à lire le bois — où frapper, où ne pas mettre les pieds. Ça vaut toutes les pièces du monde.",
+		"choices": [{"label": "« Merci, Maud. »", "set": {"herbes_rendues": true},
+			"remove_item": "🌿 Sachet d'herbes", "xp_team": 60}]},
+	"maud_fin": {
+		"speaker": "Maud, l'herboriste",
+		"text": "Mes tisanes embaument à nouveau, grâce à toi. File, le bois t'attend — et souviens-toi : écartés face aux ronces.",
 		"choices": [{"label": "« À bientôt. »"}]},
+	"sachet_trouve": {
+		"speaker": "Sachet d'herbes",
+		"text": "Un petit sachet de toile, à moitié enfoui dans la vase. L'odeur des herbes lunaires de Maud ne trompe pas.",
+		"choices": [
+			{"label": "(Ramasser le sachet)", "set": {"herbes_prises": true},
+			 "item": "🌿 Sachet d'herbes"},
+			{"label": "(Laisser là)"},
+		]},
 	"maud_vexe": {
 		"speaker": "Maud, l'herboriste",
 		"text": "... Comme tu veux. Le bois t'apprendra mieux que moi.",
@@ -227,6 +272,7 @@ var _dlg_choices: VBoxContainer
 var _sheet_open := false
 var _sheet_panel: PanelContainer
 var _sheet_box: HBoxContainer  # colonnes côte à côte (façon BG3 : 1 par perso)
+var _sheet_quests: Label       # journal des quêtes en cours (bas de la fiche)
 # Montées de niveau (après victoire) : file de choix bonus/compétence par membre.
 var _leveling := false
 var _lvl_queue: Array = []
@@ -298,12 +344,16 @@ func _build_world() -> void:
 		for dy in 2:
 			for dx in 2:
 				_blocked[h + Vector2i(dx, dy)] = true
-	# Positions des ennemis (le long du sentier, dans le bois).
+	# Positions des ennemis (le long du sentier, dans le bois). Un ennemi peut
+	# exiger un drapeau ("need_flag" : ex. Sera dénoncée) ou être fixe ("fixed").
 	_foe_spawns.clear()
 	for f in FOES:
+		if f.has("need_flag") and not GameData.get_flag(f.need_flag):
+			continue
 		var pos := Vector2(f.px + 0.5, _path_y(f.px) + f.dy)
 		_foe_spawns.append({"id": f.id, "name": f.name, "tier": f.tier,
-				"team": f.team, "hue": f.hue, "pos": pos})
+				"team": f.team, "hue": f.hue, "pos": pos,
+				"fixed": f.get("fixed", false)})
 	# Sapins du bois (clairières autour des ennemis + couloir du sentier préservés).
 	# 90 essais (et pas plus) : le bois reste dense mais le navigateur respire.
 	for i in 90:
@@ -419,10 +469,12 @@ func _build_nodes() -> void:
 		var w := Walker.new()
 		w.kind = "foe"
 		w.foe_id = fs.id
-		w.label = fs.name
+		# ☠ par palier de danger : on jauge l'ennemi avant de l'engager.
+		w.label = "%s %s" % [fs.name, "☠".repeat(int(fs.tier))]
 		w.tier = fs.tier
 		w.team = fs.team
 		w.hue = fs.hue
+		w.fixed = bool(fs.get("fixed", false))
 		w.mpos = fs.pos
 		w.home = fs.pos
 		w.wander_target = fs.pos
@@ -439,9 +491,13 @@ func _build_nodes() -> void:
 			continue
 		if n.has("party_flag") and GameData.get_flag(n.party_flag):
 			continue
+		if n.has("need_flag") and not GameData.get_flag(n.need_flag):
+			continue
 		var w := Walker.new()
 		w.kind = "npc"
 		w.npc_id = n.id
+		if n.has("prompt"):
+			w.prompt_text = str(n.prompt)
 		w.figure = n.figure
 		w.label = n.name
 		w.mpos = n.pos
@@ -524,6 +580,11 @@ func _build_ui() -> void:
 	_sheet_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	_sheet_box.add_theme_constant_override("separation", 10)
 	sheet_root.add_child(_sheet_box)
+	_sheet_quests = Label.new()
+	_sheet_quests.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_sheet_quests.add_theme_font_size_override("font_size", 13)
+	_sheet_quests.add_theme_color_override("font_color", Color(0.82, 0.76, 0.58))
+	sheet_root.add_child(_sheet_quests)
 
 	# Panneau de montée de niveau (après victoire) : un choix à la fois.
 	_lvl_panel = PanelContainer.new()
@@ -729,6 +790,24 @@ func _on_choice(choice: Dictionary) -> void:
 		GameData.campaign_party.append(rid)
 		changed = true
 		_announce("🤝 %s rejoint l'équipe !" % str(GameData.COMPANIONS[rid].name))
+	# Objet de quête : entre dans la sacoche (ou en sort si on le rend).
+	var item: String = str(choice.get("item", ""))
+	if item != "" and not GameData.campaign_items.has(item):
+		GameData.campaign_items.append(item)
+		changed = true
+		_announce("Objet récupéré : %s" % item)
+	var rem: String = str(choice.get("remove_item", ""))
+	if rem != "":
+		GameData.campaign_items.erase(rem)
+		changed = true
+	# Récompense d'XP pour toute l'équipe (quêtes de PNJ).
+	var xp: int = int(choice.get("xp_team", 0))
+	if xp > 0:
+		GameData.grant_xp("hero", xp)
+		for comp_id in GameData.campaign_party:
+			GameData.grant_xp(str(comp_id), xp)
+		changed = true
+		_announce("★ +%d XP pour l'équipe !" % xp)
 	if changed:
 		GameData.campaign_pos = _player.mpos
 		GameData.save_campaign()
@@ -758,6 +837,9 @@ func _close_dialogue() -> void:
 				tw.tween_property(leaving, "modulate:a", 0.0, 1.2)
 				tw.tween_callback(leaving.queue_free)
 	_dlg_npc = null
+	# Une récompense de quête peut donner des niveaux : on choisit maintenant.
+	if not _leveling:
+		_check_levelups()
 
 
 # --- Fiche d'équipe (touche C) : héros + compagnons, stats et compétences ---
@@ -776,6 +858,15 @@ func _open_sheet() -> void:
 		var c: Dictionary = GameData.COMPANIONS.get(comp_id, {})
 		if not c.is_empty():
 			_add_sheet_column(str(comp_id), str(c.name), str(c["class"]), false, str(c.figure))
+	# Journal des quêtes en cours (drapeaux -> lignes lisibles).
+	var quests: Array = []
+	if GameData.get_flag("garin_accepte") and not GameData.get_flag("garin_recompense"):
+		quests.append("🪓 Garin : chasser le loup et le rôdeur du bois")
+	if GameData.get_flag("maud_quete") and not GameData.get_flag("herbes_prises"):
+		quests.append("🌿 Maud : retrouver son sachet au bord de l'étang")
+	elif GameData.get_flag("herbes_prises") and not GameData.get_flag("herbes_rendues"):
+		quests.append("🌿 Rapporter le sachet d'herbes à Maud")
+	_sheet_quests.text = "— Quêtes —\n" + "\n".join(quests) if not quests.is_empty() else ""
 	_sheet_panel.visible = true
 
 
@@ -910,10 +1001,24 @@ func _add_sheet_column(mid: String, member_name: String, cid: String, is_hero: b
 	sub.text = "%s · %s · niveau %d / %d" % [str(d.name),
 			str(ROLE_NAMES.get(str(d.get("role", "")), "")),
 			int(p.level), GameData.MAX_LEVEL]
+	# Barre d'XP vers le prochain niveau (hors combat, comme demandé).
+	var xp_bar := ProgressBar.new()
+	xp_bar.custom_minimum_size = Vector2(200, 12)
+	xp_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	xp_bar.show_percentage = false
+	xp_bar.max_value = GameData.xp_to_next(int(p.level) + int(p.pending))
+	xp_bar.value = int(p.xp)
+	var xp_lbl := Label.new()
+	xp_lbl.text = "XP %d / %d" % [int(p.xp), int(xp_bar.max_value)]
+	xp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	xp_lbl.add_theme_font_size_override("font_size", 11)
+	xp_lbl.add_theme_color_override("font_color", Color(0.65, 0.72, 0.85))
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.add_theme_font_size_override("font_size", 13)
 	sub.add_theme_color_override("font_color", Color(0.70, 0.72, 0.68))
 	col.add_child(sub)
+	col.add_child(xp_bar)
+	col.add_child(xp_lbl)
 	var stats := Label.new()
 	stats.text = "PV %d  ·  ATK %d  ·  Crit %d%%\nPortée %d  ·  Déplacement %d" % [
 			int(round(float(d.max_hp) * (1.0 + float(p.hp_pct)))),
@@ -960,10 +1065,15 @@ func _add_sheet_column(mid: String, member_name: String, cid: String, is_hero: b
 		var slot := PanelContainer.new()
 		slot.custom_minimum_size = Vector2(38, 38)
 		var dash := Label.new()
+		# Les objets de quête (sacoche commune) s'affichent chez le héros.
 		dash.text = "·"
+		if is_hero and i < GameData.campaign_items.size():
+			dash.text = str(GameData.campaign_items[i]).left(2)
+			dash.tooltip_text = str(GameData.campaign_items[i])
 		dash.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		dash.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		dash.add_theme_color_override("font_color", Color(0.45, 0.44, 0.40))
+		dash.add_theme_color_override("font_color", Color(0.85, 0.82, 0.70)
+				if is_hero and i < GameData.campaign_items.size() else Color(0.45, 0.44, 0.40))
 		slot.add_child(dash)
 		slots.add_child(slot)
 	col.add_child(slots)
@@ -1031,6 +1141,14 @@ func _update_foes(delta: float) -> void:
 		# passe à l'écran, rien ne doit tourner).
 		if dist > 14.0 and not f.chasing:
 			f.moving = false
+			continue
+		# Ennemi fixe (totem...) : ne bouge jamais, le contact seul le déclenche.
+		if f.fixed:
+			f.moving = false
+			f.show_label = dist < 5.0
+			if dist < CONTACT_RANGE and _grace <= 0.0 and not _locked:
+				_start_battle(f)
+				return
 			continue
 		if f.chasing:
 			if dist > DEAGGRO_RANGE:
@@ -1300,6 +1418,17 @@ static func draw_npc_figure(ci: CanvasItem, figure: String, b: float) -> void:
 				Vector2(-10.0, -29.0 + b), Vector2(-6.0, -27.0 + b),
 				Vector2(-10.0, -23.5 + b), Vector2(-13.0, -26.0 + b)]),
 				Color(0.72, 0.74, 0.80))
+		"sachet":
+			# Petit sachet de toile à moitié enfoui (objet de quête de Maud).
+			ci.draw_colored_polygon(PackedVector2Array([
+				Vector2(-5.0, 0.0), Vector2(-4.0, -7.0 + b), Vector2(0.0, -9.0 + b),
+				Vector2(4.0, -7.0 + b), Vector2(5.0, 0.0)]), Color(0.62, 0.50, 0.34))
+			ci.draw_line(Vector2(-3.0, -7.0 + b), Vector2(3.0, -7.0 + b),
+					Color(0.38, 0.28, 0.16), 1.8)
+			ci.draw_line(Vector2(0.0, -9.0 + b), Vector2(-2.0, -13.0 + b),
+					Color(0.30, 0.55, 0.28), 1.6)
+			ci.draw_line(Vector2(0.0, -9.0 + b), Vector2(2.0, -12.0 + b),
+					Color(0.36, 0.62, 0.30), 1.6)
 		"etrangere":
 			# Voyageuse : cape bleu nuit, capuche, visage dans l'ombre, yeux pâles.
 			ci.draw_colored_polygon(PackedVector2Array([
@@ -1337,7 +1466,9 @@ class Walker extends Node2D:
 	var foe_id := ""
 	var npc_id := ""
 	var figure := ""        # visuel du PNJ ("herboriste", "bucheron", "etrangere")
-	var prompt := false     # à portée de parole : affiche « E — Parler »
+	var prompt := false     # à portée de parole : affiche l'invite E
+	var prompt_text := "E — Parler"
+	var fixed := false      # ennemi immobile (totem) : contact seul
 	var label := ""
 	var show_label := false
 	var chasing := false
@@ -1422,9 +1553,9 @@ class Walker extends Node2D:
 		var font := ThemeDB.fallback_font
 		if kind == "npc":
 			if prompt:
-				draw_string(font, Vector2(-60.0, -36.0), "E — Parler",
+				draw_string(font, Vector2(-60.0, -36.0), prompt_text,
 						HORIZONTAL_ALIGNMENT_CENTER, 120, 13, Color(0.0, 0.0, 0.0, 0.7))
-				draw_string(font, Vector2(-61.0, -37.0), "E — Parler",
+				draw_string(font, Vector2(-61.0, -37.0), prompt_text,
 						HORIZONTAL_ALIGNMENT_CENTER, 120, 13, Color(1.0, 0.88, 0.45))
 			elif show_label:
 				draw_string(font, Vector2(-60.0, -34.0), label,
