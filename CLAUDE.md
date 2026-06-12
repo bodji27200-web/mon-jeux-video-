@@ -543,6 +543,31 @@ Ordre de priorité (✅ = fait) :
       (win-rate des combats de zone 1), rééquilibrage JcJ. Gros systèmes
       (équipement/forge, éléments, stats RPG, feux de camp) = phases futures
       dédiées, NON codées maintenant (anti sur-ingénierie).
+75. ✅ **Grand lot autonome (vision Clair Obscur/BG3, étape 1)** :
+    - **Bugs compétences (combat)** : compétence sans cible à portée = refusée à
+      la sélection (hint « ❌ aucune cible ») ; clic hors cible en phase skill =
+      ANNULE (`_cancel_skill`) au lieu de rester coincé.
+    - **Joran le mire** (3e compagnon, soigneur `joran_mire`, figure `mire`,
+      campé au sud de l'étang) : recrutement GATÉ par la relation
+      (`relation_min` dans les règles de PNJ) — 2-3 conversations à choix
+      (±affinité), dialogue de la tisane en rattrapage, refus si méfiant.
+    - **Sera déplacée** : cachée dans une clairière au NORD du bois (vrai
+      secret de zone) ; clairières garanties autour des PNJ (`_near_npc`).
+    - **BOSS SECRET « Le Traqueur-Roi »** (`traqueur_roi`, kiteur à `marque`/
+      `mark_bonus_mult`, phases : limiers + chasse ouverte) : révélé par Sera
+      (compagnonne) après la meute (`sera_roi_alerte` → flag `roi_actif` →
+      **spawn dynamique** via scan FOES `need_flag` dans `_close_dialogue`,
+      `_spawn_foe` factorisé). Récompense unique : **🗡 Katana d'améthyste**
+      (sacoche ; la forge/équipement = phase future).
+    - **Feux de camp** (`feu1` hameau, `feu2` bois, figure `feu` animée) :
+      E — Se reposer = sauvegarde + respawn des créatures HORS boss
+      (`_foe_is_boss`, effet de choix `campfire`, rechargement du monde).
+    - **Silhouettes d'overworld par type** (`Walker.wkind` : loup quadrupède,
+      totem runique, traqueur aux dagues, Sera réelle, Roi couronné de lames).
+    - **Affichage danger** : ennemis anonymes = ☠ par palier SEULEMENT ;
+      **boss = vrai nom en ROUGE** (overworld + barre de boss en combat).
+    - IA boss détaillée (`_cell_score`) : refuse l'encerclement, combat près de
+      ses invocations, prudent sous 35 % PV.
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`

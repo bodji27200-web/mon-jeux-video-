@@ -48,21 +48,28 @@ const BODY_RADIUS := 0.22  # rayon de collision des personnages (en tuiles)
 # une équipe (y aller seul = courir à sa perte, et c'est voulu).
 const FOES := [
 	{"id": "loup_solitaire", "name": "Loup des Murmures", "px": 28.0, "dy": -1.2, "tier": 1,
-	 "team": ["loup_murmures"], "hue": Color(0.40, 0.44, 0.52)},
+	 "team": ["loup_murmures"], "hue": Color(0.40, 0.44, 0.52), "wkind": "loup"},
 	{"id": "meute_murmures", "name": "Meute des Murmures", "px": 31.0, "dy": -3.2, "tier": 2,
-	 "team": ["loup_murmures", "loup_murmures", "loup_murmures"], "hue": Color(0.34, 0.38, 0.46)},
+	 "team": ["loup_murmures", "loup_murmures", "loup_murmures"], "hue": Color(0.34, 0.38, 0.46), "wkind": "loup"},
 	{"id": "rodeurs_bois", "name": "Rôdeur du bois", "px": 34.0, "dy": 1.4, "tier": 2,
-	 "team": ["rodeur_sombre"], "hue": Color(0.46, 0.34, 0.24)},
+	 "team": ["rodeur_sombre"], "hue": Color(0.46, 0.34, 0.24), "wkind": "rodeur"},
 	# Sera revient en ennemie SI on l'a dénoncée (conséquence du choix).
 	{"id": "sera_traquee", "name": "Sera, la traquée", "px": 33.0, "dy": 3.4, "tier": 2,
-	 "team": ["sera_traquee"], "hue": Color(0.30, 0.42, 0.62), "need_flag": "sera_denoncee"},
+	 "team": ["sera_traquee"], "hue": Color(0.30, 0.42, 0.62), "need_flag": "sera_denoncee", "wkind": "sera"},
 	{"id": "traqueur", "name": "Traqueur des ombres", "px": 36.5, "dy": -1.8, "tier": 2,
-	 "team": ["traqueur_ombres"], "hue": Color(0.30, 0.18, 0.40)},
+	 "team": ["traqueur_ombres"], "hue": Color(0.30, 0.18, 0.40), "wkind": "traqueur"},
 	{"id": "totem", "name": "Totem de ronces", "px": 38.5, "dy": 2.2, "tier": 2,
-	 "team": ["totem_ronces", "loup_murmures"], "hue": Color(0.28, 0.40, 0.22), "fixed": true},
+	 "team": ["totem_ronces", "loup_murmures"], "hue": Color(0.28, 0.40, 0.22), "fixed": true,
+	 "wkind": "totem"},
 	# Le boss est SEUL dans son combat : UN Veilleur, pas une équipe.
 	{"id": "veilleur", "name": "Le Veilleur des Murmures", "px": 41.0, "dy": 0.0, "tier": 3,
-	 "team": ["veilleur_murmures"], "hue": Color(0.45, 0.28, 0.66)},
+	 "team": ["veilleur_murmures"], "hue": Color(0.45, 0.28, 0.66), "boss": true,
+	 "wkind": "veilleur"},
+	# BOSS SECRET : le Traqueur-Roi, débloqué en protégeant Sera (il la chasse).
+	# Tapi au nord du bois, près de la clairière où elle se cachait.
+	{"id": "traqueur_roi", "name": "Le Traqueur-Roi", "px": 31.0, "dy": -13.0, "tier": 3,
+	 "team": ["traqueur_roi"], "hue": Color(0.62, 0.18, 0.34), "boss": true,
+	 "need_flag": "roi_actif", "wkind": "roi"},
 ]
 
 # --- PNJ du hameau (data-driven : un PNJ = des données, zéro code dédié) ---
@@ -99,11 +106,27 @@ const NPCS := [
 		# Conséquence : Garin a entendu parler de la dénonciation de Sera.
 		{"flag": "sera_denoncee", "dialogue": "garin_sera"},
 	 ], "fallback": "garin_intro"},
-	{"id": "sera", "name": "Sera, l'étrangère", "pos": Vector2(6.4, 13.0), "figure": "etrangere",
+	{"id": "sera", "name": "Sera, l'étrangère", "pos": Vector2(29.5, 3.5), "figure": "etrangere",
 	 "hide_flag": "sera_denoncee", "party_flag": "sera_party",
 	 "rules": [
 		{"flag": "sera_proche", "dialogue": "sera_revoit"},
 	 ], "fallback": "sera_intro"},
+	# Joran, le mire déserteur : campé au sud de l'étang. On le RENCONTRE, on
+	# gagne (ou perd) sa confiance sur PLUSIEURS conversations, et il ne rejoint
+	# l'équipe QUE si la relation est assez bonne (relation_min).
+	{"id": "joran", "name": "Joran, le mire", "pos": Vector2(18.6, 26.6), "figure": "mire",
+	 "party_flag": "joran_party",
+	 "rules": [
+		{"flag": "joran_2_fait", "relation_min": {"joran": 2}, "dialogue": "joran_offre"},
+		{"flag": "joran_2_fait", "not_flag": "joran_bond", "dialogue": "joran_bond_dlg"},
+		{"flag": "joran_2_fait", "dialogue": "joran_mefiant"},
+		{"flag": "joran_1_fait", "dialogue": "joran_2"},
+	 ], "fallback": "joran_intro"},
+	# Feux de camp : repos = sauvegarde + les créatures (hors boss) reviennent.
+	{"id": "feu1", "name": "Feu de camp", "pos": Vector2(10.5, 14.8), "figure": "feu",
+	 "prompt": "E — Se reposer", "rules": [], "fallback": "feu_repos"},
+	{"id": "feu2", "name": "Feu de camp", "pos": Vector2(33.5, 17.0), "figure": "feu",
+	 "prompt": "E — Se reposer", "rules": [], "fallback": "feu_repos"},
 ]
 
 # Dialogues : texte + choix. Un choix peut poser des drapeaux ("set"), débloquer
@@ -277,6 +300,19 @@ const DIALOGUES := {
 		"speaker": "Sera",
 		"text": "Tu sais quoi ? Je ne regrette pas d'avoir déserté. Pas si c'était pour finir à tes côtés. Où qu'on aille après ce bois — j'y suis.",
 		"choices": [{"label": "« Côte à côte. »"}]},
+	# Le SECRET de la zone 1 : protéger Sera réveille son chasseur (boss secret).
+	"sera_roi_alerte": {
+		"speaker": "Sera",
+		"text": "...Il faut que je te dise. Les loups que nous avons abattus — c'étaient ses éclaireurs. Le Traqueur-Roi. Le maître des rôdeurs. C'est lui que je fuis depuis le début. Il m'a retrouvée, je le SENS. Si on ne le chasse pas d'abord, il nous chassera, toi et moi.",
+		"choices": [
+			{"label": "« Alors chassons le chasseur. »",
+			 "set": {"roi_actif": true}, "relation": {"sera": 1}, "next": "sera_roi_go"},
+			{"label": "« On n'est pas prêts. Pas encore. »", "set": {"roi_repousse": true}},
+		]},
+	"sera_roi_go": {
+		"speaker": "Sera",
+		"text": "Au nord du bois, là où je me cachais. Il y plantera son camp pour me débusquer. Prépare l'équipe — lui, il ne pardonne RIEN.",
+		"choices": [{"label": "(En route)"}]},
 	"sera_about_garin": {
 		"speaker": "Sera",
 		"text": "Ton bûcheron me regarde comme si j'allais l'égorger dans son sommeil. Il n'a pas tort de se méfier... mais dis-lui que s'il me cherche, il me trouvera. Ou pas — à toi de voir.",
@@ -304,6 +340,59 @@ const DIALOGUES := {
 		"speaker": "Garin",
 		"text": "J'ai bûcheronné vingt ans sans rien voir du monde. Avec toi, j'ai enfin l'impression de servir à quelque chose de plus grand qu'une pile de rondins.",
 		"choices": [{"label": "« Tu sers, Garin. Crois-moi. »"}]},
+	# === Joran, le mire déserteur : la confiance se GAGNE (relation_min). ===
+	"joran_intro": {
+		"speaker": "Joran, le mire",
+		"text": "Pas un pas de plus. ...Tu n'es pas de la garde, toi. Tant mieux. J'étais leur mire — je recousais leurs soldats. J'ai déserté le jour où on m'a ordonné de laisser mourir les blessés « inutiles ». Alors ? Tu me dénonces, ou tu passes ton chemin ?",
+		"choices": [
+			{"label": "« Soigner, ce n'est jamais déserter. »",
+			 "set": {"joran_1_fait": true}, "relation": {"joran": 1}},
+			{"label": "« Tes histoires ne me regardent pas. »", "set": {"joran_1_fait": true}},
+			{"label": "« Un déserteur reste un lâche. »",
+			 "set": {"joran_1_fait": true}, "relation": {"joran": -1}},
+		]},
+	"joran_2": {
+		"speaker": "Joran, le mire",
+		"text": "Encore toi. ...J'ai vu tes traces : tu te bats dans le bois, hein ? Montre-moi tes mains. Tu serres trop ton arme — tu finiras par te blesser bêtement. Pourquoi tu te bats, au juste ?",
+		"choices": [
+			{"label": "« Pour protéger ceux du hameau. »",
+			 "set": {"joran_2_fait": true}, "relation": {"joran": 1}},
+			{"label": "« Parce qu'il le faut bien. »", "set": {"joran_2_fait": true}},
+			{"label": "« Pour le butin. Ça te pose un souci ? »",
+			 "set": {"joran_2_fait": true}, "relation": {"joran": -1}},
+		]},
+	"joran_bond_dlg": {
+		"speaker": "Joran, le mire",
+		"text": "Tu reviens toujours... Bon. Une gorgée de tisane ? C'est la recette de ma compagnie. Les soirs de bataille, on la buvait en silence, en comptant ceux qui manquaient.",
+		"choices": [
+			{"label": "« À ceux qui manquent. » (boire avec lui)",
+			 "set": {"joran_bond": true}, "relation": {"joran": 1}},
+			{"label": "« Pas le temps pour ça. »", "set": {"joran_bond": true}},
+		]},
+	"joran_mefiant": {
+		"speaker": "Joran, le mire",
+		"text": "Je vois clair dans ton regard — le même que mes anciens capitaines. Je ne marcherai pas avec quelqu'un comme toi. Va-t'en.",
+		"choices": [{"label": "(Partir)"}]},
+	"joran_offre": {
+		"speaker": "Joran, le mire",
+		"text": "Tu sais... je n'ai plus recousu personne depuis des mois. Mes mains tremblent moins quand tu parles. Si tu retournes dans ce bois — emmène-moi. Un mire, ça se rend utile.",
+		"choices": [
+			{"label": "« Voyage avec nous, Joran. »",
+			 "set": {"joran_party": true}, "recruit": "joran", "next": "joran_join"},
+			{"label": "« Pas encore. Bientôt. »"},
+		]},
+	"joran_join": {
+		"speaker": "Joran, le mire",
+		"text": "Alors c'est reparti. Une dernière chose : je recouds TOUT LE MONDE. Même ceux que tu n'aimes pas. C'est ma seule règle.",
+		"choices": [{"label": "(En route)"}]},
+	# === Feu de camp : repos, sauvegarde, le bois se repeuple (hors boss). ===
+	"feu_repos": {
+		"speaker": "Feu de camp",
+		"text": "Le feu crépite doucement. Un vrai repos effacerait la fatigue... mais le bois, lui, ne dort jamais : ses créatures reviendront.",
+		"choices": [
+			{"label": "🔥 Se reposer (sauvegarde — les créatures reviennent)", "campfire": true},
+			{"label": "(Repartir)"},
+		]},
 	"garin_about_sera": {
 		"speaker": "Garin",
 		"text": "Cette Sera... une rôdeuse, hier encore. Et tu la laisses marcher dans notre dos avec un arc ? J'aime pas ça du tout.",
@@ -432,17 +521,17 @@ func _build_world() -> void:
 		for dy in 2:
 			for dx in 2:
 				_blocked[h + Vector2i(dx, dy)] = true
-	# Positions des ennemis (le long du sentier, dans le bois). Un ennemi peut
-	# exiger un drapeau ("need_flag" : ex. Sera dénoncée) ou être fixe ("fixed").
+	# Positions des ennemis (le long du sentier, dans le bois). On garde TOUTES
+	# les définitions (le filtre need_flag/vaincu se fait au spawn : permet de
+	# faire apparaître un ennemi conditionnel EN COURS de partie, ex. boss secret).
 	_foe_spawns.clear()
 	for f in FOES:
-		if f.has("need_flag") and not GameData.get_flag(f.need_flag):
-			continue
 		var pos := Vector2(f.px + 0.5, _path_y(f.px) + f.dy)
 		_foe_spawns.append({"id": f.id, "name": f.name, "tier": f.tier,
 				"team": f.team, "hue": f.hue, "pos": pos,
-				"fixed": f.get("fixed", false)})
-	# Sapins du bois (clairières autour des ennemis + couloir du sentier préservés).
+				"fixed": f.get("fixed", false), "boss": f.get("boss", false),
+				"wkind": f.get("wkind", ""), "need_flag": f.get("need_flag", "")})
+	# Sapins du bois (clairières autour des ennemis/PNJ + couloir du sentier).
 	# 90 essais (et pas plus) : le bois reste dense mais le navigateur respire.
 	for i in 90:
 		var x := _rng.randi_range(FOREST_X, MAP_W - 2)
@@ -457,11 +546,11 @@ func _build_world() -> void:
 			if Vector2(float(x) + 0.5, float(y) + 0.5).distance_to(fs.pos) < 3.0:
 				near_foe = true
 				break
-		if near_foe:
+		if near_foe or _near_npc(float(x) + 0.5, float(y) + 0.5):
 			continue
 		_blocked[c] = true
 		_decor_at("fir", c)
-	# Chênes de la prairie (jamais sur le chemin, le hameau, l'eau).
+	# Chênes de la prairie (jamais sur le chemin, le hameau, l'eau, les PNJ).
 	for i in 48:
 		var x := _rng.randi_range(2, FOREST_X - 1)
 		var y := _rng.randi_range(2, MAP_H - 3)
@@ -469,6 +558,8 @@ func _build_world() -> void:
 		if _blocked.has(c) or _ground[c] != "herbe":
 			continue
 		if Vector2(float(x) + 0.5, float(y) + 0.5).distance_to(SPAWN) < 3.0:
+			continue
+		if _near_npc(float(x) + 0.5, float(y) + 0.5):
 			continue
 		_blocked[c] = true
 		_decor_at("tree", c)
@@ -550,24 +641,13 @@ func _build_nodes() -> void:
 		start = saved
 	_player.mpos = start
 	_entities.add_child(_player)
-	# Ennemis encore en vie (les vaincus ont disparu du monde, définitivement).
+	# Ennemis encore en vie (les vaincus ont disparu — sauf retour par feu de camp).
 	for fs in _foe_spawns:
 		if GameData.campaign_defeated.has(fs.id):
 			continue
-		var w := Walker.new()
-		w.kind = "foe"
-		w.foe_id = fs.id
-		# ☠ par palier de danger : on jauge l'ennemi avant de l'engager.
-		w.label = "%s %s" % [fs.name, "☠".repeat(int(fs.tier))]
-		w.tier = fs.tier
-		w.team = fs.team
-		w.hue = fs.hue
-		w.fixed = bool(fs.get("fixed", false))
-		w.mpos = fs.pos
-		w.home = fs.pos
-		w.wander_target = fs.pos
-		_entities.add_child(w)
-		_foes.append(w)
+		if str(fs.need_flag) != "" and not GameData.get_flag(str(fs.need_flag)):
+			continue
+		_spawn_foe(fs)
 	# Compagnons recrutés : ils marchent derrière le héros (file de voyage).
 	var fi := 1
 	for comp_id in GameData.campaign_party:
@@ -839,6 +919,12 @@ func _npc_entry_dialogue(npc_id: String) -> String:
 				if not GameData.campaign_defeated.has(foe_id):
 					ok = false
 					break
+			# Seuil de relation ("relation_min") : un compagnon ne s'ouvre (ou ne
+			# rejoint) que si l'affinité construite en discutant est suffisante.
+			for rel_id in r.get("relation_min", {}):
+				if GameData.relation(str(rel_id)) < int(r.relation_min[rel_id]):
+					ok = false
+					break
 			if ok:
 				return r.dialogue
 		return n.fallback
@@ -858,9 +944,15 @@ func _open_dialogue(npc: Walker) -> void:
 	_show_dialogue(did)
 
 
-# Dialogue de voyage d'un compagnon : un mot croisé sur l'autre membre s'il est
-# là (relations), sinon selon l'affinité, sinon l'intro (vu une fois).
+# Dialogue de voyage d'un compagnon : le SECRET d'abord (Sera révèle son
+# chasseur), puis un mot croisé sur l'autre membre (relations), puis selon
+# l'affinité, sinon l'intro (vu une fois).
 func _companion_dialogue(cid: String) -> String:
+	# Secret de la zone 1 : la meute abattue = les éclaireurs du Traqueur-Roi.
+	if cid == "sera" and not GameData.get_flag("roi_actif") \
+			and GameData.campaign_defeated.has("meute_murmures") \
+			and not GameData.campaign_defeated.has("traqueur_roi"):
+		return "sera_roi_alerte"
 	# Garin se méfie de Sera (ex-rôdeuse) tant qu'elle ne s'est pas prouvée.
 	if cid == "garin" and GameData.campaign_party.has("sera") \
 			and not GameData.get_flag("garin_sera_ok"):
@@ -927,6 +1019,19 @@ func _on_choice(choice: Dictionary) -> void:
 	if rem != "":
 		GameData.campaign_items.erase(rem)
 		changed = true
+	# Feu de camp : repos -> sauvegarde, les créatures (hors boss) reviennent.
+	if choice.get("campfire", false):
+		var keep: Array = []
+		for fid in GameData.campaign_defeated:
+			if _foe_is_boss(str(fid)):
+				keep.append(fid)
+		GameData.campaign_defeated = keep
+		GameData.campaign_pos = _player.mpos
+		GameData.save_campaign()
+		Audio.play_sfx("heal")
+		# Recharge le monde : les rôdeurs réapparaissent pendant le repos.
+		get_tree().change_scene_to_file.call_deferred("res://Overworld.tscn")
+		return
 	# Récompense d'XP pour toute l'équipe (quêtes de PNJ).
 	var xp: int = int(choice.get("xp_team", 0))
 	if xp > 0:
@@ -978,9 +1083,60 @@ func _close_dialogue() -> void:
 				break
 		if not already:
 			_spawn_npc(n)
+	# Idem pour les ENNEMIS conditionnels (boss secret réveillé par un dialogue).
+	for fs in _foe_spawns:
+		if str(fs.need_flag) == "" or not GameData.get_flag(str(fs.need_flag)):
+			continue
+		if GameData.campaign_defeated.has(fs.id):
+			continue
+		var present := false
+		for f in _foes:
+			if f.foe_id == fs.id:
+				present = true
+				break
+		if not present:
+			_spawn_foe(fs)
+			if fs.get("boss", false):
+				_announce("☠ Une présence terrible rôde au nord du bois...")
 	# Une récompense de quête peut donner des niveaux : on choisit maintenant.
 	if not _leveling:
 		_check_levelups()
+
+
+# Instancie un ennemi d'overworld (au chargement OU en cours de partie).
+func _spawn_foe(fs: Dictionary) -> void:
+	var w := Walker.new()
+	w.kind = "foe"
+	w.foe_id = fs.id
+	w.label = fs.name
+	w.tier = fs.tier
+	w.team = fs.team
+	w.hue = fs.hue
+	w.fixed = bool(fs.get("fixed", false))
+	w.boss = bool(fs.get("boss", false))
+	w.wkind = str(fs.get("wkind", ""))
+	w.mpos = fs.pos
+	w.position = map_to_world(fs.pos)
+	w.home = fs.pos
+	w.wander_target = fs.pos
+	_entities.add_child(w)
+	_foes.append(w)
+
+
+# Une clairière est gardée autour de chaque PNJ (lisibilité + accès garanti).
+func _near_npc(x: float, y: float) -> bool:
+	for n in NPCS:
+		if Vector2(x, y).distance_to(n.pos) < 2.4:
+			return true
+	return false
+
+
+# Un ennemi d'overworld est-il un boss (jamais réinitialisé par les feux de camp) ?
+func _foe_is_boss(fid: String) -> bool:
+	for f in FOES:
+		if f.id == fid:
+			return f.get("boss", false)
+	return false
 
 
 # Instancie un PNJ depuis sa définition (utilisé au chargement ET en cours de jeu).
@@ -1608,6 +1764,35 @@ static func draw_npc_figure(ci: CanvasItem, figure: String, b: float) -> void:
 					Color(0.30, 0.55, 0.28), 1.6)
 			ci.draw_line(Vector2(0.0, -9.0 + b), Vector2(2.0, -12.0 + b),
 					Color(0.36, 0.62, 0.30), 1.6)
+		"mire":
+			# Joran : manteau de campagne usé, barbe grise, sacoche à croix.
+			ci.draw_colored_polygon(PackedVector2Array([
+				Vector2(-5.5, -16.5 + b), Vector2(5.5, -16.5 + b),
+				Vector2(7.0, 0.0), Vector2(-7.0, 0.0)]), Color(0.40, 0.38, 0.30))
+			ci.draw_rect(Rect2(-6.0, -9.0 + b, 12.0, 2.2), Color(0.24, 0.20, 0.12))
+			# Sacoche de mire (croix pâle).
+			ci.draw_rect(Rect2(3.0, -8.0 + b, 5.5, 5.0), Color(0.52, 0.40, 0.26))
+			ci.draw_line(Vector2(5.7, -7.2 + b), Vector2(5.7, -4.2 + b), Color(0.90, 0.88, 0.80), 1.4)
+			ci.draw_line(Vector2(4.3, -5.7 + b), Vector2(7.1, -5.7 + b), Color(0.90, 0.88, 0.80), 1.4)
+			# Tête fatiguée + barbe grise.
+			ci.draw_circle(Vector2(0.0, -20.5 + b), 4.6, Color(0.88, 0.72, 0.56))
+			ci.draw_colored_polygon(PackedVector2Array([
+				Vector2(-3.6, -19.0 + b), Vector2(3.6, -19.0 + b),
+				Vector2(0.0, -13.0 + b)]), Color(0.62, 0.62, 0.60))
+			ci.draw_circle(Vector2(1.8, -21.0 + b), 0.9, Color(0.12, 0.10, 0.12))
+		"feu":
+			# Feu de camp : bûches croisées + flamme qui danse + braises.
+			ci.draw_line(Vector2(-7.0, -1.0), Vector2(7.0, -4.0), Color(0.36, 0.24, 0.14), 3.0)
+			ci.draw_line(Vector2(-7.0, -4.0), Vector2(7.0, -1.0), Color(0.42, 0.28, 0.16), 3.0)
+			var fl := 1.0 + b * 0.8  # la « respiration » du PNJ devient le tremblement du feu
+			ci.draw_colored_polygon(PackedVector2Array([
+				Vector2(-4.5, -3.0), Vector2(4.5, -3.0),
+				Vector2(0.0 + b * 2.0, -14.0 * fl)]), Color(0.95, 0.45, 0.10, 0.9))
+			ci.draw_colored_polygon(PackedVector2Array([
+				Vector2(-2.5, -3.5), Vector2(2.5, -3.5),
+				Vector2(0.0 + b * 1.4, -9.5 * fl)]), Color(1.0, 0.80, 0.25))
+			ci.draw_circle(Vector2(-5.0 + b, -8.0 - b * 2.0), 0.9, Color(1.0, 0.6, 0.2, 0.7))
+			ci.draw_circle(Vector2(4.0 - b, -11.0 + b), 0.7, Color(1.0, 0.7, 0.3, 0.6))
 		"etrangere":
 			# Voyageuse : cape bleu nuit, capuche, visage dans l'ombre, yeux pâles.
 			ci.draw_colored_polygon(PackedVector2Array([
@@ -1648,6 +1833,8 @@ class Walker extends Node2D:
 	var prompt := false     # à portée de parole : affiche l'invite E
 	var prompt_text := "E — Parler"
 	var fixed := false      # ennemi immobile (totem) : contact seul
+	var boss := false       # boss : nom affiché en ROUGE (pas de ☠ anonymes)
+	var wkind := ""         # silhouette d'overworld ("loup", "totem", "roi"...)
 	var label := ""
 	var show_label := false
 	var chasing := false
@@ -1697,12 +1884,29 @@ class Walker extends Node2D:
 		HeroFigure.draw_hero(self, str(h.get("gender", "m")),
 				int(h.get("design", 0)), tint, phase, moving)
 
+	# Chaque type d'ennemi a SA silhouette d'overworld (fini les clones).
 	func _draw_foe() -> void:
 		var s := 0.85 + 0.18 * float(tier)  # plus fort = plus imposant
 		var b := sin(phase) * (1.2 if moving else 0.6)
 		var sway := sin(phase * 0.7) * 1.5
 		var dark := Color(hue.r * 0.55, hue.g * 0.55, hue.b * 0.55)
-		# Silhouette encapuchonnée.
+		match wkind:
+			"loup":
+				_draw_foe_wolf(s, b)
+				return
+			"totem":
+				_draw_foe_totem()
+				return
+			"traqueur":
+				_draw_foe_traqueur(s, b, sway)
+				return
+			"sera":
+				Overworld.draw_npc_figure(self, "etrangere", b * 0.5)
+				return
+			"roi":
+				_draw_foe_roi(b, sway)
+				return
+		# Par défaut (rôdeur, veilleur) : silhouette encapuchonnée.
 		draw_colored_polygon(PackedVector2Array([
 			Vector2(-7.0 * s, 0.0), Vector2(7.0 * s, 0.0),
 			Vector2(6.0 * s, (-14.0 + b) * s), Vector2((0.0 + sway) * s, (-24.0 + b) * s),
@@ -1726,6 +1930,86 @@ class Walker extends Node2D:
 		draw_circle(Vector2(2.2 * s, (-16.5 + b) * s), 2.6 * s, Color(eye.r, eye.g, eye.b, 0.18))
 		draw_circle(Vector2(-2.2 * s, (-16.5 + b) * s), 1.1 * s, eye)
 		draw_circle(Vector2(2.2 * s, (-16.5 + b) * s), 1.1 * s, eye)
+
+	# Loup : quadrupède bas, oreilles dressées, œil qui s'allume en chasse.
+	func _draw_foe_wolf(s: float, b: float) -> void:
+		var fur := Color(hue.r * 0.72, hue.g * 0.72, hue.b * 0.72)
+		var dk := fur.darkened(0.4)
+		for lx in [-6.5, -2.5, 4.0, 7.0]:
+			var fx: float = lx
+			draw_line(Vector2(fx * s, -4.0 * s), Vector2(fx * s, 0.0), dk, 2.0)
+		_ell(Vector2(0.5 * s, -6.5 * s + b * 0.4), 9.0 * s, 4.2 * s, fur)
+		draw_line(Vector2(8.5 * s, -8.0 * s), Vector2(13.0 * s, -11.0 * s + b), dk, 2.4)
+		draw_circle(Vector2(-8.5 * s, -9.5 * s + b * 0.5), 3.4 * s, fur)
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(-10.4 * s, -12.0 * s), Vector2(-9.2 * s, -15.5 * s + b),
+			Vector2(-7.8 * s, -12.0 * s)]), dk)
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(-10.8 * s, -10.0 * s), Vector2(-14.8 * s, -8.4 * s),
+			Vector2(-10.0 * s, -7.6 * s)]), fur)
+		var eye := Color(1.0, 0.32, 0.2) if chasing else Color(0.95, 0.82, 0.4)
+		draw_circle(Vector2(-9.4 * s, -10.0 * s + b * 0.5), 1.0 * s, eye)
+
+	# Totem : monolithe immobile aux runes vertes (aucun retournement).
+	func _draw_foe_totem() -> void:
+		var stone := Color(0.36, 0.38, 0.34)
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(-6.5, 0.0), Vector2(-5.0, -20.0), Vector2(-1.0, -24.0),
+			Vector2(4.5, -21.0), Vector2(6.5, 0.0)]), stone)
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(-6.5, 0.0), Vector2(-5.0, -20.0), Vector2(-2.5, -22.0),
+			Vector2(-2.5, 0.0)]), stone.darkened(0.3))
+		var pulse := 0.5 + 0.4 * sin(phase * 1.4)
+		var rune := Color(0.45, 0.95, 0.40, pulse)
+		draw_line(Vector2(0.0, -16.0), Vector2(0.0, -10.0), rune, 1.8)
+		draw_line(Vector2(-2.2, -13.5), Vector2(2.2, -12.0), rune, 1.6)
+		draw_line(Vector2(-5.5, -3.0), Vector2(5.0, -8.0), Color(0.16, 0.30, 0.14), 2.0)
+
+	# Traqueur : silhouette fine penchée, deux éclats de dague, yeux violets.
+	func _draw_foe_traqueur(s: float, b: float, sway: float) -> void:
+		var dk := Color(hue.r * 0.5, hue.g * 0.5, hue.b * 0.5)
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(-3.5 * s, 0.0), Vector2(3.5 * s, 0.0),
+			Vector2(4.5 * s, (-13.0 + b) * s),
+			Vector2((-2.0 + sway) * s, (-22.0 + b) * s),
+			Vector2(-4.5 * s, (-12.0 + b) * s)]), dk)
+		draw_circle(Vector2((-2.0 + sway) * s, (-23.0 + b) * s), 3.2 * s, dk)
+		var eye := Color(1.0, 0.3, 0.2) if chasing else Color(0.80, 0.50, 1.0)
+		draw_circle(Vector2((-3.2 + sway) * s, (-23.2 + b) * s), 0.9 * s, eye)
+		draw_circle(Vector2((-0.8 + sway) * s, (-23.4 + b) * s), 0.9 * s, eye)
+		var steel := Color(0.80, 0.82, 0.90)
+		draw_line(Vector2(5.0 * s, (-8.0 + b) * s), Vector2(9.0 * s, (-3.0 + b) * s), steel, 1.8)
+		draw_line(Vector2(-5.0 * s, (-7.0 + b) * s), Vector2(-8.5 * s, (-2.0 + b) * s), steel, 1.8)
+
+	# Traqueur-Roi : haute stature, couronne de lames, prestance de boss secret.
+	func _draw_foe_roi(b: float, sway: float) -> void:
+		var dk := Color(hue.r * 0.5, hue.g * 0.5, hue.b * 0.5)
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(-8.0, 0.0), Vector2(8.0, 0.0),
+			Vector2(6.5, -18.0 + b), Vector2(0.0 + sway, -30.0 + b),
+			Vector2(-6.5, -18.0 + b)]), dk)
+		draw_line(Vector2(-8.0, 0.0), Vector2(-6.5, -18.0 + b),
+				Color(0.85, 0.30, 0.40, 0.9), 1.6)
+		draw_line(Vector2(8.0, 0.0), Vector2(6.5, -18.0 + b),
+				Color(0.85, 0.30, 0.40, 0.9), 1.6)
+		# Couronne de lames (3 pointes d'acier).
+		var steel := Color(0.82, 0.84, 0.92)
+		for kx in [-4.0, 0.0, 4.0]:
+			var fx: float = kx
+			draw_colored_polygon(PackedVector2Array([
+				Vector2(fx - 1.4 + sway, -29.0 + b), Vector2(fx + sway, -36.0 + b),
+				Vector2(fx + 1.4 + sway, -29.0 + b)]), steel)
+		var eye := Color(1.0, 0.25, 0.2) if chasing else Color(1.0, 0.45, 0.35)
+		draw_circle(Vector2(-2.2 + sway, -24.0 + b), 1.2, eye)
+		draw_circle(Vector2(2.2 + sway, -24.0 + b), 1.2, eye)
+
+	# Ellipse pleine (pas de primitive native).
+	func _ell(center: Vector2, rx: float, ry: float, color: Color) -> void:
+		var pts := PackedVector2Array()
+		for i in 14:
+			var a := TAU * i / 14.0
+			pts.append(center + Vector2(cos(a) * rx, sin(a) * ry))
+		draw_colored_polygon(pts, color)
 
 	# Textes au-dessus de la tête (hors miroir pour ne pas écrire à l'envers).
 	func _draw_overhead() -> void:
@@ -1752,14 +2036,24 @@ class Walker extends Node2D:
 		if kind != "foe":
 			return
 		var s := 0.85 + 0.18 * float(tier)
+		# BOSS : leur vrai nom s'affiche en ROUGE — eux sont inoubliables.
+		if boss:
+			if chasing or show_label:
+				draw_string(font, Vector2(-80.0, -36.0 * s - 6.0), label,
+						HORIZONTAL_ALIGNMENT_CENTER, 160, 14, Color(0.0, 0.0, 0.0, 0.85))
+				draw_string(font, Vector2(-81.0, -37.0 * s - 7.0), label,
+						HORIZONTAL_ALIGNMENT_CENTER, 160, 14, Color(0.95, 0.20, 0.18))
+			return
+		# Ennemis : anonymes — juste leur danger en crânes (☠ par palier).
 		if chasing:
 			draw_string(font, Vector2(-4.0, -30.0 * s - 6.0), "!",
 					HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(1.0, 0.8, 0.25))
 		elif show_label:
-			draw_string(font, Vector2(-60.0, -30.0 * s - 4.0), label,
-					HORIZONTAL_ALIGNMENT_CENTER, 120, 12, Color(0.0, 0.0, 0.0, 0.7))
-			draw_string(font, Vector2(-61.0, -30.0 * s - 5.0), label,
-					HORIZONTAL_ALIGNMENT_CENTER, 120, 12, Color(1.0, 0.92, 0.8))
+			var skulls := "☠".repeat(maxi(1, tier))
+			draw_string(font, Vector2(-60.0, -30.0 * s - 4.0), skulls,
+					HORIZONTAL_ALIGNMENT_CENTER, 120, 13, Color(0.0, 0.0, 0.0, 0.7))
+			draw_string(font, Vector2(-61.0, -30.0 * s - 5.0), skulls,
+					HORIZONTAL_ALIGNMENT_CENTER, 120, 13, Color(1.0, 0.85, 0.75))
 
 
 # Décors du monde (arbres, sapins, rochers, maisons, roseaux), base au point (0,0)

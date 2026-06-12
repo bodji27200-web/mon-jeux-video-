@@ -560,6 +560,49 @@ func _draw_figure(kind: String) -> void:
 			_draw_figure_traqueur()
 		"totem":
 			_draw_figure_totem()
+		"roi":
+			_draw_figure_roi()
+
+
+# BOSS SECRET — Le Traqueur-Roi : grand chasseur à couronne de lames, arc
+# d'os, sigil de marque flottant. Tout l'inverse du Veilleur : précis, mobile.
+func _draw_figure_roi() -> void:
+	var t := _anim_phase
+	var breathe := sin(t * 1.8) * 1.5
+	var cloak := Color(0.30, 0.10, 0.18)
+	var cloak_d := cloak.darkened(0.35)
+	var blood := Color(0.95, 0.25, 0.22)
+	# Manteau haut et étroit (stature de chasseur, pas de masse).
+	var top_y := -46.0 + breathe
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(-10.0, 5.0), Vector2(10.0, 5.0),
+		Vector2(7.0, top_y + 10.0), Vector2(0.0, top_y + 4.0),
+		Vector2(-7.0, top_y + 10.0)]), cloak)
+	_draw_ellipse(Vector2(0, -20 + breathe * 0.5), 7.0, 12.0, cloak_d)
+	# Tête masquée + yeux rouges perçants.
+	var hc := Vector2(0, top_y - 2.0)
+	draw_circle(hc, 7.0, Color(0.12, 0.06, 0.10))
+	for sgn in [-1.0, 1.0]:
+		var fs: float = sgn
+		draw_circle(hc + Vector2(2.8 * fs, -0.5), 2.0, Color(blood, 0.4))
+		draw_circle(hc + Vector2(2.8 * fs, -0.5), 0.9, blood)
+	# Couronne de lames (acier froid).
+	var steel := Color(0.82, 0.84, 0.92)
+	for kx in [-5.0, 0.0, 5.0]:
+		var fx: float = kx
+		draw_colored_polygon(PackedVector2Array([
+			hc + Vector2(fx - 1.6, -5.5), hc + Vector2(fx, -13.0),
+			hc + Vector2(fx + 1.6, -5.5)]), steel)
+	# Arc d'os tendu (il frappe de loin).
+	var bone := Color(0.80, 0.75, 0.65)
+	draw_arc(Vector2(-13, -22 + breathe * 0.5), 11.0, PI * 0.65, PI * 1.35, 12, bone, 2.4)
+	draw_line(Vector2(-13 - 8, -30 + breathe * 0.5), Vector2(-13 - 8, -14 + breathe * 0.5),
+			Color(0.9, 0.9, 0.85, 0.7), 1.0)
+	# Sigil de MARQUE flottant (sa mécanique signature, lisible en combat).
+	var sa := 0.5 + 0.4 * sin(t * 3.0)
+	var sc := Vector2(14.0, -34.0 + sin(t * 2.2) * 2.0)
+	draw_arc(sc, 4.0, 0.0, TAU, 12, Color(blood, sa), 1.6)
+	draw_circle(sc, 1.4, Color(1.0, 0.6, 0.55, sa))
 
 
 # Traqueur des ombres : silhouette élancée penchée en avant, double dague,

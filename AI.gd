@@ -260,6 +260,23 @@ static func _cell_score(unit: Node, cell: Vector2i, target: Node, enemies: Array
 	# Pénalité de menace réduite : les unités saines s'engagent franchement.
 	var fragility := 1.0 - float(unit.hp) / float(unit.data.max_hp)
 	score -= _threat(cell, enemies, grid) * (1.5 + fragility * 8.0)
+
+	# --- Détails d'expert pour les BOSS ---
+	if unit.data.get("boss", false):
+		# 1) Refuser l'encerclement : pas plus d'un ennemi adjacent (sauf kill).
+		var adjacent := 0
+		for e in enemies:
+			if grid.manhattan(cell, e.grid_position) <= 1:
+				adjacent += 1
+		if adjacent >= 2 and not (in_range and float(target.hp) <= _est_damage(unit)):
+			score -= 120.0 * float(adjacent - 1)
+		# 2) Combattre en meute : rester près de ses invocations (elles encaissent).
+		for a in allies:
+			if grid.manhattan(cell, a.grid_position) <= 2:
+				score += 30.0
+		# 3) Blessé (< 35%) : se battre dos au bord, jamais au centre de la nasse.
+		if float(unit.hp) / float(unit.data.max_hp) < 0.35:
+			score -= _threat(cell, enemies, grid) * 4.0
 	return score
 
 

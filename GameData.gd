@@ -457,6 +457,42 @@ const CLASSES := {
 		],
 		"skills": [],
 	},
+	"joran_mire": {
+		"name": "Joran le mire", "color": Color(0.72, 0.68, 0.50), "symbol": "j",
+		"description": "Médecin de guerre déserteur. Recoud l'équipe sous les flèches.",
+		"max_hp": 26, "move_range": 3, "attack": 5, "attack_range": 1,
+		"crit_chance": 0.0, "behavior": "heal", "heal": 11, "heal_range": 3,
+		"role": "healer", "hidden": true, "figure_npc": "mire",
+		"skills": [],
+	},
+	# BOSS SECRET de la zone 1 : le chasseur de déserteurs qui traque Sera.
+	# L'OPPOSÉ du Veilleur : tireur mobile qui marque ses proies puis les exécute.
+	"traqueur_roi": {
+		"name": "Le Traqueur-Roi", "color": Color(0.62, 0.18, 0.34), "symbol": "R",
+		"description": "BOSS SECRET. Le maître des rôdeurs. Il ne pardonne pas la désertion.",
+		"max_hp": 90, "move_range": 4, "attack": 11, "attack_range": 3,
+		"crit_chance": 0.20, "behavior": "kite", "role": "ranged",
+		"hidden": true, "figure": "roi", "boss": true,
+		"on_hit": "marque", "mark_bonus_mult": 1.6,
+		"phases": [
+			{"at": 0.6, "announce": "« Mes limiers ! À la curée ! »",
+			 "summon": ["rodeur_sombre", "rodeur_sombre"]},
+			{"at": 0.3, "announce": "« LA CHASSE EST OUVERTE ! »",
+			 "buff": "force", "attack_mult": 1.25},
+		],
+		"actives": [
+			{"name": "Mise à mort", "type": "heavy_strike", "target": "enemy",
+				"dmg_mult": 1.6, "range": 3, "cooldown": 3,
+				"desc": "Exécute une proie (×1.6) — dévastateur sur une cible marquée."},
+			{"name": "Pas du chasseur", "type": "teleport_strike", "target": "enemy",
+				"range": 5, "cooldown": 3,
+				"desc": "Surgit au contact d'une proie lointaine et frappe."},
+			{"name": "Volte", "type": "retreat_shot", "target": "enemy",
+				"range": 3, "retreat": 2, "cooldown": 3,
+				"desc": "Tire puis se dérobe de 2 cases."},
+		],
+		"skills": [],
+	},
 	"sera_traquee": {
 		"name": "Sera, la traquée", "color": Color(0.30, 0.42, 0.62), "symbol": "S",
 		"description": "Dénoncée, chassée du hameau, elle a rejoint le bois. Elle n'a pas oublié.",
@@ -598,6 +634,7 @@ var campaign_hero := {}              # héros créé : name, gender ("f"/"m"), d
 const COMPANIONS := {
 	"sera":  {"name": "Sera",  "class": "sera_pisteuse",  "figure": "etrangere"},
 	"garin": {"name": "Garin", "class": "garin_bucheron", "figure": "bucheron"},
+	"joran": {"name": "Joran", "class": "joran_mire",     "figure": "mire"},
 }
 var campaign_party: Array = []         # ids des compagnons recrutés (ordre de marche)
 var campaign_relations := {}           # id compagnon -> affinité (int, défaut 0)

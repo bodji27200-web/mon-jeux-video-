@@ -147,7 +147,8 @@ func _build_boss_bar() -> void:
 	_boss_name_label.position = Vector2(0, 6)
 	_boss_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_boss_name_label.add_theme_font_size_override("font_size", 24)
-	_boss_name_label.add_theme_color_override("font_color", Color(0.93, 0.85, 0.70))
+	# Nom de boss en ROUGE : les boss doivent trancher avec tout le reste.
+	_boss_name_label.add_theme_color_override("font_color", Color(0.95, 0.22, 0.20))
 	_boss_name_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	_boss_name_label.add_theme_constant_override("outline_size", 6)
 	$UI.add_child(_boss_name_label)
@@ -512,20 +513,34 @@ func _on_skill_slot(index: int) -> void:
 		return  # carré vide
 	if phase == "skill":
 		if selected_skill == index:
-			# Reclic -> annule, retour à la phase d'avant (déplacement ou attaque).
-			if _skill_return_phase == "move":
-				phase = "move"
-				_show_moves(active_unit)
-			else:
-				_enter_action_phase()
-		else:
+			_cancel_skill()  # reclic -> annule, retour à la phase d'avant
+		elif _check_has_targets(index):
 			selected_skill = index  # changer de compétence sélectionnée
 			_enter_skill_phase()
-	else:
+	elif _check_has_targets(index):
 		# Sélection depuis "move" (sans avoir bougé) ou "attack".
 		_skill_return_phase = phase
 		selected_skill = index
 		_enter_skill_phase()
+
+
+# Refuse la sélection d'une compétence SANS cible à portée (avant : on entrait
+# dans la phase avec zéro case cliquable -> impression de bug).
+func _check_has_targets(index: int) -> bool:
+	if not _skill_targets(active_unit, index).is_empty():
+		return true
+	skill_hint.text = "❌ %s : aucune cible à portée" % str(active_unit.get_actives()[index].name)
+	skill_hint.visible = true
+	return false
+
+
+# Annule la compétence en cours et revient à la phase d'avant (déplacement/attaque).
+func _cancel_skill() -> void:
+	if _skill_return_phase == "move":
+		phase = "move"
+		_show_moves(active_unit)
+	else:
+		_enter_action_phase()
 
 
 func _enter_skill_phase() -> void:
@@ -595,9 +610,12 @@ func _handle_click(cell: Vector2i) -> void:
 		if target:
 			_perform_action(active_unit, target)
 			_end_turn()
-	elif phase == "skill" and cell in grid.skill_cells:
-		_use_skill(active_unit, cell, selected_skill)
-		_end_turn()
+	elif phase == "skill":
+		if cell in grid.skill_cells:
+			_use_skill(active_unit, cell, selected_skill)
+			_end_turn()
+		else:
+			_cancel_skill()  # clic ailleurs = annule (avant : rien, on restait coincé)
 
 
 # Soin si soigneur ET cible alliée, sinon attaque (un soutien IA sans blessé
@@ -767,10 +785,16 @@ func _check_end() -> bool:
 							mvp_name = str(GameData.campaign_battle_names[idx])
 					GameData.grant_xp(str(mid), amount)
 					idx += 1
+				# Récompense UNIQUE du boss secret : le Katana d'améthyste.
+				if GameData.campaign_enemy_id == "traqueur_roi" \
+						and not GameData.campaign_items.has("🗡 Katana d'améthyste"):
+					GameData.campaign_items.append("🗡 Katana d'améthyste")
 				GameData.save_campaign()
 				stats_label.text += "\n\n★ +%d XP" % base
 				if mvp_name != "":
 					stats_label.text += "   ·   MVP : %s (+10%%)" % mvp_name
+				if GameData.campaign_enemy_id == "traqueur_roi":
+					stats_label.text += "\n🗡 Le KATANA D'AMÉTHYSTE est vôtre — lame violette à l'aura scintillante (la forge arrive bientôt)."
 			elif not p and GameData.campaign_difficulty == "hardcore":
 				# Hardcore : la mort de l'équipe efface la campagne (mort permanente).
 				GameData.clear_campaign()
