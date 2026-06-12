@@ -73,6 +73,11 @@ const NPCS := [
 	{"id": "maud", "name": "Maud, l'herboriste", "pos": Vector2(7.6, 6.6), "figure": "herboriste",
 	 "rules": [
 		{"flag": "maud_vexee", "dialogue": "maud_froide"},
+		# Conséquences : Maud sait ce qui se passe dans le bois (Sera, le boss).
+		{"flag": "sera_denoncee", "foes_down": ["sera_traquee"],
+		 "not_flag": "maud_sera_dit", "dialogue": "maud_sera_morte"},
+		{"flag": "herbes_rendues", "foes_down": ["veilleur"],
+		 "not_flag": "maud_boss_dit", "dialogue": "maud_apres_boss"},
 		{"flag": "herbes_rendues", "dialogue": "maud_fin"},
 		{"flag": "herbes_prises", "dialogue": "maud_rendre"},
 		{"flag": "maud_quete", "dialogue": "maud_attente"},
@@ -91,6 +96,8 @@ const NPCS := [
 		 "dialogue": "garin_reward"},
 		{"flag": "garin_accepte", "dialogue": "garin_attente"},
 		{"flag": "garin_refuse", "dialogue": "garin_retente"},
+		# Conséquence : Garin a entendu parler de la dénonciation de Sera.
+		{"flag": "sera_denoncee", "dialogue": "garin_sera"},
 	 ], "fallback": "garin_intro"},
 	{"id": "sera", "name": "Sera, l'étrangère", "pos": Vector2(6.4, 13.0), "figure": "etrangere",
 	 "hide_flag": "sera_denoncee", "party_flag": "sera_party",
@@ -138,6 +145,28 @@ const DIALOGUES := {
 		"speaker": "Maud, l'herboriste",
 		"text": "Mes tisanes embaument à nouveau, grâce à toi. File, le bois t'attend — et souviens-toi : écartés face aux ronces.",
 		"choices": [{"label": "« À bientôt. »"}]},
+	# — Conséquences croisées : le hameau réagit à tes actes. —
+	"garin_sera": {
+		"speaker": "Garin, le bûcheron",
+		"text": "T'as su, pour l'étrangère ? Une rôdeuse, qu'ils disent. C'est toi qui l'as balancée, pas vrai ?... J'dis pas que t'as eu tort. J'dis que le bois, lui, oublie rien. Bref — un loup et un rôdeur squattent ma clairière. Tu me les chasses, j'te montre le métier des armes. Marché conclu ?",
+		"choices": [
+			{"label": "« Marché conclu. »", "set": {"garin_accepte": true, "garin_refuse": false}, "next": "garin_topla"},
+			{"label": "« Débrouille-toi. »", "set": {"garin_refuse": true}, "next": "garin_decu"},
+		]},
+	"maud_sera_morte": {
+		"speaker": "Maud, l'herboriste",
+		"text": "Une silhouette est tombée dans le bois, cette nuit. Celle que tu as dénoncée... Le hameau dort mieux, paraît-il. Et toi, petit — tu dormiras bien ?",
+		"choices": [
+			{"label": "« Elle l'avait mérité. »", "set": {"maud_sera_dit": true}},
+			{"label": "« ...Je devais le faire. »", "set": {"maud_sera_dit": true}},
+			{"label": "(Baisser les yeux)", "set": {"maud_sera_dit": true}},
+		]},
+	"maud_apres_boss": {
+		"speaker": "Maud, l'herboriste",
+		"text": "Le bois s'est tu. Plus de murmures, plus de griffes la nuit... C'est toi qui as fait taire le Veilleur, pas vrai ? Alors écoute la vieille Maud : ce qui régnait ici n'était qu'un veilleur. Ce qu'il VEILLAIT est toujours quelque part. Tiens — pour la route.",
+		"choices": [
+			{"label": "« Merci, Maud. »", "set": {"maud_boss_dit": true}, "xp_team": 40},
+		]},
 	"sachet_trouve": {
 		"speaker": "Sachet d'herbes",
 		"text": "Un petit sachet de toile, à moitié enfoui dans la vase. L'odeur des herbes lunaires de Maud ne trompe pas.",
@@ -493,17 +522,7 @@ func _build_nodes() -> void:
 			continue
 		if n.has("need_flag") and not GameData.get_flag(n.need_flag):
 			continue
-		var w := Walker.new()
-		w.kind = "npc"
-		w.npc_id = n.id
-		if n.has("prompt"):
-			w.prompt_text = str(n.prompt)
-		w.figure = n.figure
-		w.label = n.name
-		w.mpos = n.pos
-		w.position = map_to_world(n.pos)
-		_entities.add_child(w)
-		_npcs.append(w)
+		_spawn_npc(n)
 	# Caméra qui suit le joueur, bornée à la maquette.
 	_camera = Camera2D.new()
 	_camera.position_smoothing_enabled = true
@@ -627,11 +646,11 @@ func _process(delta: float) -> void:
 		_update_foes(delta)
 		_update_npcs()
 		_update_party(delta)
-	_player.position = map_to_world(_player.mpos)
+	_place(_player)
 	for f in _foes:
-		f.position = map_to_world(f.mpos)
+		_place(f)
 	for w in _party:
-		w.position = map_to_world(w.mpos)
+		_place(w)
 	_camera.position = _player.position - Vector2(0.0, 14.0)
 	_update_zone()
 	# Culling périodique (8×/s suffit largement avec la marge de VIEW_HALF) :
@@ -725,12 +744,16 @@ func _nearest_npc() -> Walker:
 # --- Dialogues à choix (data-driven : NPCS + DIALOGUES) ---
 
 # Choisit le dialogue d'entrée d'un PNJ : première règle satisfaite, sinon fallback.
+# Règle = drapeau requis ("flag"), drapeau interdit ("not_flag") et/ou ennemis
+# vaincus requis ("foes_down") — tous optionnels, combinables.
 func _npc_entry_dialogue(npc_id: String) -> String:
 	for n in NPCS:
 		if n.id != npc_id:
 			continue
 		for r in n.get("rules", []):
-			if not GameData.get_flag(r.flag):
+			if r.has("flag") and not GameData.get_flag(r.flag):
+				continue
+			if r.has("not_flag") and GameData.get_flag(r.not_flag):
 				continue
 			var ok := true
 			for foe_id in r.get("foes_down", []):
@@ -837,9 +860,38 @@ func _close_dialogue() -> void:
 				tw.tween_property(leaving, "modulate:a", 0.0, 1.2)
 				tw.tween_callback(leaving.queue_free)
 	_dlg_npc = null
+	# BUG corrigé : un PNJ-objet conditionnel (sachet...) doit apparaître DÈS que
+	# son drapeau est posé, pas au prochain chargement du monde.
+	for n in NPCS:
+		if not n.has("need_flag") or not GameData.get_flag(n.need_flag):
+			continue
+		if n.has("hide_flag") and GameData.get_flag(n.hide_flag):
+			continue
+		var already := false
+		for w in _npcs:
+			if w.npc_id == n.id:
+				already = true
+				break
+		if not already:
+			_spawn_npc(n)
 	# Une récompense de quête peut donner des niveaux : on choisit maintenant.
 	if not _leveling:
 		_check_levelups()
+
+
+# Instancie un PNJ depuis sa définition (utilisé au chargement ET en cours de jeu).
+func _spawn_npc(n: Dictionary) -> void:
+	var w := Walker.new()
+	w.kind = "npc"
+	w.npc_id = n.id
+	if n.has("prompt"):
+		w.prompt_text = str(n.prompt)
+	w.figure = n.figure
+	w.label = n.name
+	w.mpos = n.pos
+	w.position = map_to_world(n.pos)
+	_entities.add_child(w)
+	_npcs.append(w)
 
 
 # --- Fiche d'équipe (touche C) : héros + compagnons, stats et compétences ---
@@ -1010,6 +1062,9 @@ func _add_sheet_column(mid: String, member_name: String, cid: String, is_hero: b
 	xp_bar.value = int(p.xp)
 	var xp_lbl := Label.new()
 	xp_lbl.text = "XP %d / %d" % [int(p.xp), int(xp_bar.max_value)]
+	if int(p.level) + int(p.pending) >= GameData.MAX_LEVEL:
+		xp_bar.value = xp_bar.max_value
+		xp_lbl.text = "★ NIVEAU MAXIMUM ★"
 	xp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	xp_lbl.add_theme_font_size_override("font_size", 11)
 	xp_lbl.add_theme_color_override("font_color", Color(0.65, 0.72, 0.85))
@@ -1265,8 +1320,8 @@ func _update_zone() -> void:
 	if z == _zone_current:
 		return
 	_zone_current = z
-	_zone_label.text = z
 	var danger := z == "Bois des Murmures"
+	_zone_label.text = z + ("  ☠☠☠" if danger else "")
 	_zone_label.add_theme_color_override("font_color",
 			Color(0.95, 0.55, 0.45) if danger else Color(0.92, 0.88, 0.76))
 	_zone_label.modulate.a = 0.0
@@ -1289,6 +1344,14 @@ func _tile_points(cell: Vector2i) -> PackedVector2Array:
 	return PackedVector2Array([
 		c + Vector2(0.0, -HALF_H), c + Vector2(HALF_W, 0.0),
 		c + Vector2(0.0, HALF_H), c + Vector2(-HALF_W, 0.0)])
+
+
+# Ne touche au transform que si la position a vraiment changé (perf : pas de
+# canvas dirty pour les personnages immobiles).
+func _place(w: Walker) -> void:
+	var target := map_to_world(w.mpos)
+	if w.position != target:
+		w.position = target
 
 
 # Rectangle monde visible par la caméra (+ marge), pour le culling.

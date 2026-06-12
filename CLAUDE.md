@@ -512,6 +512,19 @@ Ordre de priorité (✅ = fait) :
       `need_flag`/`prompt`, effets de choix `item`/`remove_item`/`xp_team`,
       +60 XP équipe). **Journal de quêtes** + ☠ de danger par tier sur les
       rôdeurs. `_close_dialogue` déclenche les montées de niveau de quête.
+73. ✅ **Conséquences croisées + debug + perf v6** :
+    - Règles de dialogue enrichies : `not_flag` (one-shot) + `flag` optionnel.
+      **Garin commente la dénonciation de Sera** (`garin_sera`), **Maud réagit
+      à la mort de Sera** (`maud_sera_morte`, culpabilisant) et **à la chute du
+      Veilleur** (`maud_apres_boss`, +40 XP, tease la suite : « ce qu'il
+      veillait est toujours quelque part »).
+    - **Bug corrigé** : un PNJ-objet conditionnel (sachet) apparaît dès que son
+      drapeau est posé (`_spawn_npc` appelé depuis `_close_dialogue`), plus
+      besoin de recharger le monde.
+    - ☠ continué : nom du boss encadré de ☠ dans sa barre, zone dangereuse
+      « Bois des Murmures ☠☠☠ ». Barre d'XP : « ★ NIVEAU MAXIMUM ★ ».
+    - Perf : `_place()` ne touche au transform que si la position a changé
+      (personnages immobiles = zéro canvas dirty).
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`

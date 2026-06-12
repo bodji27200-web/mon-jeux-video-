@@ -142,7 +142,7 @@ func _build_boss_bar() -> void:
 		set_process(false)  # pas de boss : aucun travail par image
 		return
 	_boss_name_label = Label.new()
-	_boss_name_label.text = str(_boss_unit.data.name)
+	_boss_name_label.text = "☠  %s  ☠" % str(_boss_unit.data.name)
 	_boss_name_label.custom_minimum_size = Vector2(832, 30)
 	_boss_name_label.position = Vector2(0, 6)
 	_boss_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
