@@ -597,6 +597,22 @@ Ordre de priorité (✅ = fait) :
     courbe violette, halo pulsant, particules qui remontent le fil, aura au
     sol — animé 15 i/s via la branche figure de `_process`). Le vrai système
     d'équipement/forge généralisera ça plus tard.
+78. ✅ **Combat façon Sword of Convallaria + Luna réécrite** :
+    - **Ordre des tours à l'AGILITÉ** (`TurnManager.start` trie par
+      `data.agility`, repli `move_range` ; duelliste/roi 6, veilleur 2).
+    - **Timeline des tours** (`Battle._build_timeline`/`_refresh_timeline`) :
+      les 8 prochaines unités (symbole, couleur de classe, liseré bleu/rouge
+      par camp, actif doré), rafraîchie au changement de tour SEULEMENT.
+      Position y=58 si boss (sous sa barre), sinon y=8.
+    - **Attaques de DOS** : `Unit.facing` (posé au spawn, mis à jour en
+      marchant et en attaquant) ; frapper au corps à corps une cible qui
+      tourne le dos = **×1.25** + texte « DOS ! ». Honnêteté : copie « à la
+      lettre » de SoC impossible — ce sont ses 3 piliers de feel.
+    - **Luna 100× plus cohérente** : elle RÉPOND à chaque choix dans la même
+      conversation (chaînes `next` : `luna_intro_a/b/c`, `luna_meet2_a/b/c`,
+      `luna_frere_a/b/c`, réponses excuse/pique) ; **3 rencontres minimum**
+      avant de parler de Tomas (intro → elle te teste → confidence) ;
+      recrutement justifié par le lien construit. Drapeaux `luna_1/2/3_fait`.
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`
