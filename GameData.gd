@@ -600,6 +600,25 @@ const COMPANIONS := {
 	"garin": {"name": "Garin", "class": "garin_bucheron", "figure": "bucheron"},
 }
 var campaign_party: Array = []         # ids des compagnons recrutés (ordre de marche)
+var campaign_relations := {}           # id compagnon -> affinité (int, défaut 0)
+
+
+func relation(cid: String) -> int:
+	return int(campaign_relations.get(cid, 0))
+
+
+func add_relation(cid: String, n: int) -> void:
+	campaign_relations[cid] = relation(cid) + n
+
+
+# Libellé d'affinité (affiché dans la fiche d'équipe).
+func relation_label(cid: String) -> String:
+	var r := relation(cid)
+	if r <= -2: return "Hostile"
+	if r < 0:   return "Méfiant"
+	if r == 0:  return "Neutre"
+	if r < 3:   return "Amical"
+	return "Loyal"
 var campaign_battle_names: Array = []  # noms des unités joueur au combat (transitoire)
 var campaign_battle_ids: Array = []    # ids de progression ("hero", "sera"...) alignés
 
@@ -732,6 +751,7 @@ func clear_campaign() -> void:
 	campaign_flags = {}
 	campaign_hero = {}
 	campaign_party = []
+	campaign_relations = {}
 	campaign_levels = {}
 	campaign_items = []
 	campaign_saved_at = ""
@@ -795,6 +815,7 @@ func save_settings() -> void:
 	cfg.set_value("campaign", "flags", campaign_flags)
 	cfg.set_value("campaign", "hero", campaign_hero)
 	cfg.set_value("campaign", "party", campaign_party)
+	cfg.set_value("campaign", "relations", campaign_relations)
 	cfg.set_value("campaign", "levels", campaign_levels)
 	cfg.set_value("campaign", "items", campaign_items)
 	cfg.save(SETTINGS_PATH)
@@ -819,5 +840,6 @@ func load_settings() -> void:
 	campaign_flags = cfg.get_value("campaign", "flags", {})
 	campaign_hero = cfg.get_value("campaign", "hero", {})
 	campaign_party = cfg.get_value("campaign", "party", [])
+	campaign_relations = cfg.get_value("campaign", "relations", {})
 	campaign_levels = cfg.get_value("campaign", "levels", {})
 	campaign_items = cfg.get_value("campaign", "items", [])

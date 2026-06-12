@@ -255,6 +255,65 @@ const DIALOGUES := {
 		"speaker": "Sera, l'étrangère",
 		"text": "Alors c'est dit. Je connais ce bois mieux que ses loups — je couvre tes arrières, toi ouvre la route. Et au fond du bois... tu verras pourquoi j'ai déserté.",
 		"choices": [{"label": "(En route)"}]},
+
+	# === Dialogues de COMPAGNONS (voyage) — relations à conséquences ===
+	# Sera : pragmatique, loyale si on la respecte.
+	"sera_talk_intro": {
+		"speaker": "Sera",
+		"text": "Marcher à découvert, encore ? Tu as de la chance que je veille. ...Pourquoi tu m'as fait confiance, au juste, alors que tout le hameau me croyait dangereuse ?",
+		"choices": [
+			{"label": "« Je juge les gens sur leurs actes. »", "set": {"met_sera": true}, "relation": {"sera": 1}},
+			{"label": "« J'avais besoin d'une lame de plus. »", "set": {"met_sera": true}},
+			{"label": "« Tais-toi et avance. »", "set": {"met_sera": true}, "relation": {"sera": -1}},
+		]},
+	"sera_talk_idle": {
+		"speaker": "Sera",
+		"text": "Le meneur d'abord, toujours. Coupe la tête, la meute panique. C'est comme ça qu'on survit, dans le bois.",
+		"choices": [
+			{"label": "« Bon conseil. »", "relation": {"sera": 1}},
+			{"label": "(Hocher la tête et repartir)"},
+		]},
+	"sera_talk_loyal": {
+		"speaker": "Sera",
+		"text": "Tu sais quoi ? Je ne regrette pas d'avoir déserté. Pas si c'était pour finir à tes côtés. Où qu'on aille après ce bois — j'y suis.",
+		"choices": [{"label": "« Côte à côte. »"}]},
+	"sera_about_garin": {
+		"speaker": "Sera",
+		"text": "Ton bûcheron me regarde comme si j'allais l'égorger dans son sommeil. Il n'a pas tort de se méfier... mais dis-lui que s'il me cherche, il me trouvera. Ou pas — à toi de voir.",
+		"choices": [
+			{"label": "« Laissez-vous une chance, tous les deux. »",
+			 "set": {"sera_garin_ok": true}, "relation": {"sera": 1}},
+			{"label": "« Reste sur tes gardes, c'est tout. »", "set": {"sera_garin_ok": true}},
+		]},
+	# Garin : honorable, méfiant de l'ex-rôdeuse, mais juste.
+	"garin_talk_intro": {
+		"speaker": "Garin",
+		"text": "Ha ! Ça fait du bien de cogner autre chose que du bois mort. Tu mènes, je suis. Mais dis-moi — on va jusqu'où, dans ce fichu bois ?",
+		"choices": [
+			{"label": "« Jusqu'à faire taire le Veilleur. »", "set": {"met_garin": true}, "relation": {"garin": 1}},
+			{"label": "« Aussi loin qu'il faudra. »", "set": {"met_garin": true}},
+		]},
+	"garin_talk_idle": {
+		"speaker": "Garin",
+		"text": "Devant moi, personne passe. Tu places les fragiles derrière ma lance, et on rentrera tous entiers. Marché ?",
+		"choices": [
+			{"label": "« Marché. »", "relation": {"garin": 1}},
+			{"label": "(Repartir)"},
+		]},
+	"garin_talk_loyal": {
+		"speaker": "Garin",
+		"text": "J'ai bûcheronné vingt ans sans rien voir du monde. Avec toi, j'ai enfin l'impression de servir à quelque chose de plus grand qu'une pile de rondins.",
+		"choices": [{"label": "« Tu sers, Garin. Crois-moi. »"}]},
+	"garin_about_sera": {
+		"speaker": "Garin",
+		"text": "Cette Sera... une rôdeuse, hier encore. Et tu la laisses marcher dans notre dos avec un arc ? J'aime pas ça du tout.",
+		"choices": [
+			{"label": "« Elle s'est rangée. Donne-lui sa chance. »",
+			 "set": {"garin_sera_ok": true}, "relation": {"garin": 1, "sera": 1}},
+			{"label": "« Surveille-la si tu veux. »", "set": {"garin_sera_ok": true}},
+			{"label": "« Je n'ai pas à me justifier. »",
+			 "set": {"garin_sera_ok": true}, "relation": {"garin": -1}},
+		]},
 }
 
 # Damier de sol 2 tons par type de terrain (style diorama du jeu).
@@ -674,9 +733,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		GameData.campaign_pos = _player.mpos
 		GameData.save_campaign()
 		get_tree().change_scene_to_file("res://Title.tscn")
-	# E : parler au PNJ à portée (les choix se font à la souris).
+	# E : parler au PNJ OU compagnon à portée (les choix se font à la souris).
 	if event.physical_keycode == KEY_E and not _talking and not _sheet_open and not _leveling:
-		var npc := _nearest_npc()
+		var npc := _nearest_talkable()
 		if npc:
 			_open_dialogue(npc)
 	# C : fiche d'équipe (héros + compagnons), monde en pause pendant la lecture.
@@ -713,6 +772,8 @@ func _update_party(delta: float) -> void:
 				w.face = 1.0 if wx > 0.0 else -1.0
 		else:
 			w.moving = false
+		# Invite « parler » sur le compagnon proche, seulement quand on est arrêté.
+		w.prompt = (not _player.moving) and w.mpos.distance_to(_player.mpos) < TALK_RANGE + 0.4
 		prev = w.mpos
 
 
@@ -722,12 +783,30 @@ func _spawn_follower(comp_id: String, pos: Vector2) -> void:
 		return
 	var w := Walker.new()
 	w.kind = "ally"
+	w.npc_id = comp_id  # permet de leur parler (E) et de retrouver leur relation
 	w.figure = str(c.figure)
 	w.label = str(c.name)
 	w.mpos = pos
 	w.position = map_to_world(pos)
 	_entities.add_child(w)
 	_party.append(w)
+
+
+# Cherche le PNJ OU le compagnon le plus proche à portée de parole.
+func _nearest_talkable() -> Walker:
+	var best: Walker = null
+	var best_d := TALK_RANGE
+	for n in _npcs:
+		var d: float = n.mpos.distance_to(_player.mpos)
+		if d < best_d:
+			best_d = d
+			best = n
+	for w in _party:
+		var d: float = w.mpos.distance_to(_player.mpos)
+		if d < best_d:
+			best_d = d
+			best = w
+	return best
 
 
 func _nearest_npc() -> Walker:
@@ -767,7 +846,9 @@ func _npc_entry_dialogue(npc_id: String) -> String:
 
 
 func _open_dialogue(npc: Walker) -> void:
-	var did := _npc_entry_dialogue(npc.npc_id)
+	# Compagnon (suiveur) : dialogue de voyage selon sa relation. PNJ : règles.
+	var did := _companion_dialogue(npc.npc_id) if npc.kind == "ally" \
+			else _npc_entry_dialogue(npc.npc_id)
 	if did == "" or not DIALOGUES.has(did):
 		return
 	_talking = true
@@ -775,6 +856,23 @@ func _open_dialogue(npc: Walker) -> void:
 	_player.moving = false
 	Audio.play_sfx("click")
 	_show_dialogue(did)
+
+
+# Dialogue de voyage d'un compagnon : un mot croisé sur l'autre membre s'il est
+# là (relations), sinon selon l'affinité, sinon l'intro (vu une fois).
+func _companion_dialogue(cid: String) -> String:
+	# Garin se méfie de Sera (ex-rôdeuse) tant qu'elle ne s'est pas prouvée.
+	if cid == "garin" and GameData.campaign_party.has("sera") \
+			and not GameData.get_flag("garin_sera_ok"):
+		return "garin_about_sera"
+	if cid == "sera" and GameData.campaign_party.has("garin") \
+			and not GameData.get_flag("sera_garin_ok"):
+		return "sera_about_garin"
+	if not GameData.get_flag("met_" + cid):
+		return cid + "_talk_intro"
+	if GameData.relation(cid) >= 3:
+		return cid + "_talk_loyal"
+	return cid + "_talk_idle"
 
 
 func _show_dialogue(did: String) -> void:
@@ -811,8 +909,14 @@ func _on_choice(choice: Dictionary) -> void:
 	var rid: String = str(choice.get("recruit", ""))
 	if rid != "" and not GameData.campaign_party.has(rid):
 		GameData.campaign_party.append(rid)
+		# Affinité de départ : Sera reconnaissante (couverte), Garin loyal (quête).
+		GameData.add_relation(rid, 2)
 		changed = true
 		_announce("🤝 %s rejoint l'équipe !" % str(GameData.COMPANIONS[rid].name))
+	# Relations : un choix peut plaire ou déplaire à un compagnon.
+	for rel_id in choice.get("relation", {}):
+		GameData.add_relation(str(rel_id), int(choice.relation[rel_id]))
+		changed = true
 	# Objet de quête : entre dans la sacoche (ou en sort si on le rend).
 	var item: String = str(choice.get("item", ""))
 	if item != "" and not GameData.campaign_items.has(item):
@@ -1049,6 +1153,14 @@ func _add_sheet_column(mid: String, member_name: String, cid: String, is_hero: b
 	head.add_theme_color_override("font_color",
 			Color(0.95, 0.82, 0.45) if is_hero else Color(0.75, 0.88, 0.80))
 	col.add_child(head)
+	# Affinité du compagnon (relation à conséquences).
+	if not is_hero:
+		var rel := Label.new()
+		rel.text = "♥ %s" % GameData.relation_label(mid)
+		rel.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		rel.add_theme_font_size_override("font_size", 12)
+		rel.add_theme_color_override("font_color", Color(0.92, 0.55, 0.62))
+		col.add_child(rel)
 	var sub := Label.new()
 	sub.text = "%s · %s · niveau %d / %d" % [str(d.name),
 			str(ROLE_NAMES.get(str(d.get("role", "")), "")),
@@ -1065,6 +1177,10 @@ func _add_sheet_column(mid: String, member_name: String, cid: String, is_hero: b
 	if int(p.level) + int(p.pending) >= GameData.MAX_LEVEL:
 		xp_bar.value = xp_bar.max_value
 		xp_lbl.text = "★ NIVEAU MAXIMUM ★"
+	else:
+		# Affiche clairement quand tombe la prochaine COMPÉTENCE (niveaux pairs).
+		var nxt: int = int(p.level) + 2 - (int(p.level) % 2)
+		xp_lbl.text += "   ·   ✦ compétence au niv. %d" % nxt
 	xp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	xp_lbl.add_theme_font_size_override("font_size", 11)
 	xp_lbl.add_theme_color_override("font_color", Color(0.65, 0.72, 0.85))
@@ -1614,6 +1730,13 @@ class Walker extends Node2D:
 	# Textes au-dessus de la tête (hors miroir pour ne pas écrire à l'envers).
 	func _draw_overhead() -> void:
 		var font := ThemeDB.fallback_font
+		if kind == "ally":
+			if prompt:
+				draw_string(font, Vector2(-60.0, -36.0), "E — Parler",
+						HORIZONTAL_ALIGNMENT_CENTER, 120, 13, Color(0.0, 0.0, 0.0, 0.7))
+				draw_string(font, Vector2(-61.0, -37.0), "E — Parler",
+						HORIZONTAL_ALIGNMENT_CENTER, 120, 13, Color(0.70, 0.90, 1.0))
+			return
 		if kind == "npc":
 			if prompt:
 				draw_string(font, Vector2(-60.0, -36.0), prompt_text,

@@ -114,9 +114,10 @@ func _build_ui() -> void:
 	name_lbl.add_theme_font_size_override("font_size", 16)
 	left.add_child(name_lbl)
 	_name_edit = LineEdit.new()
-	_name_edit.placeholder_text = "Aventurier·e"
+	_name_edit.placeholder_text = "Entre ton nom..."
 	_name_edit.max_length = 16
 	_name_edit.custom_minimum_size = Vector2(220, 38)
+	_name_edit.text_changed.connect(func(_t): _name_edit.modulate = Color.WHITE)
 	left.add_child(_name_edit)
 
 	# --- Colonne droite : choix de classe + description ---
@@ -222,10 +223,15 @@ func _select_class(cid: String) -> void:
 
 
 func _on_start() -> void:
-	Audio.play_sfx("click")
 	var hero_name := _name_edit.text.strip_edges()
 	if hero_name == "":
-		hero_name = "Aventurière" if _gender == "f" else "Aventurier"
+		# Nom obligatoire : on refuse le départ et on signale le champ.
+		Audio.play_sfx("click")
+		_name_edit.placeholder_text = "⚠  Entre un nom !"
+		_name_edit.modulate = Color(1.0, 0.5, 0.5)
+		_name_edit.grab_focus()
+		return
+	Audio.play_sfx("click")
 	GameData.campaign_hero = {
 		"name": hero_name, "gender": _gender,
 		"design": _design, "class": _class_id,
