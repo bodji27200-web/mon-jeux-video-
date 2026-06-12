@@ -101,6 +101,13 @@ func _ready() -> void:
 					var mid := str(GameData.campaign_battle_ids[ni])
 					u.apply_growth(GameData.member_progress(mid))
 					_member_of[u] = mid
+					# Le Katana d'améthyste se lie à la DUELLISTE : aura violette
+					# + tranchant surnaturel (+2 ATK, +5% crit). Premier objet équipé.
+					if u.class_id == "duelliste_campagne" \
+							and GameData.campaign_items.has("🗡 Katana d'améthyste"):
+						u.has_katana = true
+						u.data.attack = int(u.data.attack) + 2
+						u.data.crit_chance = float(u.data.crit_chance) + 0.05
 				ni += 1
 	_start_player = GameData.player_team.size()
 	_start_ai = GameData.ai_team.size()

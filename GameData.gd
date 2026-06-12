@@ -502,6 +502,13 @@ const CLASSES := {
 		"crit_chance": 0.30, "behavior": "melee", "role": "melee",
 		"hidden": true, "skills": [],
 	},
+	"duelliste_campagne": {
+		"name": "Duelliste", "color": Color(0.68, 0.36, 0.92), "symbol": "D",
+		"description": "Bretteuse de salle d'armes jetée sur les routes. Riposte, parade, sentence — et le Katana d'améthyste n'attend qu'elle.",
+		"max_hp": 27, "move_range": 4, "attack": 11, "attack_range": 1,
+		"crit_chance": 0.25, "behavior": "melee", "role": "melee",
+		"hidden": true, "skills": [],
+	},
 	# Luna : compagnonne archère rencontrée à la taverne (émotions à règles).
 	"luna_archere": {
 		"name": "Luna", "color": Color(0.88, 0.74, 0.35), "symbol": "✦",
@@ -871,6 +878,20 @@ const CLASS_TREES := {
 		 {"name": "Danse des lames", "type": "cleave", "target": "enemy", "radius": 1, "dmg_mult": 1.1, "range": 1, "cooldown": 3, "desc": "Tourbillon de dagues (×1.1 de zone)."}],
 		[{"name": "Ombre passante", "type": "heavy_strike", "target": "enemy", "dmg_mult": 2.0, "range": 1, "cooldown": 3, "desc": "On ne la voit qu'une fois (×2.0)."},
 		 {"name": "Parade fantôme", "type": "self_buff", "target": "self", "buff": "parade", "cooldown": 3, "desc": "Bloque ENTIÈREMENT la prochaine attaque."}],
+	],
+	"duelliste_campagne": [
+		[{"name": "Estocade", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.5, "range": 1, "cooldown": 3, "desc": "Coup d'escrime précis (×1.5)."},
+		 {"name": "Posture de riposte", "type": "self_buff", "target": "self", "buff": "riposte", "cooldown": 3, "desc": "Contre-attaque automatique au corps à corps (2 tours)."}],
+		[{"name": "Parade", "type": "self_buff", "target": "self", "buff": "parade", "cooldown": 3, "desc": "Bloque ENTIÈREMENT la prochaine attaque reçue."},
+		 {"name": "Entaille exposante", "type": "apply_debuff", "target": "enemy", "buff": "vulnerabilite", "range": 1, "cooldown": 3, "desc": "Ouvre la garde : +35% de dégâts subis (2 tours)."}],
+		[{"name": "Pas de velours", "type": "teleport_strike", "target": "enemy", "range": 4, "cooldown": 3, "desc": "Glisse au contact d'une cible distante et frappe."},
+		 {"name": "Affûtage", "type": "self_buff", "target": "self", "buff": "force", "cooldown": 4, "desc": "+50% de dégâts (2 tours)."}],
+		[{"name": "Croc-jambe", "type": "apply_debuff", "target": "enemy", "buff": "racines", "range": 1, "cooldown": 4, "desc": "Fauche l'appui : immobilise 1 tour."},
+		 {"name": "Garde haute", "type": "self_buff", "target": "self", "buff": "garde", "cooldown": 4, "desc": "-60% de dégâts subis (2 tours)."}],
+		[{"name": "Estocade parfaite", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.8, "range": 1, "cooldown": 3, "desc": "Le geste répété mille fois (×1.8)."},
+		 {"name": "Lame dansante", "type": "cleave", "target": "enemy", "radius": 1, "dmg_mult": 1.1, "range": 1, "cooldown": 3, "desc": "Valse d'acier sur la cible et ses voisins (×1.1)."}],
+		[{"name": "Sentence", "type": "heavy_strike", "target": "enemy", "dmg_mult": 2.0, "range": 1, "cooldown": 3, "desc": "Le duel ne se gagne qu'une fois (×2.0)."},
+		 {"name": "Démonstration", "type": "team_debuff", "target": "self", "buff": "affaiblissement", "cooldown": 4, "desc": "Son aisance glace TOUS les ennemis : -30% de dégâts (2 tours)."}],
 	],
 }
 
