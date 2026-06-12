@@ -525,6 +525,24 @@ Ordre de priorité (✅ = fait) :
       « Bois des Murmures ☠☠☠ ». Barre d'XP : « ★ NIVEAU MAXIMUM ★ ».
     - Perf : `_place()` ne touche au transform que si la position a changé
       (personnages immobiles = zéro canvas dirty).
+74. ✅ **IA de boss + compagnons vivants + fixes** :
+    - **Bugs** : nom du héros désormais OBLIGATOIRE à la création
+      (`CharacterCreate._on_start` refuse vide, champ rouge) ; **cheveux fixés**
+      (mèche longue féminine = polygone auto-croisé → quad propre dans
+      `HeroFigure`) ; indice « ✦ compétence au niv. X » sur la barre d'XP.
+    - **IA de boss** (`AI.decide`/`_attack_score`/`_pick_enemy`) : un `boss`
+      ne commet **jamais** d'erreur (ignore `ai_mistake_chance`) et est traité
+      comme « hard » (focus-fire + chasse les fragiles : soigneur/tireur) quelle
+      que soit la difficulté. Aucune réécriture du moteur d'IA.
+    - **Compagnons vivants** (`COMPANION_DIALOGUES` via `DIALOGUES`,
+      `campaign_relations` persisté) : on **parle** à Sera/Garin (touche E, ils
+      portent un `npc_id`), dialogues intro→idle→loyal selon l'affinité,
+      **réactions croisées** (Garin se méfie de l'ex-rôdeuse Sera ; choix qui
+      montent/baissent la relation). Affinité affichée dans la fiche (♥ libellé).
+    - **Reste pour la passe suivante** : simulation headless d'équilibrage
+      (win-rate des combats de zone 1), rééquilibrage JcJ. Gros systèmes
+      (équipement/forge, éléments, stats RPG, feux de camp) = phases futures
+      dédiées, NON codées maintenant (anti sur-ingénierie).
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`

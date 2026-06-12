@@ -57,8 +57,11 @@ static func decide(unit: Node, grid: Node, units: Array) -> Dictionary:
 
 	var kite: bool = is_healer or unit.data.behavior == "kite"
 
-	# Erreur volontaire selon la difficulté.
-	var mistake := randf() < float(GameData.DIFFICULTIES[GameData.difficulty].ai_mistake_chance)
+	# Erreur volontaire selon la difficulté. Un BOSS ne se trompe JAMAIS : il
+	# joue comme un expert (focus les fragiles, compétences au bon moment).
+	var is_boss: bool = unit.data.get("boss", false)
+	var mistake := (not is_boss) \
+			and randf() < float(GameData.DIFFICULTIES[GameData.difficulty].ai_mistake_chance)
 
 	var best: Vector2i = unit.grid_position
 	if mistake:
@@ -153,9 +156,9 @@ static func _attack_score(unit: Node, e: Node) -> float:
 		s += 40.0
 	if e.get("is_summon"):
 		s -= 60.0
-	# Difficile/Hardcore : focus fire — concentrer les coups sur les cibles déjà
-	# entamées au lieu de disperser les dégâts sur toute l'équipe adverse.
-	if GameData.difficulty in ["difficile", "hardcore"]:
+	# Difficile/Hardcore (et TOUS les boss) : focus fire — concentrer les coups
+	# sur les cibles déjà entamées au lieu de disperser les dégâts.
+	if GameData.difficulty in ["difficile", "hardcore"] or unit.data.get("boss", false):
 		s += (1.0 - float(e.hp) / float(e.data.max_hp)) * 90.0
 	return s
 
@@ -164,7 +167,8 @@ static func _pick_enemy(unit: Node, enemies: Array) -> Node:
 	var est := _est_damage(unit)
 	var best: Node = enemies[0]
 	var best_score := -INF
-	var hard: bool = GameData.difficulty in ["difficile", "hardcore"]
+	var hard: bool = GameData.difficulty in ["difficile", "hardcore"] \
+			or unit.data.get("boss", false)
 	for e in enemies:
 		var s := -float(e.hp)
 		# Pénalité de distance : préférer une cible atteignable plutôt que de

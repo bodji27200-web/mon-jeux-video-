@@ -45,11 +45,12 @@ static func draw_hero(ci: CanvasItem, gender: String, design: int, tint: Color,
 	if gender == "f":
 		var hair: Color = HAIRS_F[design]
 		match design:
-			0:  # longs cheveux dans le dos
+			0:  # longs cheveux dans le dos (quad propre : TL, TR, BR, BL)
+				ci.draw_circle(Vector2(-0.8, -23.3 + b), 3.9, hair)
 				ci.draw_colored_polygon(PackedVector2Array([
-					Vector2(-4.2, -23.5 + b), Vector2(-1.5, -25.6 + b),
-					Vector2(-5.6, -9.5 + b + sway * 0.4), Vector2(-7.2, -12.0 + b)]), hair)
-				ci.draw_circle(Vector2(-0.8, -23.3 + b), 3.8, hair)
+					Vector2(-5.0, -24.8 + b), Vector2(-0.5, -25.6 + b),
+					Vector2(-2.6, -10.0 + b + sway * 0.4),
+					Vector2(-6.2, -11.5 + b + sway * 0.4)]), hair)
 			1:  # queue de cheval haute
 				ci.draw_circle(Vector2(-0.8, -23.3 + b), 3.8, hair)
 				ci.draw_line(Vector2(-3.4, -24.0 + b), Vector2(-6.8, -15.5 + b + sway * 0.5), hair, 2.8)
