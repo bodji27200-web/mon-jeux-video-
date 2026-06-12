@@ -47,6 +47,7 @@ const SPRITES := {
 
 var data: Dictionary = {}
 var display_name := ""  # nom affiché (héros de campagne) ; vide = nom de classe
+var has_katana := false  # Katana d'améthyste équipé (Duelliste) : aura violette
 var hp := 0
 var has_moved := false
 var has_acted := false
@@ -77,7 +78,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not is_alive():
 		return
-	if data.has("figure") or data.has("figure_npc"):
+	if data.has("figure") or data.has("figure_npc") or has_katana:
 		# Figures de campagne : animation continue mais redessin à 15 i/s
 		# seulement (60 redraws/s de vecteurs = trop pour le navigateur Xbox).
 		_anim_phase += delta
@@ -469,11 +470,39 @@ func _draw_vector_body(col: Color, dark: Color) -> void:
 	draw_arc(Vector2(0, -13), 8.0, 0.0, TAU, 20, dark, 1.5)
 	draw_circle(Vector2(-3, -14), 1.4, Color(0.10, 0.10, 0.12))
 	draw_circle(Vector2(3, -14), 1.4, Color(0.10, 0.10, 0.12))
-	_draw_weapon(_weapon_kind(), col, dark)
+	if has_katana:
+		_draw_katana()
+	else:
+		_draw_weapon(_weapon_kind(), col, dark)
 	var font := ThemeDB.fallback_font
 	var lum: float = col.r * 0.299 + col.g * 0.587 + col.b * 0.114
 	var sym_col: Color = Color.BLACK if lum > 0.55 else Color(1, 1, 1, 0.92)
 	draw_string(font, Vector2(-4.5, 8.0), str(data.symbol), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, sym_col)
+
+
+# LE Katana d'améthyste : longue lame courbe violette, halo pulsant,
+# particules d'aura qui remontent le fil. Le petit kiff du jeu.
+func _draw_katana() -> void:
+	var t := _anim_phase
+	var glow := Color(0.72, 0.40, 1.0)
+	var pulse := 0.30 + 0.20 * sin(t * 3.2)
+	# Lame courbe : trois segments (halo large dessous, cœur clair dessus).
+	var pts := PackedVector2Array([
+		Vector2(14.0, 9.0), Vector2(19.0, -5.0), Vector2(25.0, -19.0)])
+	draw_polyline(pts, Color(glow, pulse), 6.0)
+	draw_polyline(pts, Color(glow, pulse + 0.25), 3.2)
+	draw_polyline(pts, Color(0.94, 0.86, 1.0), 1.4)
+	# Tsuba dorée + poignée sombre tressée.
+	draw_circle(Vector2(14.0, 9.0), 2.4, Color(0.85, 0.70, 0.30))
+	draw_line(Vector2(14.0, 9.0), Vector2(12.0, 15.0), Color(0.16, 0.10, 0.22), 3.0)
+	# Particules d'aura : elles remontent le fil de la lame en boucle.
+	for i in 3:
+		var k := fposmod(t * 0.7 + float(i) / 3.0, 1.0)
+		var p := pts[0].lerp(pts[2], k) + Vector2(sin(t * 4.0 + float(i)) * 1.6, 0.0)
+		draw_circle(p, 2.0, Color(glow, (1.0 - k) * 0.5))
+		draw_circle(p, 0.9, Color(0.95, 0.85, 1.0, (1.0 - k) * 0.9))
+	# Halo d'aura au sol (la lame déteint sur sa porteuse).
+	_draw_ellipse(Vector2(0, 15), 16.0, 6.0, Color(glow, pulse * 0.30))
 
 
 # Type d'arme dessinée, déduit du rôle / profil de la classe (data-driven).

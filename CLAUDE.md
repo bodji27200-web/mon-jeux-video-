@@ -588,6 +588,15 @@ Ordre de priorité (✅ = fait) :
       sinon repli arbre de RÔLE (compagnons + vieilles sauvegardes JcJ).
       `CharacterCreate` liste CLASS_TREES (aperçu du 1er choix d'arbre).
     - Feu de camp du hameau déplacé (6.5, 15.4) pour laisser vivre la taverne.
+77. ✅ **Duelliste (7e classe de campagne) + Katana d'améthyste ÉQUIPÉ** :
+    classe `duelliste_campagne` (façon Maelle/Clair Obscur : riposte, parade,
+    estocades, signature « Sentence ») avec son arbre dédié. **Premier objet
+    réellement équipé** : si la Duelliste est en équipe ET que le katana est en
+    sacoche → `Unit.has_katana` (+2 ATK, +5% crit, posé dans `Battle._ready`
+    sur le `data` dupliqué) + **visuel dédié** (`Unit._draw_katana` : lame
+    courbe violette, halo pulsant, particules qui remontent le fil, aura au
+    sol — animé 15 i/s via la branche figure de `_process`). Le vrai système
+    d'équipement/forge généralisera ça plus tard.
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`
