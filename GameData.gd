@@ -457,6 +457,59 @@ const CLASSES := {
 		],
 		"skills": [],
 	},
+	# --- CLASSES DE CAMPAGNE DU HÉROS (création de personnage) ---
+	# Propres au mode histoire (hidden = jamais dans le JcJ). Aucune compétence
+	# de départ : tout se construit via l'ARBRE DE CLASSE (CLASS_TREES).
+	"lame_errante": {
+		"name": "Lame errante", "color": Color(0.78, 0.30, 0.26), "symbol": "L",
+		"description": "Bretteur vagabond. Équilibré, à l'aise partout : la lame répond à tout.",
+		"max_hp": 30, "move_range": 4, "attack": 10, "attack_range": 1,
+		"crit_chance": 0.15, "behavior": "melee", "role": "melee",
+		"hidden": true, "skills": [],
+	},
+	"rempart": {
+		"name": "Rempart", "color": Color(0.32, 0.50, 0.85), "symbol": "R",
+		"description": "Bouclier vivant. Encaisse pour les autres et tient la ligne, quoi qu'il arrive.",
+		"max_hp": 42, "move_range": 3, "attack": 7, "attack_range": 1,
+		"crit_chance": 0.05, "behavior": "melee", "role": "tank",
+		"hidden": true, "skills": [],
+	},
+	"oeil_lynx": {
+		"name": "Œil-de-lynx", "color": Color(0.30, 0.72, 0.42), "symbol": "Œ",
+		"description": "Tireur d'élite des chemins. Voit loin, frappe juste, ne se laisse pas approcher.",
+		"max_hp": 22, "move_range": 4, "attack": 10, "attack_range": 4,
+		"crit_chance": 0.20, "behavior": "kite", "role": "ranged",
+		"hidden": true, "skills": [],
+	},
+	"mire_errant": {
+		"name": "Mire errant", "color": Color(0.92, 0.90, 0.80), "symbol": "M",
+		"description": "Guérisseur des routes. Recoud, protège, et garde tout le monde debout.",
+		"max_hp": 24, "move_range": 3, "attack": 5, "attack_range": 1,
+		"crit_chance": 0.0, "behavior": "heal", "heal": 12, "heal_range": 3,
+		"role": "healer", "hidden": true, "skills": [],
+	},
+	"flamme_egaree": {
+		"name": "Flamme égarée", "color": Color(0.95, 0.45, 0.15), "symbol": "F",
+		"description": "Mage au feu instable. Brûle tout ce qu'il touche — y compris ses ennuis.",
+		"max_hp": 20, "move_range": 3, "attack": 12, "attack_range": 3,
+		"crit_chance": 0.10, "behavior": "kite", "on_hit": "brulure", "role": "ranged",
+		"hidden": true, "skills": [],
+	},
+	"ombre_passante": {
+		"name": "Ombre passante", "color": Color(0.55, 0.32, 0.72), "symbol": "O",
+		"description": "Tueur discret. Fragile mais foudroyant : frappe le premier, frappe le dernier.",
+		"max_hp": 24, "move_range": 5, "attack": 13, "attack_range": 1,
+		"crit_chance": 0.30, "behavior": "melee", "role": "melee",
+		"hidden": true, "skills": [],
+	},
+	# Luna : compagnonne archère rencontrée à la taverne (émotions à règles).
+	"luna_archere": {
+		"name": "Luna", "color": Color(0.88, 0.74, 0.35), "symbol": "✦",
+		"description": "Archère blonde au rire facile et à l'œil dur. Cherche son frère, parti dans le bois.",
+		"max_hp": 23, "move_range": 4, "attack": 10, "attack_range": 4,
+		"crit_chance": 0.25, "behavior": "kite", "role": "ranged",
+		"hidden": true, "figure_npc": "luna", "skills": [],
+	},
 	"joran_mire": {
 		"name": "Joran le mire", "color": Color(0.72, 0.68, 0.50), "symbol": "j",
 		"description": "Médecin de guerre déserteur. Recoud l'équipe sous les flèches.",
@@ -635,6 +688,7 @@ const COMPANIONS := {
 	"sera":  {"name": "Sera",  "class": "sera_pisteuse",  "figure": "etrangere"},
 	"garin": {"name": "Garin", "class": "garin_bucheron", "figure": "bucheron"},
 	"joran": {"name": "Joran", "class": "joran_mire",     "figure": "mire"},
+	"luna":  {"name": "Luna",  "class": "luna_archere",   "figure": "luna"},
 }
 var campaign_party: Array = []         # ids des compagnons recrutés (ordre de marche)
 var campaign_relations := {}           # id compagnon -> affinité (int, défaut 0)
@@ -729,6 +783,106 @@ const TREE := {
 		 {"name": "Miracle", "type": "war_heal", "target": "ally", "heal_amount": 32, "range": 3, "can_self": true, "cooldown": 4, "desc": "Rend 32 PV à un allié (ou soi)."}],
 	],
 }
+
+# ARBRES PAR CLASSE (héros de campagne, façon Sword of Convallaria) : chaque
+# classe a SON arbre identitaire (6 rangées × 2 choix de build). Les compagnons
+# et les anciennes sauvegardes retombent sur l'arbre de RÔLE (TREE) via tree_rows.
+const CLASS_TREES := {
+	"lame_errante": [
+		[{"name": "Frappe du voyageur", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.5, "range": 1, "cooldown": 3, "desc": "Coup net et sans bavure (×1.5)."},
+		 {"name": "Garde souple", "type": "self_buff", "target": "self", "buff": "garde", "cooldown": 4, "desc": "Esquive en lame : -60% de dégâts subis (2 tours)."}],
+		[{"name": "Croc-en-lame", "type": "apply_debuff", "target": "enemy", "buff": "racines", "range": 1, "cooldown": 4, "desc": "Frappe les jambes : immobilise 1 tour."},
+		 {"name": "Entaille ouverte", "type": "apply_debuff", "target": "enemy", "buff": "vulnerabilite", "range": 1, "cooldown": 3, "desc": "Ouvre la garde : +35% de dégâts subis (2 tours)."}],
+		[{"name": "Pas du duelliste", "type": "self_buff", "target": "self", "buff": "riposte", "cooldown": 3, "desc": "Contre-attaque automatique au corps à corps (2 tours)."},
+		 {"name": "Lame tournoyante", "type": "cleave", "target": "enemy", "radius": 1, "dmg_mult": 1.0, "range": 1, "cooldown": 3, "desc": "Fauche la cible et ses voisins."}],
+		[{"name": "Percée éclair", "type": "teleport_strike", "target": "enemy", "range": 4, "cooldown": 3, "desc": "Fond sur un ennemi distant et frappe."},
+		 {"name": "Affûtage de route", "type": "self_buff", "target": "self", "buff": "force", "cooldown": 4, "desc": "+50% de dégâts (2 tours)."}],
+		[{"name": "Botte secrète", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.8, "range": 1, "cooldown": 3, "desc": "L'estocade qu'on n'apprend qu'une fois (×1.8)."},
+		 {"name": "Parade parfaite", "type": "self_buff", "target": "self", "buff": "parade", "cooldown": 3, "desc": "Bloque ENTIÈREMENT la prochaine attaque reçue."}],
+		[{"name": "Lame errante", "type": "heavy_strike", "target": "enemy", "dmg_mult": 2.0, "range": 1, "cooldown": 3, "desc": "Le coup qui porte ton nom (×2.0)."},
+		 {"name": "Tourbillon final", "type": "cleave", "target": "enemy", "radius": 1, "dmg_mult": 1.3, "range": 1, "cooldown": 3, "desc": "Fauche tout autour (×1.3)."}],
+	],
+	"rempart": [
+		[{"name": "Protection", "type": "shield_ally", "target": "ally", "range": 2, "cooldown": 3, "desc": "Bouclier (-50% dégâts, 2 tours) sur un allié."},
+		 {"name": "Posture de fer", "type": "self_buff", "target": "self", "buff": "garde", "cooldown": 3, "desc": "-60% de dégâts subis (2 tours)."}],
+		[{"name": "Coup de bouclier", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.5, "range": 1, "cooldown": 3, "desc": "Assomme du plat du bouclier (×1.5)."},
+		 {"name": "Brise-armure", "type": "apply_debuff", "target": "enemy", "buff": "vulnerabilite", "range": 1, "cooldown": 3, "desc": "Fend la défense : +35% de dégâts subis (2 tours)."}],
+		[{"name": "Rempart mobile", "type": "buff_ally", "target": "ally", "buff": "bouclier", "range": 2, "cooldown": 3, "desc": "Couvre un allié (-50% dégâts, 2 tours)."},
+		 {"name": "Secousse", "type": "cleave", "target": "enemy", "radius": 1, "dmg_mult": 1.0, "range": 1, "cooldown": 3, "desc": "Onde de choc sur la cible et ses voisins."}],
+		[{"name": "Représailles", "type": "self_buff", "target": "self", "buff": "riposte", "cooldown": 3, "desc": "Contre-attaque automatique au corps à corps (2 tours)."},
+		 {"name": "Entrave", "type": "apply_debuff", "target": "enemy", "buff": "racines", "range": 1, "cooldown": 4, "desc": "Cloue un ennemi sur place 1 tour."}],
+		[{"name": "Cri de ralliement", "type": "team_buff", "target": "self", "buff": "force", "cooldown": 4, "desc": "TOUTE l'équipe : +50% de dégâts (2 tours)."},
+		 {"name": "Châtiment", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.7, "range": 1, "cooldown": 3, "desc": "Coup lourd (×1.7)."}],
+		[{"name": "Forteresse", "type": "team_buff", "target": "self", "buff": "bouclier", "cooldown": 4, "desc": "TOUTE l'équipe : -50% de dégâts subis (2 tours)."},
+		 {"name": "Jugement du mur", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.9, "range": 1, "cooldown": 3, "desc": "Le mur rend ses verdicts (×1.9)."}],
+	],
+	"oeil_lynx": [
+		[{"name": "Tir visé", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.5, "range": 4, "cooldown": 3, "desc": "Tir précis (×1.5) à 4 cases."},
+		 {"name": "Flèche vénéneuse", "type": "apply_debuff", "target": "enemy", "buff": "poison", "range": 4, "cooldown": 3, "desc": "Tir + poison (3 dégâts/tour, 3 tours)."}],
+		[{"name": "Flèche entravante", "type": "apply_debuff", "target": "enemy", "buff": "racines", "range": 4, "cooldown": 3, "desc": "Cloue la proie sur place 1 tour."},
+		 {"name": "Tir fragilisant", "type": "apply_debuff", "target": "enemy", "buff": "vulnerabilite", "range": 4, "cooldown": 3, "desc": "+35% de dégâts subis (2 tours)."}],
+		[{"name": "Tir perforant", "type": "piercing_shot", "target": "line", "range": 4, "cooldown": 3, "desc": "Transperce TOUS les ennemis alignés."},
+		 {"name": "Pluie de flèches", "type": "cleave", "target": "enemy", "radius": 1, "dmg_mult": 1.0, "range": 4, "cooldown": 3, "desc": "Salve sur la cible et ses voisins."}],
+		[{"name": "Tir en retraite", "type": "retreat_shot", "target": "enemy", "range": 4, "retreat": 2, "cooldown": 3, "desc": "Tire puis recule de 2 cases."},
+		 {"name": "Tir glacé", "type": "apply_debuff", "target": "enemy", "buff": "gel", "range": 4, "cooldown": 3, "desc": "Gèle la cible (-2 déplacement, 2 tours)."}],
+		[{"name": "Tir d'élite", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.8, "range": 5, "cooldown": 3, "desc": "Tir surpuissant à très longue portée (×1.8)."},
+		 {"name": "Flèche toxique", "type": "double_dot", "target": "enemy", "range": 4, "cooldown": 3, "desc": "Poison ET brûlure simultanés."}],
+		[{"name": "Œil du lynx", "type": "heavy_strike", "target": "enemy", "dmg_mult": 2.0, "range": 5, "cooldown": 3, "desc": "On ne rate jamais deux fois (×2.0)."},
+		 {"name": "Volée suppressive", "type": "team_debuff", "target": "self", "buff": "affaiblissement", "cooldown": 4, "desc": "TOUS les ennemis : -30% de dégâts (2 tours)."}],
+	],
+	"mire_errant": [
+		[{"name": "Suture", "type": "war_heal", "target": "ally", "heal_amount": 14, "range": 3, "can_self": true, "cooldown": 3, "desc": "Rend 14 PV à un allié (ou soi)."},
+		 {"name": "Cataplasme", "type": "buff_ally", "target": "ally", "buff": "regen", "range": 3, "can_self": true, "cooldown": 3, "desc": "Régénère 5 PV/tour (3 tours)."}],
+		[{"name": "Purge", "type": "purify", "target": "ally", "range": 3, "can_self": true, "cooldown": 3, "desc": "Retire TOUS les effets négatifs d'un allié."},
+		 {"name": "Bandage blindé", "type": "buff_ally", "target": "ally", "buff": "bouclier", "range": 3, "can_self": true, "cooldown": 3, "desc": "Bouclier (-50% dégâts, 2 tours)."}],
+		[{"name": "Tonique de guerre", "type": "empower_ally", "target": "ally", "range": 3, "cooldown": 3, "desc": "Un allié gagne +50% de dégâts (2 tours)."},
+		 {"name": "Anesthésiant", "type": "apply_debuff", "target": "enemy", "buff": "affaiblissement", "range": 3, "cooldown": 3, "desc": "L'ennemi perd 30% de dégâts (2 tours)."}],
+		[{"name": "Grand soin", "type": "war_heal", "target": "ally", "heal_amount": 20, "range": 3, "can_self": true, "cooldown": 3, "desc": "Rend 20 PV à un allié (ou soi)."},
+		 {"name": "Sédatif", "type": "apply_debuff", "target": "enemy", "buff": "racines", "range": 3, "cooldown": 4, "desc": "Endort les jambes : immobilise 1 tour."}],
+		[{"name": "Triage", "type": "team_buff", "target": "self", "buff": "bouclier", "cooldown": 5, "desc": "TOUTE l'équipe : -50% de dégâts subis (2 tours)."},
+		 {"name": "Scalpel", "type": "apply_debuff", "target": "enemy", "buff": "vulnerabilite", "range": 3, "cooldown": 3, "desc": "Sait où ça fait mal : +35% de dégâts subis (2 tours)."}],
+		[{"name": "Miracle de route", "type": "war_heal", "target": "ally", "heal_amount": 32, "range": 3, "can_self": true, "cooldown": 4, "desc": "Rend 32 PV — le mire ne perd personne."},
+		 {"name": "Hymne du convoi", "type": "team_buff", "target": "self", "buff": "force", "cooldown": 4, "desc": "TOUTE l'équipe : +50% de dégâts (2 tours)."}],
+	],
+	"flamme_egaree": [
+		[{"name": "Boule de feu", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.5, "range": 3, "cooldown": 3, "desc": "Projectile ardent (×1.5)."},
+		 {"name": "Cendres aveuglantes", "type": "apply_debuff", "target": "enemy", "buff": "affaiblissement", "range": 3, "cooldown": 3, "desc": "L'ennemi perd 30% de dégâts (2 tours)."}],
+		[{"name": "Déflagration", "type": "cleave", "target": "enemy", "radius": 1, "dmg_mult": 1.0, "range": 3, "cooldown": 3, "desc": "Explosion : la cible et tous ses voisins."},
+		 {"name": "Fournaise", "type": "double_dot", "target": "enemy", "range": 3, "cooldown": 3, "desc": "Poison ET brûlure simultanés."}],
+		[{"name": "Mur de flammes", "type": "apply_debuff", "target": "enemy", "buff": "racines", "range": 3, "cooldown": 4, "desc": "Encercle de feu : immobilise 1 tour."},
+		 {"name": "Fragilisation", "type": "apply_debuff", "target": "enemy", "buff": "vulnerabilite", "range": 3, "cooldown": 3, "desc": "La chaleur fend l'armure : +35% de dégâts subis."}],
+		[{"name": "Brasier intérieur", "type": "self_buff", "target": "self", "buff": "force", "cooldown": 4, "desc": "+50% de dégâts (2 tours)."},
+		 {"name": "Voile de fumée", "type": "self_buff", "target": "self", "buff": "garde", "cooldown": 4, "desc": "-60% de dégâts subis (2 tours)."}],
+		[{"name": "Comète", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.8, "range": 3, "cooldown": 3, "desc": "Le ciel tombe (×1.8)."},
+		 {"name": "Nova ardente", "type": "cleave", "target": "enemy", "radius": 1, "dmg_mult": 1.2, "range": 3, "cooldown": 3, "desc": "Explosion renforcée (×1.2 de zone)."}],
+		[{"name": "Flamme égarée", "type": "heavy_strike", "target": "enemy", "dmg_mult": 2.0, "range": 4, "cooldown": 3, "desc": "Tout brûle, à la fin (×2.0, 4 cases)."},
+		 {"name": "Écran de braises", "type": "team_debuff", "target": "self", "buff": "affaiblissement", "cooldown": 4, "desc": "TOUS les ennemis : -30% de dégâts (2 tours)."}],
+	],
+	"ombre_passante": [
+		[{"name": "Lame sournoise", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.5, "range": 1, "cooldown": 3, "desc": "Frappe là où ça fait mal (×1.5)."},
+		 {"name": "Poison de lame", "type": "apply_debuff", "target": "enemy", "buff": "poison", "range": 1, "cooldown": 3, "desc": "Entaille empoisonnée (3 dégâts/tour, 3 tours)."}],
+		[{"name": "Pas de l'ombre", "type": "teleport_strike", "target": "enemy", "range": 4, "cooldown": 3, "desc": "Surgit au contact d'une proie distante."},
+		 {"name": "Tendons tranchés", "type": "apply_debuff", "target": "enemy", "buff": "racines", "range": 1, "cooldown": 4, "desc": "Immobilise la cible 1 tour."}],
+		[{"name": "Exposition", "type": "apply_debuff", "target": "enemy", "buff": "vulnerabilite", "range": 1, "cooldown": 3, "desc": "Ouvre une faille : +35% de dégâts subis (2 tours)."},
+		 {"name": "Affûtage", "type": "self_buff", "target": "self", "buff": "force", "cooldown": 4, "desc": "+50% de dégâts (2 tours)."}],
+		[{"name": "Lame drainante", "type": "drain_strike", "target": "enemy", "range": 1, "cooldown": 4, "desc": "Frappe et récupère 60% des dégâts en PV."},
+		 {"name": "Voile d'ombre", "type": "self_buff", "target": "self", "buff": "garde", "cooldown": 4, "desc": "-60% de dégâts subis (2 tours)."}],
+		[{"name": "Exécution", "type": "heavy_strike", "target": "enemy", "dmg_mult": 1.8, "range": 1, "cooldown": 3, "desc": "Achève les blessés (×1.8)."},
+		 {"name": "Danse des lames", "type": "cleave", "target": "enemy", "radius": 1, "dmg_mult": 1.1, "range": 1, "cooldown": 3, "desc": "Tourbillon de dagues (×1.1 de zone)."}],
+		[{"name": "Ombre passante", "type": "heavy_strike", "target": "enemy", "dmg_mult": 2.0, "range": 1, "cooldown": 3, "desc": "On ne la voit qu'une fois (×2.0)."},
+		 {"name": "Parade fantôme", "type": "self_buff", "target": "self", "buff": "parade", "cooldown": 3, "desc": "Bloque ENTIÈREMENT la prochaine attaque."}],
+	],
+}
+
+
+# Arbre d'un personnage : son arbre de CLASSE s'il existe, sinon celui du RÔLE
+# (compagnons, anciennes sauvegardes avec classes JcJ).
+func tree_rows(cid: String) -> Array:
+	if CLASS_TREES.has(cid):
+		return CLASS_TREES[cid]
+	return TREE.get(str(CLASSES.get(cid, {}).get("role", "melee")), TREE.melee)
+
+
 # Progression par membre ("hero", "sera"...) : niveau, XP, choix en attente,
 # bonus cumulés et compétences choisies (dicts complets, persistés tels quels).
 # XP : gagnée à la victoire (= PV max totaux des ennemis, ×2 contre un boss),

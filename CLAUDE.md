@@ -568,6 +568,26 @@ Ordre de priorité (✅ = fait) :
       **boss = vrai nom en ROUGE** (overworld + barre de boss en combat).
     - IA boss détaillée (`_cell_score`) : refuse l'encerclement, combat près de
       ses invocations, prudent sous 35 % PV.
+76. ✅ **Taverne + LUNA + classes de campagne à arbres dédiés** :
+    - **Taverne « Le Loup repenti »** (bâtisse 3×2 dessinée, enseigne à chope,
+      fenêtres chaudes) au hameau, peuplée : **Marn** le tavernier (tease Luna),
+      **Brom** affalé qui ronfle (Zzz animés), 2 **fêtards** (crieur + chanteuse)
+      — figures dédiées dans `draw_npc_figure`.
+    - **LUNA** (compagnonne archère blonde, `luna_archere`, figure `luna`) :
+      **émotions à RÈGLES** (pas un LLM, honnête) — relation ±, **vexation
+      mémorisée** (`luna_vexee`, réparable uniquement par de vraies excuses,
+      en taverne comme en voyage), mémoire (son frère **Tomas** disparu dans le
+      bois = hook de la zone 2 via `luna_talk_frere`), jalousie/respect croisés
+      avec Sera. Recrutement par la PAROLE (relation ≥ 2) **ou par les ACTES**
+      (loup de l'orée vaincu → `luna_offre_actes`). ~16 dialogues.
+    - **6 classes de campagne pour le héros** (`hidden`, la création n'utilise
+      PLUS les classes JcJ) : Lame errante, Rempart, Œil-de-lynx, Mire errant,
+      Flamme égarée, Ombre passante — chacune avec **SON arbre de classe**
+      (`GameData.CLASS_TREES`, 6 rangées × 2, façon Sword of Convallaria,
+      rangée 6 = compétence signature). `tree_rows(cid)` : arbre de classe,
+      sinon repli arbre de RÔLE (compagnons + vieilles sauvegardes JcJ).
+      `CharacterCreate` liste CLASS_TREES (aperçu du 1er choix d'arbre).
+    - Feu de camp du hameau déplacé (6.5, 15.4) pour laisser vivre la taverne.
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`

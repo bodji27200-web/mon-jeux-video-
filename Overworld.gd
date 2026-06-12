@@ -122,8 +122,29 @@ const NPCS := [
 		{"flag": "joran_2_fait", "dialogue": "joran_mefiant"},
 		{"flag": "joran_1_fait", "dialogue": "joran_2"},
 	 ], "fallback": "joran_intro"},
+	# === LA TAVERNE « Le Loup repenti » : Luna + la faune locale. ===
+	# Luna : archère blonde, ÉMOTIONS à règles (relation, humeur, mémoire).
+	# La confiance se gagne en parlant — ou par les ACTES (chasser le loup).
+	{"id": "luna", "name": "Luna", "pos": Vector2(11.4, 14.7), "figure": "luna",
+	 "party_flag": "luna_party",
+	 "rules": [
+		{"flag": "luna_vexee", "dialogue": "luna_froide_tav"},
+		{"flag": "luna_2_fait", "relation_min": {"luna": 2}, "dialogue": "luna_offre"},
+		{"flag": "luna_2_fait", "foes_down": ["loup_solitaire"], "dialogue": "luna_offre_actes"},
+		{"flag": "luna_2_fait", "not_flag": "luna_tournee", "dialogue": "luna_hesite"},
+		{"flag": "luna_2_fait", "dialogue": "luna_hesite2"},
+		{"flag": "luna_1_fait", "dialogue": "luna_2"},
+	 ], "fallback": "luna_intro"},
+	{"id": "marn", "name": "Marn, le tavernier", "pos": Vector2(13.2, 14.4), "figure": "tavernier",
+	 "rules": [], "fallback": "marn_sert"},
+	{"id": "brom", "name": "Brom (ronfle)", "pos": Vector2(10.3, 13.9), "figure": "buveur",
+	 "rules": [], "fallback": "brom_dort"},
+	{"id": "fetard1", "name": "Fêtard", "pos": Vector2(12.2, 15.1), "figure": "fetard",
+	 "rules": [], "fallback": "fetard_crie"},
+	{"id": "fetard2", "name": "Fêtarde", "pos": Vector2(14.0, 14.8), "figure": "fetard",
+	 "rules": [], "fallback": "fetard_chante"},
 	# Feux de camp : repos = sauvegarde + les créatures (hors boss) reviennent.
-	{"id": "feu1", "name": "Feu de camp", "pos": Vector2(10.5, 14.8), "figure": "feu",
+	{"id": "feu1", "name": "Feu de camp", "pos": Vector2(6.5, 15.4), "figure": "feu",
 	 "prompt": "E — Se reposer", "rules": [], "fallback": "feu_repos"},
 	{"id": "feu2", "name": "Feu de camp", "pos": Vector2(33.5, 17.0), "figure": "feu",
 	 "prompt": "E — Se reposer", "rules": [], "fallback": "feu_repos"},
@@ -385,6 +406,135 @@ const DIALOGUES := {
 		"speaker": "Joran, le mire",
 		"text": "Alors c'est reparti. Une dernière chose : je recouds TOUT LE MONDE. Même ceux que tu n'aimes pas. C'est ma seule règle.",
 		"choices": [{"label": "(En route)"}]},
+	# === LUNA — taverne. Ses émotions sont des RÈGLES : la relation monte ou
+	# descend, elle se vexe (luna_vexee) et s'en souvient jusqu'à des excuses
+	# sincères. Pas de mensonges : elle dit ce qu'elle pense. ===
+	"luna_intro": {
+		"speaker": "Luna",
+		"text": "Tu fixes ma chope ou tu comptes t'asseoir ? ...Assieds-toi, va. T'as la tête de quelqu'un qui sort du bois — ou qui compte y entrer, ce qui est plus idiot. Moi c'est Luna. Et toi, t'es qui, à part le sujet de conversation de toute la taverne ?",
+		"choices": [
+			{"label": "« Quelqu'un qui compte y entrer. Et en sortir. »",
+			 "set": {"luna_1_fait": true}, "relation": {"luna": 1}},
+			{"label": "« Juste un voyageur. »", "set": {"luna_1_fait": true}},
+			{"label": "« Quelqu'un qui ne parle pas aux inconnues. »",
+			 "set": {"luna_1_fait": true}, "relation": {"luna": -1}},
+		]},
+	"luna_2": {
+		"speaker": "Luna",
+		"text": "Re-bonjour, tête de bois. ...Bon. Je vais être honnête, c'est ma seule qualité : je traîne ici parce que mon frère, Tomas, est entré dans ce bois il y a un mois. Personne n'est allé voir. Pas même moi. Voilà. Ris, si tu veux.",
+		"choices": [
+			{"label": "« On va le chercher. Ensemble, si tu veux. »",
+			 "set": {"luna_2_fait": true, "luna_frere_dit": true}, "relation": {"luna": 1}},
+			{"label": "« Un mois ? Il faut être réaliste, Luna. »",
+			 "set": {"luna_2_fait": true, "luna_frere_dit": true}},
+			{"label": "« Il est mort. Passe à autre chose. »",
+			 "set": {"luna_2_fait": true, "luna_frere_dit": true, "luna_vexee": true},
+			 "relation": {"luna": -1}},
+		]},
+	"luna_hesite": {
+		"speaker": "Luna",
+		"text": "Encore toi. Je réfléchis encore à ce que tu vaux... Un conseil : ici, on jauge les gens à ce qu'ils offrent.",
+		"choices": [
+			{"label": "« Marn ! Une tournée pour elle. » (offrir à boire)",
+			 "set": {"luna_tournee": true}, "relation": {"luna": 1}},
+			{"label": "(Repartir)"},
+		]},
+	"luna_hesite2": {
+		"speaker": "Luna",
+		"text": "Les mots, ça va deux minutes. Tu veux que je te suive dans ce bois ? Prouve que tu y survis. Reviens quand le loup de l'orée ne hurlera plus.",
+		"choices": [{"label": "« Tu vas m'entendre revenir. »"}]},
+	"luna_froide_tav": {
+		"speaker": "Luna",
+		"text": "...Tiens. J'avais pas oublié, tu sais. Ce que tu m'as dit. Je souris à tout le monde ici, mais toi, t'as pas droit au sourire. Tu voulais quelque chose ?",
+		"choices": [
+			{"label": "« J'ai été odieux. Je le pense vraiment : pardon. »",
+			 "set": {"luna_vexee": false}, "relation": {"luna": 1}},
+			{"label": "« Toujours aussi susceptible ? »", "relation": {"luna": -1}},
+			{"label": "(Repartir sans rien dire)"},
+		]},
+	"luna_offre": {
+		"speaker": "Luna",
+		"text": "J'ai bu avec toi, j'ai ri avec toi, et tu ne m'as pas regardée comme une pauvre fille qui attend son frère. Alors voilà : mon arc vient avec moi, et moi je viens avec toi. On le retrouve. Ou on découvre ce qui lui est arrivé. Marché ?",
+		"choices": [
+			{"label": "« Marché. Bienvenue, Luna. »",
+			 "set": {"luna_party": true}, "recruit": "luna", "next": "luna_join"},
+			{"label": "« Bientôt. Laisse-moi préparer le terrain. »"},
+		]},
+	"luna_offre_actes": {
+		"speaker": "Luna",
+		"text": "On raconte que le loup de l'orée ne hurle plus. C'était toi ?... Évidemment que c'était toi. Bon. J'arrête de tourner autour : mon frère est là-dedans, et toi tu sais te battre. Emmène-moi.",
+		"choices": [
+			{"label": "« Prends ton arc. On y va. »",
+			 "set": {"luna_party": true}, "recruit": "luna", "next": "luna_join"},
+			{"label": "« Pas encore. Bientôt. »"},
+		]},
+	"luna_join": {
+		"speaker": "Luna",
+		"text": "Règle numéro un : si je te dis de te baisser, tu te baisses. Règle numéro deux : si on trouve Tomas... quelle que soit la façon dont on le trouve — tu me laisses le voir en premier. Promis ?",
+		"choices": [{"label": "« Promis. »"}]},
+	# — Luna en voyage : intro, humeurs, mémoire, frère (suite zone 2). —
+	"luna_talk_intro": {
+		"speaker": "Luna",
+		"text": "C'est marrant, je détestais ce bois de loin. De près c'est pire. ...Hé. Merci de m'avoir sortie de cette taverne. Encore une semaine là-bas et je devenais comme Brom. Tu m'imagines, ronfler sur une table ?",
+		"choices": [
+			{"label": "« Honnêtement ? Non. Toi, tu vises trop droit pour ça. »",
+			 "set": {"met_luna": true}, "relation": {"luna": 1}},
+			{"label": "« On y est. Reste concentrée. »", "set": {"met_luna": true}},
+			{"label": "« Un peu, oui. »", "set": {"met_luna": true, "luna_vexee": true},
+			 "relation": {"luna": -1}},
+		]},
+	"luna_blessee": {
+		"speaker": "Luna",
+		"text": "...Tu sais ce qui est drôle ? J'encaisse les flèches, les loups, les nuits dehors. Mais une phrase de toi, et j'ai la gorge serrée toute la journée. C'est nul. Dis quelque chose.",
+		"choices": [
+			{"label": "« Je suis désolé, Luna. Sincèrement. »",
+			 "set": {"luna_vexee": false}, "relation": {"luna": 1}},
+			{"label": "« On est en guerre, pas au bal. Endurcis-toi. »", "relation": {"luna": -1}},
+		]},
+	"luna_talk_loyal": {
+		"speaker": "Luna",
+		"text": "Tu sais à quoi je pense, le soir ? Qu'avant toi je cherchais Tomas toute seule, dans ma tête, depuis un tabouret de taverne. Maintenant je le cherche pour de vrai, avec quelqu'un qui ne m'a jamais lâchée. Quoi qu'on trouve au bout — merci.",
+		"choices": [{"label": "« On le trouvera, Luna. »"}]},
+	"luna_talk_frere": {
+		"speaker": "Luna",
+		"text": "Le Veilleur est tombé et... rien. Pas de trace de Tomas. Tu sais ce que ça veut dire ? Il n'est PAS dans ce bois. Il est passé au travers. Au-delà, il y a quoi ? Les marches de l'Est ?... Quand tout sera réglé ici, on continue. Hein ?",
+		"choices": [
+			{"label": "« Jusqu'au bout du monde s'il le faut. »",
+			 "set": {"luna_frere_zone2": true}, "relation": {"luna": 1}},
+			{"label": "« On verra. Une chose à la fois. »", "set": {"luna_frere_zone2": true}},
+		]},
+	"luna_talk_idle": {
+		"speaker": "Luna",
+		"text": "Vise le meneur, garde une flèche pour la fuite, et ne meurs pas — je déteste creuser. C'est tout pour le briefing du jour.",
+		"choices": [
+			{"label": "« Toujours un mot pour rire, hein ? »", "relation": {"luna": 1}},
+			{"label": "(Hocher la tête)"},
+		]},
+	"luna_about_sera": {
+		"speaker": "Luna",
+		"text": "L'autre archère, là. Sera. Elle bande son arc comme moi. EXACTEMENT comme moi. Soit on a eu le même maître, soit les rôdeurs forment mieux que l'armée... Garde un œil sur elle. Pas parce que je m'inquiète. Parce que je suis jalouse.",
+		"choices": [
+			{"label": "« Vous êtes mes deux meilleures flèches. »",
+			 "set": {"luna_sera_ok": true}, "relation": {"luna": 1, "sera": 1}},
+			{"label": "« Notée, la jalousie. »", "set": {"luna_sera_ok": true}},
+		]},
+	# === La taverne « Le Loup repenti » : la faune locale. ===
+	"marn_sert": {
+		"speaker": "Marn, le tavernier",
+		"text": "Bienvenue au Loup repenti ! Une chope ? Non ? Alors un conseil gratuit : la blonde là-bas, c'est Luna. Meilleur arc de la vallée, pire caractère aussi. Elle attend quelqu'un d'assez fou pour entrer dans le bois. T'as l'air assez fou.",
+		"choices": [{"label": "« Merci pour le conseil, Marn. »"}]},
+	"brom_dort": {
+		"speaker": "Brom",
+		"text": "Zzz... rends-moi... ma chope, sale loup... zzzz... maman... zzz...",
+		"choices": [{"label": "(Le laisser dormir)"}]},
+	"fetard_crie": {
+		"speaker": "Fêtard",
+		"text": "WOOOO ! T'es qui toi ?? J'M'EN FICHE, J'T'ADORE ! MARN ! UNE CHOPE POUR MA NOUVELLE MEILLEURE AMIE OU MON NOUVEAU MEILLEUR AMI, ON VERRA DEMAIN !",
+		"choices": [{"label": "(Reculer prudemment)"}]},
+	"fetard_chante": {
+		"speaker": "Fêtarde",
+		"text": "♪ Et le loup mangea le percepteuuuur — refrain ! — PERSONNE NE PLEURA LE PERCEPTEUUUUR ♪ ...tu connais pas ? C'est de moi. Trois couplets. ASSIEDS-TOI.",
+		"choices": [{"label": "« Une autre fois, promis. » (s'éclipser)"}]},
 	# === Feu de camp : repos, sauvegarde, le bois se repeuple (hors boss). ===
 	"feu_repos": {
 		"speaker": "Feu de camp",
@@ -521,6 +671,10 @@ func _build_world() -> void:
 		for dy in 2:
 			for dx in 2:
 				_blocked[h + Vector2i(dx, dy)] = true
+	# La TAVERNE « Le Loup repenti » (3×2 tuiles) : le cœur vivant du hameau.
+	for dy2 in 2:
+		for dx2 in 3:
+			_blocked[Vector2i(11 + dx2, 12 + dy2)] = true
 	# Positions des ennemis (le long du sentier, dans le bois). On garde TOUTES
 	# les définitions (le filtre need_flag/vaincu se fait au spawn : permet de
 	# faire apparaître un ennemi conditionnel EN COURS de partie, ex. boss secret).
@@ -632,6 +786,12 @@ func _build_nodes() -> void:
 		n.position = map_to_world(Vector2(h) + Vector2(1.0, 1.9))
 		_entities.add_child(n)
 		_decor_nodes.append(n)
+	# La taverne (bâtisse plus large, enseigne à la chope, fenêtres chaudes).
+	var tav := Decor.new()
+	tav.kind = "tavern"
+	tav.position = map_to_world(Vector2(12.5, 13.9))
+	_entities.add_child(tav)
+	_decor_nodes.append(tav)
 	# Joueur (reprend la position sauvegardée si elle est valide).
 	_player = Walker.new()
 	_player.kind = "player"
@@ -948,6 +1108,20 @@ func _open_dialogue(npc: Walker) -> void:
 # chasseur), puis un mot croisé sur l'autre membre (relations), puis selon
 # l'affinité, sinon l'intro (vu une fois).
 func _companion_dialogue(cid: String) -> String:
+	# Luna : ses émotions passent d'abord. Blessée -> elle le dit (réparable par
+	# de vraies excuses) ; le frère introuvable -> la quête continue (zone 2).
+	if cid == "luna":
+		if GameData.get_flag("luna_vexee"):
+			return "luna_blessee"
+		if not GameData.get_flag("met_luna"):
+			return "luna_talk_intro"
+		if GameData.campaign_party.has("sera") and not GameData.get_flag("luna_sera_ok"):
+			return "luna_about_sera"
+		if GameData.campaign_defeated.has("veilleur") and not GameData.get_flag("luna_frere_zone2"):
+			return "luna_talk_frere"
+		if GameData.relation("luna") >= 3:
+			return "luna_talk_loyal"
+		return "luna_talk_idle"
 	# Secret de la zone 1 : la meute abattue = les éclaireurs du Traqueur-Roi.
 	if cid == "sera" and not GameData.get_flag("roi_actif") \
 			and GameData.campaign_defeated.has("meute_murmures") \
@@ -1197,10 +1371,10 @@ func _member_display(mid: String) -> String:
 	return str(GameData.COMPANIONS.get(mid, {}).get("name", mid))
 
 
-func _member_role(mid: String) -> String:
-	var cid := str(GameData.campaign_hero.get("class", "tank")) if mid == "hero" \
-			else str(GameData.COMPANIONS.get(mid, {}).get("class", "tank"))
-	return str(GameData.CLASSES.get(cid, {}).get("role", "melee"))
+func _member_class(mid: String) -> String:
+	if mid == "hero":
+		return str(GameData.campaign_hero.get("class", "lame_errante"))
+	return str(GameData.COMPANIONS.get(mid, {}).get("class", "lame_errante"))
 
 
 func _check_levelups() -> void:
@@ -1244,7 +1418,8 @@ func _show_levelup_step() -> void:
 				_apply_bonus_choice(step, bonus)))
 	else:
 		_lvl_sub.text = "Choisis une NOUVELLE compétence (définitif) :"
-		var row: Array = GameData.TREE[_member_role(mid)][int(step.row)]
+		# Arbre de CLASSE (héros, façon SoC) avec repli sur l'arbre de rôle.
+		var row: Array = GameData.tree_rows(_member_class(mid))[int(step.row)]
 		for opt in row:
 			var skill: Dictionary = opt
 			_lvl_choices.add_child(_lvl_button(str(skill.name), str(skill.desc), func():
@@ -1764,6 +1939,55 @@ static func draw_npc_figure(ci: CanvasItem, figure: String, b: float) -> void:
 					Color(0.30, 0.55, 0.28), 1.6)
 			ci.draw_line(Vector2(0.0, -9.0 + b), Vector2(2.0, -12.0 + b),
 					Color(0.36, 0.62, 0.30), 1.6)
+		"luna":
+			# Luna : longue chevelure blonde, tunique verte, arc dans le dos.
+			ci.draw_line(Vector2(-6.5, -18.0 + b), Vector2(-2.0, 1.0), Color(0.45, 0.32, 0.18), 2.0)
+			ci.draw_colored_polygon(PackedVector2Array([
+				Vector2(-5.0, -16.5 + b), Vector2(5.0, -16.5 + b),
+				Vector2(6.0, 0.0), Vector2(-6.0, 0.0)]), Color(0.26, 0.46, 0.30))
+			ci.draw_rect(Rect2(-5.5, -9.0 + b, 11.0, 2.0), Color(0.40, 0.28, 0.14))
+			# Tête + chevelure blonde (mèche longue dans le dos, quad propre).
+			ci.draw_circle(Vector2(0.0, -20.5 + b), 4.6, Color(0.94, 0.80, 0.62))
+			ci.draw_circle(Vector2(-0.6, -22.6 + b), 4.0, Color(0.92, 0.78, 0.36))
+			ci.draw_colored_polygon(PackedVector2Array([
+				Vector2(-4.6, -23.0 + b), Vector2(-1.0, -24.6 + b),
+				Vector2(-2.2, -7.5 + b), Vector2(-5.6, -9.0 + b)]), Color(0.90, 0.74, 0.32))
+			ci.draw_circle(Vector2(1.9, -20.8 + b), 0.9, Color(0.20, 0.34, 0.18))
+		"tavernier":
+			# Marn : large, tablier clair, chope à la main.
+			ci.draw_colored_polygon(PackedVector2Array([
+				Vector2(-6.5, -16.0 + b), Vector2(6.5, -16.0 + b),
+				Vector2(7.5, 0.0), Vector2(-7.5, 0.0)]), Color(0.42, 0.30, 0.22))
+			ci.draw_colored_polygon(PackedVector2Array([
+				Vector2(-4.0, -12.0 + b), Vector2(4.0, -12.0 + b),
+				Vector2(5.0, 0.0), Vector2(-5.0, 0.0)]), Color(0.82, 0.78, 0.68))
+			ci.draw_circle(Vector2(0.0, -20.0 + b), 4.8, Color(0.92, 0.74, 0.56))
+			ci.draw_circle(Vector2(1.8, -20.6 + b), 0.9, Color(0.14, 0.10, 0.10))
+			ci.draw_rect(Rect2(7.0, -12.0 + b, 4.0, 5.0), Color(0.70, 0.55, 0.30))
+			ci.draw_rect(Rect2(7.5, -13.4 + b, 3.0, 1.6), Color(0.95, 0.92, 0.82))
+		"buveur":
+			# Brom : affalé sur un tonneau, ronfle (Zzz qui montent).
+			ci.draw_rect(Rect2(-6.0, -7.0, 12.0, 7.0), Color(0.45, 0.32, 0.18))
+			ci.draw_line(Vector2(-6.0, -4.5), Vector2(6.0, -4.5), Color(0.30, 0.20, 0.10), 1.4)
+			_ellipse_on(ci, Vector2(-1.0, -9.0 + b * 0.4), 6.5, 3.4, Color(0.40, 0.36, 0.30))
+			ci.draw_circle(Vector2(5.0, -9.5 + b * 0.4), 3.8, Color(0.90, 0.70, 0.52))
+			var zf := ThemeDB.fallback_font
+			ci.draw_string(zf, Vector2(7.0, -16.0 + b * 2.0), "z",
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(0.85, 0.85, 0.95, 0.8))
+			ci.draw_string(zf, Vector2(10.0, -21.0 - b * 2.0), "Z",
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.85, 0.85, 0.95, 0.6))
+		"fetard":
+			# Fêtard : chope levée, balancement exagéré, joues rouges.
+			var sw := b * 4.0
+			ci.draw_colored_polygon(PackedVector2Array([
+				Vector2(-5.0 + sw, -16.0 + b), Vector2(5.0 + sw, -16.0 + b),
+				Vector2(6.5, 0.0), Vector2(-6.5, 0.0)]), Color(0.50, 0.34, 0.40))
+			ci.draw_circle(Vector2(sw, -19.5 + b), 4.6, Color(0.94, 0.76, 0.58))
+			ci.draw_circle(Vector2(sw - 2.5, -18.0 + b), 1.2, Color(0.95, 0.45, 0.40, 0.6))
+			ci.draw_circle(Vector2(sw + 2.5, -18.0 + b), 1.2, Color(0.95, 0.45, 0.40, 0.6))
+			ci.draw_line(Vector2(4.0 + sw, -15.0 + b), Vector2(8.0 + sw, -22.0 + b * 2.0),
+					Color(0.90, 0.72, 0.52), 2.2)
+			ci.draw_rect(Rect2(6.5 + sw, -26.0 + b * 2.0, 4.5, 4.5), Color(0.70, 0.55, 0.30))
 		"mire":
 			# Joran : manteau de campagne usé, barbe grise, sacoche à croix.
 			ci.draw_colored_polygon(PackedVector2Array([
@@ -2116,6 +2340,40 @@ class Decor extends Node2D:
 				draw_colored_polygon(PackedVector2Array([
 					Vector2(-22.0, -13.0), Vector2(-14.0, -9.0),
 					Vector2(-14.0, -19.0), Vector2(-22.0, -23.0)]), Color(0.92, 0.82, 0.50))
+			"tavern":
+				# « Le Loup repenti » : bâtisse large, fenêtres chaudes, enseigne.
+				_shadow(42.0)
+				var twl := Color(0.50, 0.42, 0.32)
+				var twr := Color(0.60, 0.50, 0.38)
+				var ta := 50.0
+				var tb := 24.0
+				var th := 30.0
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(-ta, -tb), Vector2(0, 0), Vector2(0, -th), Vector2(-ta, -tb - th)]), twl)
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(0, 0), Vector2(ta, -tb), Vector2(ta, -tb - th), Vector2(0, -th)]), twr)
+				var tapex := Vector2(0, -tb - th - 26.0)
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(-ta - 5.0, -tb - th + 2.0), Vector2(0, -th + 2.0), tapex]),
+					Color(0.36, 0.20, 0.14))
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(0, -th + 2.0), Vector2(ta + 5.0, -tb - th + 2.0), tapex]),
+					Color(0.44, 0.25, 0.16))
+				# Porte double + deux fenêtres qui débordent de lumière chaude.
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(8.0, -4.0), Vector2(20.0, -10.0),
+					Vector2(20.0, -28.0), Vector2(8.0, -22.0)]), Color(0.24, 0.15, 0.09))
+				for wx in [-38.0, -18.0]:
+					var fx: float = wx
+					draw_colored_polygon(PackedVector2Array([
+						Vector2(fx, -14.0), Vector2(fx + 9.0, -9.5),
+						Vector2(fx + 9.0, -21.5), Vector2(fx, -26.0)]),
+						Color(0.98, 0.80, 0.36))
+				# Enseigne : potence + chope qui pend.
+				draw_line(Vector2(26.0, -30.0), Vector2(26.0, -52.0), Color(0.30, 0.22, 0.14), 2.5)
+				draw_line(Vector2(26.0, -52.0), Vector2(38.0, -48.0), Color(0.30, 0.22, 0.14), 2.5)
+				draw_rect(Rect2(33.0, -46.0, 9.0, 9.0), Color(0.55, 0.40, 0.22))
+				draw_rect(Rect2(35.0, -44.5, 5.0, 4.0), Color(0.95, 0.88, 0.65))
 			"reed":
 				var c := Color(0.16, 0.30, 0.16)
 				draw_line(Vector2(0.0, 0.0), Vector2(-2.0, -12.0), c, 1.6)
