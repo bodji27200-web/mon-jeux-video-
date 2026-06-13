@@ -129,12 +129,12 @@ const NPCS := [
 	 "party_flag": "luna_party",
 	 "rules": [
 		{"flag": "luna_vexee", "dialogue": "luna_froide_tav"},
-		{"flag": "luna_3_fait", "relation_min": {"luna": 2}, "dialogue": "luna_offre"},
-		{"flag": "luna_3_fait", "foes_down": ["loup_solitaire"], "dialogue": "luna_offre_actes"},
-		{"flag": "luna_3_fait", "not_flag": "luna_tournee", "dialogue": "luna_hesite"},
-		{"flag": "luna_3_fait", "dialogue": "luna_hesite2"},
-		{"flag": "luna_2_fait", "dialogue": "luna_frere"},
-		{"flag": "luna_1_fait", "dialogue": "luna_meet2"},
+		{"flag": "luna_m3", "relation_min": {"luna": 2}, "dialogue": "luna_offre"},
+		{"flag": "luna_m3", "foes_down": ["loup_solitaire"], "dialogue": "luna_offre_actes"},
+		{"flag": "luna_m3", "not_flag": "luna_tournee", "dialogue": "luna_hesite"},
+		{"flag": "luna_m3", "dialogue": "luna_hesite2"},
+		{"flag": "luna_m2", "dialogue": "luna_frere"},
+		{"flag": "luna_m1", "dialogue": "luna_meet2"},
 	 ], "fallback": "luna_intro"},
 	{"id": "marn", "name": "Marn, le tavernier", "pos": Vector2(13.2, 14.4), "figure": "tavernier",
 	 "rules": [], "fallback": "marn_sert"},
@@ -417,11 +417,11 @@ const DIALOGUES := {
 		"text": "Tu fixes ma chope ou tu comptes t'asseoir ? ...Assieds-toi, va. T'as la tête de quelqu'un qui sort du bois — ou qui compte y entrer, ce qui est plus idiot. Moi c'est Luna. Et toi, t'es qui, à part le sujet de conversation de toute la taverne ?",
 		"choices": [
 			{"label": "« Quelqu'un qui compte entrer dans ce bois. Et en sortir. »",
-			 "set": {"luna_1_fait": true}, "relation": {"luna": 1}, "next": "luna_intro_a"},
+			 "set": {"luna_m1": true}, "relation": {"luna": 1}, "next": "luna_intro_a"},
 			{"label": "« Juste un voyageur de passage. »",
-			 "set": {"luna_1_fait": true}, "next": "luna_intro_b"},
+			 "set": {"luna_m1": true}, "next": "luna_intro_b"},
 			{"label": "« Quelqu'un qui ne parle pas aux inconnues. »",
-			 "set": {"luna_1_fait": true}, "relation": {"luna": -1}, "next": "luna_intro_c"},
+			 "set": {"luna_m1": true}, "relation": {"luna": -1}, "next": "luna_intro_c"},
 		]},
 	"luna_intro_a": {
 		"speaker": "Luna",
@@ -444,11 +444,11 @@ const DIALOGUES := {
 		"text": "Tiens, te revoilà. Assieds-toi, j'ai une question importante : t'es du genre à foncer d'abord et réfléchir ensuite, ou à réfléchir si longtemps que le problème meurt de vieillesse ?",
 		"choices": [
 			{"label": "« Je fonce. La vie est courte. »",
-			 "set": {"luna_2_fait": true}, "next": "luna_meet2_a"},
+			 "set": {"luna_m2": true}, "next": "luna_meet2_a"},
 			{"label": "« Je réfléchis. C'est pour ça que je suis vivant. »",
-			 "set": {"luna_2_fait": true}, "next": "luna_meet2_b"},
+			 "set": {"luna_m2": true}, "next": "luna_meet2_b"},
 			{"label": "« Et toi, Luna ? Tu es du genre à quoi, à traîner ici tous les jours ? »",
-			 "set": {"luna_2_fait": true}, "relation": {"luna": 1}, "next": "luna_meet2_c"},
+			 "set": {"luna_m2": true}, "relation": {"luna": 1}, "next": "luna_meet2_c"},
 		]},
 	"luna_meet2_a": {
 		"speaker": "Luna",
@@ -468,12 +468,12 @@ const DIALOGUES := {
 		"text": "Trois fois que tu reviens t'asseoir là. Soit ma compagnie te plaît, soit t'as rien de mieux — me dis pas, je veux pas savoir. ...Bon. Tu te souviens, « j'attends quelqu'un » ? C'est mon frère. Tomas. Il est entré dans ce bois il y a un mois, pour prouver je sais pas quoi. Personne n'est allé voir. Pas même moi. Voilà. Tu sais tout.",
 		"choices": [
 			{"label": "« Alors on ira voir. Ensemble. »",
-			 "set": {"luna_3_fait": true, "luna_frere_dit": true}, "relation": {"luna": 1},
+			 "set": {"luna_m3": true, "luna_frere_dit": true}, "relation": {"luna": 1},
 			 "next": "luna_frere_a"},
 			{"label": "« Un mois, Luna... Il faut te préparer au pire. »",
-			 "set": {"luna_3_fait": true, "luna_frere_dit": true}, "next": "luna_frere_b"},
+			 "set": {"luna_m3": true, "luna_frere_dit": true}, "next": "luna_frere_b"},
 			{"label": "« Il est mort. Passe à autre chose. »",
-			 "set": {"luna_3_fait": true, "luna_frere_dit": true, "luna_vexee": true},
+			 "set": {"luna_m3": true, "luna_frere_dit": true, "luna_vexee": true},
 			 "relation": {"luna": -1}, "next": "luna_frere_c"},
 		]},
 	"luna_frere_a": {
@@ -548,19 +548,41 @@ const DIALOGUES := {
 		"text": "C'est marrant, je détestais ce bois de loin. De près c'est pire. ...Hé. Merci de m'avoir sortie de cette taverne. Encore une semaine là-bas et je devenais comme Brom. Tu m'imagines, ronfler sur une table ?",
 		"choices": [
 			{"label": "« Honnêtement ? Non. Toi, tu vises trop droit pour ça. »",
-			 "set": {"met_luna": true}, "relation": {"luna": 1}},
-			{"label": "« On y est. Reste concentrée. »", "set": {"met_luna": true}},
+			 "set": {"met_luna": true}, "relation": {"luna": 1}, "next": "luna_ti_a"},
+			{"label": "« On y est. Reste concentrée. »", "set": {"met_luna": true},
+			 "next": "luna_ti_b"},
 			{"label": "« Un peu, oui. »", "set": {"met_luna": true, "luna_vexee": true},
-			 "relation": {"luna": -1}},
+			 "relation": {"luna": -1}, "next": "luna_ti_c"},
 		]},
+	"luna_ti_a": {
+		"speaker": "Luna",
+		"text": "« Tu vises trop droit. » ...C'est le plus beau compliment qu'on m'ait fait depuis des années, tu sais ? Les autres disent « jolie ». Toi tu dis « précise ». Garde ça, ça me va mieux.",
+		"choices": [{"label": "« C'est la vérité, c'est tout. »"}]},
+	"luna_ti_b": {
+		"speaker": "Luna",
+		"text": "Concentrée. Oui chef. ...Tu sais que tu peux être un chef ET marrant ? Les deux existent. J'en ai vu un, une fois. De loin.",
+		"choices": [{"label": "« En route. »"}]},
+	"luna_ti_c": {
+		"speaker": "Luna",
+		"text": "...« Un peu, oui. » Super. Génial. Moi qui te remerciais, en plus. La prochaine fois, je dirai merci à mon arc — au moins lui ne se moque pas.",
+		"choices": [{"label": "(Laisser passer l'orage)"}]},
 	"luna_blessee": {
 		"speaker": "Luna",
 		"text": "...Tu sais ce qui est drôle ? J'encaisse les flèches, les loups, les nuits dehors. Mais une phrase de toi, et j'ai la gorge serrée toute la journée. C'est nul. Dis quelque chose.",
 		"choices": [
 			{"label": "« Je suis désolé, Luna. Sincèrement. »",
-			 "set": {"luna_vexee": false}, "relation": {"luna": 1}},
-			{"label": "« On est en guerre, pas au bal. Endurcis-toi. »", "relation": {"luna": -1}},
+			 "set": {"luna_vexee": false}, "relation": {"luna": 1}, "next": "luna_bl_a"},
+			{"label": "« On est en guerre, pas au bal. Endurcis-toi. »",
+			 "relation": {"luna": -1}, "next": "luna_bl_b"},
 		]},
+	"luna_bl_a": {
+		"speaker": "Luna",
+		"text": "...Bon. D'accord. C'est accepté. Mais c'est la dernière fois que je te montre que ça m'atteint — la prochaine, je bouderai en silence comme une personne normale.",
+		"choices": [{"label": "« Noté. Plus jamais. »"}]},
+	"luna_bl_b": {
+		"speaker": "Luna",
+		"text": "« Endurcis-toi. » ...Parfait. Compte sur moi. Tu remarqueras les effets dès maintenant : c'est la dernière chose personnelle que je te confie.",
+		"choices": [{"label": "(Un long silence)"}]},
 	"luna_talk_loyal": {
 		"speaker": "Luna",
 		"text": "Tu sais à quoi je pense, le soir ? Qu'avant toi je cherchais Tomas toute seule, dans ma tête, depuis un tabouret de taverne. Maintenant je le cherche pour de vrai, avec quelqu'un qui ne m'a jamais lâchée. Quoi qu'on trouve au bout — merci.",
@@ -570,16 +592,30 @@ const DIALOGUES := {
 		"text": "Le Veilleur est tombé et... rien. Pas de trace de Tomas. Tu sais ce que ça veut dire ? Il n'est PAS dans ce bois. Il est passé au travers. Au-delà, il y a quoi ? Les marches de l'Est ?... Quand tout sera réglé ici, on continue. Hein ?",
 		"choices": [
 			{"label": "« Jusqu'au bout du monde s'il le faut. »",
-			 "set": {"luna_frere_zone2": true}, "relation": {"luna": 1}},
-			{"label": "« On verra. Une chose à la fois. »", "set": {"luna_frere_zone2": true}},
+			 "set": {"luna_frere_zone2": true}, "relation": {"luna": 1}, "next": "luna_tf_a"},
+			{"label": "« On verra. Une chose à la fois. »", "set": {"luna_frere_zone2": true},
+			 "next": "luna_tf_b"},
 		]},
+	"luna_tf_a": {
+		"speaker": "Luna",
+		"text": "« Au bout du monde. » T'es complètement inconscient et c'est exactement ce qu'il me faut. ...Merci. Pas pour la promesse — pour ne pas avoir hésité.",
+		"choices": [{"label": "« Jamais. »"}]},
+	"luna_tf_b": {
+		"speaker": "Luna",
+		"text": "« Une chose à la fois. » Oui. T'as raison. C'est juste que... chaque « chose à la fois » est un jour de plus pour lui, quelque part. Enfin. Tu as raison quand même.",
+		"choices": [{"label": "« On ira, Luna. Promis. »"}]},
 	"luna_talk_idle": {
 		"speaker": "Luna",
 		"text": "Vise le meneur, garde une flèche pour la fuite, et ne meurs pas — je déteste creuser. C'est tout pour le briefing du jour.",
 		"choices": [
-			{"label": "« Toujours un mot pour rire, hein ? »", "relation": {"luna": 1}},
+			{"label": "« Toujours un mot pour rire, hein ? »", "relation": {"luna": 1},
+			 "next": "luna_id_a"},
 			{"label": "(Hocher la tête)"},
 		]},
+	"luna_id_a": {
+		"speaker": "Luna",
+		"text": "C'est ça ou pleurer, et j'ai pas pris assez de mouchoirs pour cette expédition. ...Allez, en route. Et baisse-toi quand je le dis.",
+		"choices": [{"label": "« Oui chef. »"}]},
 	"luna_about_sera": {
 		"speaker": "Luna",
 		"text": "L'autre archère, là. Sera. Elle bande son arc comme moi. EXACTEMENT comme moi. Soit on a eu le même maître, soit les rôdeurs forment mieux que l'armée... Garde un œil sur elle. Pas parce que je m'inquiète. Parce que je suis jalouse.",
@@ -1003,6 +1039,58 @@ func _build_ui() -> void:
 	_fade.color = Color(0, 0, 0, 0)
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(_fade)
+	# Téléphone/tablette : boutons tactiles discrets (invisibles sur Xbox/PC).
+	if DisplayServer.is_touchscreen_available():
+		_build_touch_controls(layer)
+
+
+# Contrôles tactiles : croix de déplacement à gauche, E/C à droite, ≡ = menu.
+# Semi-transparents et petits (demande : ne pas envahir l'écran).
+var _touch_held := {}
+func _build_touch_controls(layer: CanvasLayer) -> void:
+	var dirs := [
+		["▲", Vector2(64, 704 - 158), "up"], ["▼", Vector2(64, 704 - 58), "down"],
+		["◀", Vector2(14, 704 - 108), "left"], ["▶", Vector2(114, 704 - 108), "right"],
+	]
+	for d in dirs:
+		var b := Button.new()
+		b.text = str(d[0])
+		b.position = d[1]
+		b.custom_minimum_size = Vector2(46, 46)
+		b.focus_mode = Control.FOCUS_NONE
+		b.modulate = Color(1, 1, 1, 0.38)
+		var key := str(d[2])
+		b.button_down.connect(func(): _touch_held[key] = true)
+		b.button_up.connect(func(): _touch_held[key] = false)
+		layer.add_child(b)
+	var acts := [
+		["E", Vector2(832 - 64, 704 - 158), func(): _try_interact()],
+		["C", Vector2(832 - 64, 704 - 100), func():
+			if _sheet_open: _close_sheet()
+			else: _open_sheet()],
+		["≡", Vector2(832 - 50, 10), func():
+			GameData.campaign_pos = _player.mpos
+			GameData.save_campaign()
+			get_tree().change_scene_to_file("res://Title.tscn")],
+	]
+	for a in acts:
+		var b := Button.new()
+		b.text = str(a[0])
+		b.position = a[1]
+		b.custom_minimum_size = Vector2(46, 46) if str(a[0]) != "≡" else Vector2(38, 38)
+		b.focus_mode = Control.FOCUS_NONE
+		b.modulate = Color(1, 1, 1, 0.38)
+		var cb: Callable = a[2]
+		b.pressed.connect(func():
+			if not _locked and not _talking and not _leveling:
+				cb.call())
+		layer.add_child(b)
+
+
+func _try_interact() -> void:
+	var npc := _nearest_talkable()
+	if npc:
+		_open_dialogue(npc)
 
 
 # --- Boucle : entrées, ennemis, caméra ---
@@ -1696,6 +1784,15 @@ func _move_player(delta: float) -> void:
 	if Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT):
 		dir.x -= 1.0
 	if Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT):
+		dir.x += 1.0
+	# Boutons tactiles (téléphone) maintenus.
+	if _touch_held.get("up", false):
+		dir.y -= 1.0
+	if _touch_held.get("down", false):
+		dir.y += 1.0
+	if _touch_held.get("left", false):
+		dir.x -= 1.0
+	if _touch_held.get("right", false):
 		dir.x += 1.0
 	if dir == Vector2.ZERO:
 		_player.moving = false
