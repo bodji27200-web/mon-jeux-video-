@@ -613,6 +613,18 @@ Ordre de priorité (✅ = fait) :
       `luna_frere_a/b/c`, réponses excuse/pique) ; **3 rencontres minimum**
       avant de parler de Tomas (intro → elle te teste → confidence) ;
       recrutement justifié par le lien construit. Drapeaux `luna_1/2/3_fait`.
+79. ✅ **Migration Luna + réponses en voyage + contrôles tactiles** :
+    - Drapeaux de l'arc taverne renommés `luna_m1/m2/m3` : les vieilles
+      sauvegardes (anciens `luna_X_fait`) **repartent proprement de l'intro
+      réécrite** (cause du « elle parle comme avant »).
+    - Dialogues de VOYAGE chaînés : Luna répond aussi en expédition
+      (`luna_ti_a/b/c`, `luna_bl_a/b`, `luna_tf_a/b`, `luna_id_a`).
+    - **Contrôles tactiles** (`Overworld._build_touch_controls`, seulement si
+      `DisplayServer.is_touchscreen_available()` → invisibles Xbox/PC) :
+      croix ▲▼◀▶ à gauche (boutons maintenus, `_touch_held`), **E**/**C** à
+      droite, **≡** = sauvegarder + menu. Semi-transparents (alpha 0.38),
+      petits — demande : ne pas envahir l'écran. Combat/dialogues = déjà
+      tactiles (tout est clic).
 
 ### Compétences : plusieurs par classe
 - Une classe a un tableau `actives` (0 à 3 compétences). L'ancien champ `active`
